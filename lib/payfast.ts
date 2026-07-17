@@ -10,7 +10,13 @@ export const payfastPlans = {
 export type PayfastPlan = keyof typeof payfastPlans;
 
 function encode(value: string) {
-  return new URLSearchParams([["value", value.trim()]]).toString().slice(6);
+  // PayFast signs values using PHP's urlencode (RFC 1738), including
+  // uppercase percent escapes and "+" for spaces.
+  return encodeURIComponent(value.trim())
+    .replace(/[!'()*~]/g, (character) =>
+      `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+    )
+    .replace(/%20/g, "+");
 }
 
 export function parameterString(entries: Iterable<[string, string]>, passphrase?: string) {

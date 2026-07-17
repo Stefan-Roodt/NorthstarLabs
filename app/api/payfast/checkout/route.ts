@@ -15,7 +15,12 @@ export async function POST(request: Request) {
     return Response.json({ error: "PayFast sandbox settings are not connected yet" }, { status: 503 });
   }
   const origin = new URL(request.url).origin;
-  const name = String(user.user_metadata?.full_name || user.user_metadata?.name || "Northstar creator").trim().split(/\s+/);
+  const name = String(user.user_metadata?.full_name || user.user_metadata?.name || "Northstar creator")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\x20-\x7E]/g, "")
+    .trim()
+    .split(/\s+/);
   const fields: Record<string, string> = {
     merchant_id: merchantId,
     merchant_key: merchantKey,
