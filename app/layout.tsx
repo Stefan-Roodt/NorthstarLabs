@@ -9,11 +9,27 @@ const body = DM_Sans({ variable: "--font-body", subsets: ["latin"] });
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "NorthstarLabs — Build learning that grows",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://northstar-learning-platform.pikster.chatgpt.site"),
+  title: {
+    default: "NorthstarLabs — Build learning that grows",
+    template: "%s | NorthstarLabs",
+  },
   description: "Create courses, communities, and a learning business that compounds with NorthstarLabs.",
   icons: { icon: "/favicon.svg" },
-  openGraph: { title: "NorthstarLabs — Turn what you know into growth", description: "The all-in-one platform for ambitious learning businesses." },
-  twitter: { card: "summary", title: "NorthstarLabs — Turn what you know into growth", description: "The all-in-one platform for ambitious learning businesses." },
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "NorthstarLabs",
+    title: "NorthstarLabs — Turn what you know into growth",
+    description: "The all-in-one platform for ambitious learning businesses.",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "NorthstarLabs learning platform" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "NorthstarLabs — Turn what you know into growth",
+    description: "The all-in-one platform for ambitious learning businesses.",
+    images: ["/og.png"],
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

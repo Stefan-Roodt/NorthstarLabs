@@ -77,7 +77,7 @@ export default function Home() {
 
       <section className="cta"><div className="shell"><p className="eyebrow">YOUR NEXT CHAPTER STARTS HERE</p><h2>Knowledge grows<br/>when you share it.</h2><p>Build your first course free. Upgrade when you’re ready.</p><div><a className="button" href="/login">Start building free <span>↗</span></a><a className="text-link light" href="#demo">Talk to our team →</a></div></div></section>
 
-      <footer className="footer shell" id="demo"><div className="brand">✦ NORTHSTARLABS</div><p>The all-in-one platform for learning businesses.</p><div className="footer-links"><a href="#platform">Platform</a><a href="#solutions">Solutions</a><a href="#results">Customers</a><a href="#pricing">Pricing</a></div><small>© 2026 Northstar Labs. All rights reserved.</small></footer>
+      <footer className="footer shell" id="demo"><div className="brand">✦ NORTHSTARLABS</div><p>The all-in-one platform for learning businesses.</p><div className="footer-links"><a href="#platform">Platform</a><a href="#solutions">Solutions</a><a href="#results">Customers</a><a href="#pricing">Pricing</a><a href="/legal/terms">Terms</a><a href="/legal/privacy">Privacy</a></div><small>© 2026 Northstar Labs. All rights reserved.</small></footer>
     </main>
   );
 }

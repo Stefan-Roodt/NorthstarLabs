@@ -10,7 +10,9 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const supabase = getSupabaseBrowser();
-  const destination = typeof window === "undefined" ? "/dashboard" : new URLSearchParams(location.search).get("next") || "/dashboard";
+  const destination = typeof window === "undefined"
+    ? "/dashboard"
+    : safeDestination(new URLSearchParams(location.search).get("next"));
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -104,8 +106,20 @@ export default function LoginPage() {
         </form>
 
         {message && <p className="form-message" role="status">{message}</p>}
-        <p className="auth-note">By continuing, you agree to NorthstarLabs’ terms and privacy policy.</p>
+        <p className="auth-note">By continuing, you agree to our <a href="/legal/terms">Terms of Service</a> and acknowledge our <a href="/legal/privacy">Privacy Policy</a>.</p>
       </section>
     </main>
   );
+}
+
+function safeDestination(value: string | null): string {
+  if (!value?.startsWith("/") || value.startsWith("//")) return "/dashboard";
+  try {
+    const url = new URL(value, "https://northstarlabs.local");
+    return url.origin === "https://northstarlabs.local"
+      ? `${url.pathname}${url.search}${url.hash}`
+      : "/dashboard";
+  } catch {
+    return "/dashboard";
+  }
 }
