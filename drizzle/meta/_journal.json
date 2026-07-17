@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1783951034394,
+      "tag": "0000_massive_killer_shrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1783952988066,
+      "tag": "0001_gray_magneto",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784278674478,
+      "tag": "0002_mature_eternity",
+      "breakpoints": true
+    }
+  ]
+}
