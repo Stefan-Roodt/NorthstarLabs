@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const supabase = getSupabaseBrowser();
+  const destination = typeof window === "undefined" ? "/dashboard" : new URLSearchParams(location.search).get("next") || "/dashboard";
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -31,14 +32,14 @@ export default function LoginPage() {
 
         if (error) throw error;
         if (data.session) {
-          location.href = "/dashboard";
+          location.href = destination;
           return;
         }
         setMessage("Account created. Check your inbox and confirm your email to continue.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        location.href = "/dashboard";
+        location.href = destination;
       }
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Please try again.";
@@ -57,7 +58,7 @@ export default function LoginPage() {
     }
     setBusy(true);
     setMessage("");
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${location.origin}/dashboard` } });
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${location.origin}${destination}` } });
     if (error) {
       setMessage(error.message);
       setBusy(false);
