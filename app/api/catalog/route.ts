@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { starterCourses, type CatalogCourse } from "../../../lib/starter-courses";
 
 export async function GET() {
   const rows = await env.DB.prepare(
@@ -9,7 +10,11 @@ export async function GET() {
      LEFT JOIN profiles p ON p.id=c.owner_id
      WHERE c.status='published'
      GROUP BY c.id ORDER BY c.updated_at DESC`
-  ).all();
-  return Response.json(rows.results);
+  ).all<CatalogCourse>();
+  const ids = new Set(rows.results.map((course) => course.id));
+  const completeCatalog = [
+    ...starterCourses.filter((course) => !ids.has(course.id)),
+    ...rows.results,
+  ];
+  return Response.json(completeCatalog);
 }
-

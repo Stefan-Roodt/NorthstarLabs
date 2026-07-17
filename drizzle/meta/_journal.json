@@ -36,6 +36,13 @@
       "when": 1784289207464,
       "tag": "0004_slow_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1784304000000,
+      "tag": "0005_starter_course_catalog",
+      "breakpoints": true
     }
   ]
 }

@@ -43,3 +43,22 @@ test("prevents cross-account lesson edits and external sign-in redirects", async
   assert.match(login, /value\?\.startsWith\("\/"\)/);
   assert.match(login, /value\.startsWith\("\/\/"\)/);
 });
+
+test("ships a real starter catalogue without placeholder proof", async () => {
+  const [home, catalog, courseData, migration] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/courses/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/starter-courses.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0005_starter_course_catalog.sql", import.meta.url), "utf8"),
+  ]);
+  assert.doesNotMatch(home, /href="#"/);
+  assert.doesNotMatch(home, /32k\+|\$1\.4B|96M|4\.8\/5|Avery Lin|21% less/);
+  assert.match(home, /Product tour/);
+  assert.match(home, /Frequently asked questions/i);
+  assert.match(catalog, /NORTHSTARLABS ORIGINALS/);
+  assert.match(courseData, /Launch Your First Online Course/);
+  assert.match(courseData, /Price Your Expertise/);
+  assert.match(courseData, /Build a Learning Community/);
+  assert.match(migration, /launch-your-first-online-course/);
+  assert.match(migration, /starter-community-06/);
+});
