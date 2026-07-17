@@ -124,6 +124,7 @@ export default function Community() {
       <nav>
         <a href="/learn">My learning</a>
         <a href="/courses">Courses</a>
+        <a href="/account">Account</a>
         {data.canModerate && <a href="/dashboard/community">Manage community</a>}
       </nav>
     </header>

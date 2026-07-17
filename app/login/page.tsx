@@ -97,6 +97,7 @@ export default function LoginPage() {
             Password
             <input required autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={8} type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" />
           </label>
+          {mode === "login" && <a className="forgot-link" href="/forgot-password">Forgot your password?</a>}
           <button className="sys-primary" disabled={busy} type="submit">
             {busy ? "Please wait…" : mode === "signup" ? "Create my account →" : "Sign in →"}
           </button>
