@@ -9,6 +9,8 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
   const [id, setId] = useState("");
   const [message, setMessage] = useState("");
   const [loaded, setLoaded] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
+  const [autoEnrolAttempted, setAutoEnrolAttempted] = useState(false);
 
   useEffect(() => {
     params.then((value) => setId(value.courseId));
@@ -23,11 +25,23 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
       .finally(() => setLoaded(true));
   }, [id]);
 
+  useEffect(() => {
+    if (!loaded || !course || autoEnrolAttempted) return;
+    const shouldEnrol = new URLSearchParams(location.search).get("enrol") === "1";
+    if (!shouldEnrol) return;
+    setAutoEnrolAttempted(true);
+    void enrol();
+  }, [autoEnrolAttempted, course, loaded]);
+
   async function enrol() {
+    if (enrolling) return;
+    setEnrolling(true);
+    setMessage("Joining your course…");
     const supabase = getSupabaseBrowser();
     const session = (await supabase?.auth.getSession())?.data.session;
     if (!session) {
-      location.href = `/login?next=${encodeURIComponent(`/courses/${id}`)}`;
+      const returnTo = `/courses/${id}?enrol=1`;
+      location.href = `/login?next=${encodeURIComponent(returnTo)}`;
       return;
     }
     const response = await fetch("/api/enrollments", {
@@ -41,7 +55,9 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
     if (response.ok) {
       location.href = `/learn/${id}`;
     } else {
-      setMessage((await response.json()).error);
+      const result = await response.json().catch(() => ({ error: "We could not enrol you. Please try again." }));
+      setMessage(result.error || "We could not enrol you. Please try again.");
+      setEnrolling(false);
     }
   }
 
@@ -71,7 +87,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
         <a className="system-brand" href="/">✦ NORTHSTARLABS</a>
         <nav>
           <a href="/courses">All courses</a>
-          <a href="/login">Sign in</a>
+          <a href={`/login?next=${encodeURIComponent(`/courses/${id}`)}`}>Sign in</a>
         </nav>
       </header>
 
@@ -93,8 +109,8 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
           </div>
           <p className="sys-kicker">START LEARNING TODAY</p>
           <h2>{course.priceCents ? `R${(course.priceCents / 100).toFixed(0)}` : "Free"}</h2>
-          <button className="sys-primary" onClick={enrol}>
-            {course.priceCents ? "Continue to checkout" : "Enrol for free →"}
+          <button className="sys-primary" disabled={enrolling} onClick={enrol}>
+            {enrolling ? "Joining course…" : course.priceCents ? "Continue to checkout" : "Enrol for free →"}
           </button>
           {message && <p className="form-message" role="status">{message}</p>}
           <ul>
@@ -161,7 +177,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
         <p className="sys-kicker">YOUR NEXT USEFUL STEP</p>
         <h2>Start the course. Build as you learn.</h2>
         <p>{course.priceCents ? "Sign in to continue to secure checkout." : "No credit card required for this course."}</p>
-        <button className="sys-primary" onClick={enrol}>{course.priceCents ? "Continue to checkout" : "Enrol for free →"}</button>
+        <button className="sys-primary" disabled={enrolling} onClick={enrol}>{enrolling ? "Joining course…" : course.priceCents ? "Continue to checkout" : "Enrol for free →"}</button>
       </section>
 
       <footer className="catalog-footer">

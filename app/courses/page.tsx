@@ -79,7 +79,7 @@ export default function Catalog() {
           <h2>Have expertise worth sharing?</h2>
           <p>Use NorthstarLabs to turn it into a course, guide learners, and see where they need support.</p>
         </div>
-        <a className="sys-primary" href="/login?next=/dashboard">Build your course free →</a>
+        <a className="sys-primary" href="/login?next=/welcome?path=creator">Build your course free →</a>
       </section>
 
       <footer className="catalog-footer">

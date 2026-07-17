@@ -62,3 +62,20 @@ test("ships a real starter catalogue without placeholder proof", async () => {
   assert.match(migration, /launch-your-first-online-course/);
   assert.match(migration, /starter-community-06/);
 });
+
+test("guides new members into creating or learning with a low-friction join flow", async () => {
+  const [home, login, welcome, course] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/welcome/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(home, /Choose the result you want first/);
+  assert.match(home, /Create my free account/);
+  assert.match(login, /No payment details/);
+  assert.match(login, /emailRedirectTo: new URL\(destination/);
+  assert.match(welcome, /Build my first course/);
+  assert.match(welcome, /Start a practical free course/);
+  assert.match(course, /enrol=1/);
+  assert.match(course, /Joining your course/);
+});
