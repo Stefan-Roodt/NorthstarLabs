@@ -1,11 +1,54 @@
 "use client";
-import { FormEvent, useState } from "react";import { getSupabaseBrowser } from "../../../../lib/supabase-client";
-type Lesson={id:string;title:string;type:"video"|"text"|"quiz";duration:string;published:boolean};
-const initial:Lesson[]=[{id:"l1",title:"Welcome to the lab",type:"video",duration:"06:12",published:true},{id:"l2",title:"Find your sharpest positioning",type:"video",duration:"18:42",published:true},{id:"l3",title:"Build a memorable point of view",type:"text",duration:"8 min",published:true},{id:"l4",title:"Positioning checkpoint",type:"quiz",duration:"5 questions",published:false}];
-export default function CourseBuilder(){const [lessons,setLessons]=useState(initial);const [selected,setSelected]=useState(lessons[0]);const [courseTitle,setCourseTitle]=useState("Brand Strategy Lab");const [saved,setSaved]=useState("");const [uploading,setUploading]=useState("");
-async function addLesson(type:Lesson["type"]){const lesson={id:crypto.randomUUID(),title:type==="quiz"?"New knowledge check":"Untitled lesson",type,duration:type==="video"?"00:00":type==="quiz"?"0 questions":"1 min",published:false};setLessons([...lessons,lesson]);setSelected(lesson)}
-function update(p:Partial<Lesson>){const next={...selected,...p};setSelected(next);setLessons(lessons.map(l=>l.id===next.id?next:l))}
-async function save(e?:FormEvent){e?.preventDefault();setSaved("Saving…");const supabase=getSupabaseBrowser();if(supabase){const {data}=await supabase.auth.getSession();await fetch("/api/lessons",{method:"POST",headers:{"content-type":"application/json",authorization:`Bearer ${data.session?.access_token}`},body:JSON.stringify({courseId:"seed-1",lesson:selected})})}setSaved("All changes saved")}
-async function upload(file:File){setUploading("Uploading…");const supabase=getSupabaseBrowser();if(!supabase){setUploading("Connect Supabase to authorize uploads.");return}const {data}=await supabase.auth.getSession();const res=await fetch(`/api/uploads?filename=${encodeURIComponent(file.name)}`,{method:"POST",headers:{authorization:`Bearer ${data.session?.access_token}`,"content-type":file.type},body:file});setUploading(res.ok?"Media uploaded":"Upload failed")}
-return <main className="builder-page"><header className="builder-top"><a href="/dashboard">← Courses</a><div><input aria-label="Course title" value={courseTitle} onChange={e=>setCourseTitle(e.target.value)}/><span>Draft · {saved||"Unsaved changes"}</span></div><div><button className="builder-preview">Preview</button><button className="sys-primary" onClick={()=>save()}>Save & publish</button></div></header><div className="builder-layout"><aside className="curriculum"><div><p className="sys-kicker">CURRICULUM</p><b>{lessons.length} lessons</b></div><section>{lessons.map((l,i)=><button className={selected.id===l.id?"active":""} onClick={()=>setSelected(l)} key={l.id}><span>{i+1}</span><div><b>{l.title}</b><small>{l.type} · {l.duration}</small></div><i>{l.published?"●":"○"}</i></button>)}</section><div className="add-menu"><button onClick={()=>addLesson("video")}>＋ Video</button><button onClick={()=>addLesson("text")}>＋ Text</button><button onClick={()=>addLesson("quiz")}>＋ Quiz</button></div></aside><section className="lesson-editor"><div className="editor-heading"><div><p className="sys-kicker">{selected.type.toUpperCase()} LESSON</p><h1>{selected.title}</h1></div><label className="publish-toggle"><input type="checkbox" checked={selected.published} onChange={e=>update({published:e.target.checked})}/> Published</label></div><form onSubmit={save}><label>Lesson title<input value={selected.title} onChange={e=>update({title:e.target.value})}/></label>{selected.type==="video"&&<><label>Lesson video<div className="upload-drop"><strong>Drop a video here</strong><span>MP4, MOV or WebM · up to 5 GB</span><input type="file" accept="video/*" onChange={e=>e.target.files?.[0]&&upload(e.target.files[0])}/><button type="button">Choose video</button></div></label>{uploading&&<p className="upload-status">{uploading}</p>}</>}{selected.type==="text"&&<label>Lesson content<textarea className="content-editor" defaultValue="Build a brand people recognize, remember, and choose. Add your lesson notes, examples, and downloadable resources here."/></label>}{selected.type==="quiz"&&<QuizEditor/>}<div className="editor-settings"><label>Estimated duration<input value={selected.duration} onChange={e=>update({duration:e.target.value})}/></label><label>Free preview<select><option>No — enrolled students only</option><option>Yes — public preview</option></select></label></div><button className="sys-primary">Save lesson</button></form></section></div></main>}
-function QuizEditor(){const [questions,setQuestions]=useState([{prompt:"What makes positioning effective?",options:["Being broad","A clear, valuable difference","More features","A longer tagline"],answer:1}]);return <div className="quiz-editor"><div className="quiz-summary"><b>Knowledge check</b><label>Passing score <input defaultValue="80"/>%</label></div>{questions.map((q,i)=><article key={i}><span>QUESTION {i+1}</span><input defaultValue={q.prompt}/>{q.options.map((o,j)=><label key={o}><input type="radio" name={`q${i}`} defaultChecked={j===q.answer}/><input defaultValue={o}/></label>)}</article>)}<button type="button" className="builder-preview" onClick={()=>setQuestions([...questions,{prompt:"Untitled question",options:["Option A","Option B","Option C","Option D"],answer:0}])}>＋ Add question</button></div>}
+
+import { FormEvent, useEffect, useState } from "react";
+import { getSupabaseBrowser } from "../../../../lib/supabase-client";
+
+type Lesson={id:string;title:string;content:string;videoKey?:string;position:number};
+type Course={id:string;title:string;description:string;status:string;priceCents:number;lessons:Lesson[]};
+
+export default function CourseBuilder({params}:{params:Promise<{courseId:string}>}){
+  const [courseId,setCourseId]=useState("");
+  const [course,setCourse]=useState<Course|null>(null);
+  const [selected,setSelected]=useState<Lesson|null>(null);
+  const [message,setMessage]=useState("Loading course…");
+  const supabase=getSupabaseBrowser();
+
+  async function token(){return (await supabase?.auth.getSession())?.data.session?.access_token||""}
+  useEffect(()=>{params.then(({courseId})=>setCourseId(courseId))},[params]);
+  useEffect(()=>{if(!courseId||!supabase)return;(async()=>{
+    const response=await fetch(`/api/courses/${courseId}`,{headers:{authorization:`Bearer ${await token()}`}});
+    if(response.status===401){location.href="/login";return}
+    if(!response.ok){setMessage("Course not found.");return}
+    const loaded=await response.json() as Course;setCourse(loaded);setSelected(loaded.lessons[0]||null);setMessage("");
+  })()},[courseId,supabase]);
+
+  function editLesson(patch:Partial<Lesson>){
+    if(!course||!selected)return;
+    const next={...selected,...patch};setSelected(next);
+    setCourse({...course,lessons:course.lessons.map(item=>item.id===next.id?next:item)});
+  }
+  function addLesson(){
+    if(!course)return;
+    const lesson={id:crypto.randomUUID(),title:"Untitled lesson",content:"",position:course.lessons.length};
+    setCourse({...course,lessons:[...course.lessons,lesson]});setSelected(lesson);setMessage("New lesson ready to edit.");
+  }
+  async function saveLesson(event?:FormEvent){
+    event?.preventDefault();if(!selected)return;setMessage("Saving lesson…");
+    const response=await fetch("/api/lessons",{method:"POST",headers:{"content-type":"application/json",authorization:`Bearer ${await token()}`},body:JSON.stringify({courseId,lesson:selected})});
+    setMessage(response.ok?"Lesson saved.":"Lesson could not be saved.");
+  }
+  async function saveCourse(status=course?.status||"draft"){
+    if(!course)return;setMessage(status==="published"?"Publishing…":"Saving…");
+    if(status==="published"&&!course.lessons.length){setMessage("Add at least one lesson before publishing.");return}
+    await saveLesson();
+    const response=await fetch(`/api/courses/${courseId}`,{method:"PATCH",headers:{"content-type":"application/json",authorization:`Bearer ${await token()}`},body:JSON.stringify({title:course.title,description:course.description,status,priceCents:course.priceCents})});
+    if(response.ok){setCourse({...course,status});setMessage(status==="published"?"Course published — learners can now enrol.":"Course saved.")}
+    else setMessage("Course could not be saved.");
+  }
+  if(!course)return <main className="system-loading"><div><b>✦ NORTHSTARLABS</b><p>{message}</p></div></main>;
+  return <main className="builder-page">
+    <header className="builder-top"><a href="/dashboard">← Courses</a><div><input aria-label="Course title" value={course.title} onChange={e=>setCourse({...course,title:e.target.value})}/><span>{course.status} · {message||"Ready"}</span></div><div><a className="builder-preview" href={course.status==="published"?`/courses/${course.id}`:"#"}>Preview</a><button className="sys-primary" onClick={()=>saveCourse(course.status==="published"?"draft":"published")}>{course.status==="published"?"Unpublish":"Save & publish"}</button></div></header>
+    <div className="builder-layout"><aside className="curriculum"><div><p className="sys-kicker">CURRICULUM</p><b>{course.lessons.length} lessons</b></div><section>{course.lessons.map((lesson,index)=><button className={selected?.id===lesson.id?"active":""} onClick={()=>setSelected(lesson)} key={lesson.id}><span>{index+1}</span><div><b>{lesson.title}</b><small>Lesson</small></div><i>○</i></button>)}</section><div className="add-menu"><button onClick={addLesson}>＋ Add lesson</button></div></aside>
+    <section className="lesson-editor">{selected?<><div className="editor-heading"><div><p className="sys-kicker">LESSON EDITOR</p><h1>{selected.title}</h1></div></div><form onSubmit={saveLesson}><label>Lesson title<input value={selected.title} onChange={e=>editLesson({title:e.target.value})}/></label><label>Lesson content<textarea className="content-editor" value={selected.content} onChange={e=>editLesson({content:e.target.value})} placeholder="Write the lesson, instructions, links, and resources here."/></label><label>Video link (optional)<input value={selected.videoKey||""} onChange={e=>editLesson({videoKey:e.target.value})} placeholder="https://…"/></label><button className="sys-primary">Save lesson</button></form></>:<div className="empty-dashboard"><h2>Add your first lesson</h2><p>Courses need at least one lesson before they can be published.</p><button className="sys-primary" onClick={addLesson}>＋ Add lesson</button></div>}</section></div>
+  </main>
+}
