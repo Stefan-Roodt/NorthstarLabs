@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const profiles = sqliteTable("profiles", {
   id: text("id").primaryKey(),
@@ -22,11 +22,21 @@ export const enrollments = sqliteTable("enrollments", {
   progress: integer("progress").notNull().default(0), status: text("status").notNull().default("active"), createdAt: integer("created_at").notNull(),
 });
 export const communities = sqliteTable("communities", {
-  id: text("id").primaryKey(), ownerId: text("owner_id").notNull(), name: text("name").notNull(), description: text("description").notNull().default(""), createdAt: integer("created_at").notNull(),
+  id: text("id").primaryKey(), ownerId: text("owner_id").notNull(), name: text("name").notNull(), description: text("description").notNull().default(""),
+  accessType: text("access_type").notNull().default("open"), allowPosting: integer("allow_posting", { mode: "boolean" }).notNull().default(true),
+  createdAt: integer("created_at").notNull(),
 });
 export const posts = sqliteTable("posts", {
-  id: text("id").primaryKey(), communityId: text("community_id").notNull(), authorId: text("author_id").notNull(), body: text("body").notNull(), createdAt: integer("created_at").notNull(),
+  id: text("id").primaryKey(), communityId: text("community_id").notNull(), authorId: text("author_id").notNull(), body: text("body").notNull(),
+  status: text("status").notNull().default("visible"), moderatedBy: text("moderated_by"), moderatedAt: integer("moderated_at"),
+  createdAt: integer("created_at").notNull(),
 });
+export const communityMembers = sqliteTable("community_members", {
+  id: text("id").primaryKey(), communityId: text("community_id").notNull(), userId: text("user_id").notNull(),
+  role: text("role").notNull().default("member"), status: text("status").notNull().default("active"), joinedAt: integer("joined_at").notNull(),
+}, (table) => [
+  uniqueIndex("community_members_community_user_unique").on(table.communityId, table.userId),
+]);
 export const memberships = sqliteTable("memberships", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), stripeSubscriptionId: text("stripe_subscription_id"),
   payfastToken: text("payfast_token"), payfastPaymentId: text("payfast_payment_id"), provider: text("provider").notNull().default("payfast"),
