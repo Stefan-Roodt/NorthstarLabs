@@ -19,7 +19,9 @@ export const lessons = sqliteTable("lessons", {
 });
 export const enrollments = sqliteTable("enrollments", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), courseId: text("course_id").notNull(),
-  progress: integer("progress").notNull().default(0), status: text("status").notNull().default("active"), createdAt: integer("created_at").notNull(),
+  progress: integer("progress").notNull().default(0), status: text("status").notNull().default("active"),
+  supportNote: text("support_note").notNull().default(""), lastActivityAt: integer("last_activity_at"),
+  createdAt: integer("created_at").notNull(),
 });
 export const communities = sqliteTable("communities", {
   id: text("id").primaryKey(), ownerId: text("owner_id").notNull(), name: text("name").notNull(), description: text("description").notNull().default(""),

@@ -21,8 +21,8 @@ export async function updateCourseProgress(
   const progress = total ? Math.round((done / total) * 100) : 0;
 
   await db.prepare(
-    "UPDATE enrollments SET progress=? WHERE user_id=? AND course_id=?",
-  ).bind(progress, userId, courseId).run();
+    "UPDATE enrollments SET progress=?,last_activity_at=? WHERE user_id=? AND course_id=?",
+  ).bind(progress, Date.now(), userId, courseId).run();
 
   let certificateCode: string | null = null;
   if (progress === 100 && total > 0) {

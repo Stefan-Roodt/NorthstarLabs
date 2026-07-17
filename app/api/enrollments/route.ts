@@ -21,9 +21,9 @@ export async function POST(request: Request) {
   if (!course) return Response.json({ error: "Course unavailable" }, { status: 404 });
   if (course.priceCents > 0) return Response.json({ error: "Paid enrolment will open when PayFast is connected." }, { status: 402 });
   const existing = await env.DB.prepare("SELECT id FROM enrollments WHERE user_id=? AND course_id=?").bind(user.id,courseId).first();
-  if (existing) await env.DB.prepare("UPDATE enrollments SET status='active' WHERE user_id=? AND course_id=?").bind(user.id,courseId).run();
+  if (existing) await env.DB.prepare("UPDATE enrollments SET status='active',last_activity_at=? WHERE user_id=? AND course_id=?").bind(Date.now(),user.id,courseId).run();
   else await env.DB.prepare(
-    "INSERT INTO enrollments (id,user_id,course_id,progress,status,created_at) VALUES (?,?,?,?,?,?)"
-  ).bind(crypto.randomUUID(),user.id,courseId,0,"active",Date.now()).run();
+    "INSERT INTO enrollments (id,user_id,course_id,progress,status,last_activity_at,created_at) VALUES (?,?,?,?,?,?,?)"
+  ).bind(crypto.randomUUID(),user.id,courseId,0,"active",Date.now(),Date.now()).run();
   return Response.json({ enrolled: true, courseId });
 }
