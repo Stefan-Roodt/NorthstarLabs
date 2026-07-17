@@ -71,7 +71,7 @@ export default function LoginPage() {
 
   return (
     <main className="auth-page">
-      <a className="system-brand" href="/">✦ NORTHSTAR</a>
+      <a className="system-brand" href="/">✦ NORTHSTARLABS</a>
       <section className="auth-card">
         <p className="sys-kicker">BUILD. TEACH. GROW.</p>
         <h1>{mode === "signup" ? "Create your account." : "Welcome back."}</h1>
@@ -102,7 +102,7 @@ export default function LoginPage() {
         </form>
 
         {message && <p className="form-message" role="status">{message}</p>}
-        <p className="auth-note">By continuing, you agree to Northstar’s terms and privacy policy.</p>
+        <p className="auth-note">By continuing, you agree to NorthstarLabs’ terms and privacy policy.</p>
       </section>
     </main>
   );

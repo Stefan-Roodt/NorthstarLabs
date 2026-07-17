@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 
 export const payfastPlans = {
-  launch: { name: "Northstar Launch", amountEnv: "PAYFAST_PLAN_LAUNCH_ZAR" },
-  build: { name: "Northstar Build", amountEnv: "PAYFAST_PLAN_BUILD_ZAR" },
-  grow: { name: "Northstar Grow", amountEnv: "PAYFAST_PLAN_GROW_ZAR" },
-  scale: { name: "Northstar Scale", amountEnv: "PAYFAST_PLAN_SCALE_ZAR" },
+  launch: { name: "NorthstarLabs Launch", amountEnv: "PAYFAST_PLAN_LAUNCH_ZAR" },
+  build: { name: "NorthstarLabs Build", amountEnv: "PAYFAST_PLAN_BUILD_ZAR" },
+  grow: { name: "NorthstarLabs Grow", amountEnv: "PAYFAST_PLAN_GROW_ZAR" },
+  scale: { name: "NorthstarLabs Scale", amountEnv: "PAYFAST_PLAN_SCALE_ZAR" },
 } as const;
 
 export type PayfastPlan = keyof typeof payfastPlans;

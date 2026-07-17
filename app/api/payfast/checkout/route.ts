@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   const user = await requireApiUser(request);
   if (!user?.email) return Response.json({ error: "Sign in before checkout" }, { status: 401 });
   const body = await request.json() as { plan?: string };
-  if (!isPayfastPlan(body.plan)) return Response.json({ error: "Choose a valid Northstar plan" }, { status: 400 });
+  if (!isPayfastPlan(body.plan)) return Response.json({ error: "Choose a valid NorthstarLabs plan" }, { status: 400 });
   const merchantId = process.env.PAYFAST_MERCHANT_ID;
   const merchantKey = process.env.PAYFAST_MERCHANT_KEY;
   const passphrase = process.env.PAYFAST_PASSPHRASE;
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "PayFast sandbox settings are not connected yet" }, { status: 503 });
   }
   const origin = new URL(request.url).origin;
-  const name = String(user.user_metadata?.full_name || user.user_metadata?.name || "Northstar creator")
+  const name = String(user.user_metadata?.full_name || user.user_metadata?.name || "NorthstarLabs creator")
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^\x20-\x7E]/g, "")
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     return_url: `${origin}/dashboard?payment=success`,
     cancel_url: `${origin}/dashboard?payment=cancelled`,
     notify_url: `${origin}/api/payfast/itn`,
-    name_first: name[0] || "Northstar",
+    name_first: name[0] || "NorthstarLabs",
     name_last: name.slice(1).join(" ") || "Creator",
     email_address: user.email,
     m_payment_id: crypto.randomUUID(),

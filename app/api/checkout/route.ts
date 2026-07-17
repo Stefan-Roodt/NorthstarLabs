@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   if (!user) return Response.json({ error: "Sign in before checkout" }, { status: 401 });
   const body = await request.json() as { plan?: keyof typeof prices };
   const plan = body.plan && body.plan in prices ? body.plan : null;
-  if (!plan) return Response.json({ error: "Choose a valid Northstar plan" }, { status: 400 });
+  if (!plan) return Response.json({ error: "Choose a valid NorthstarLabs plan" }, { status: 400 });
   const secret = process.env.STRIPE_SECRET_KEY;
   const price = process.env[prices[plan]];
   if (!secret || !price) return Response.json({ error: "Stripe test pricing is not connected yet" }, { status: 503 });
