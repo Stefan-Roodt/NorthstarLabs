@@ -1,6 +1,17 @@
 import { env } from "cloudflare:workers";
+import { getSchoolReport } from "../../../../lib/reporting";
 import { requireApiUser } from "../../../../lib/server-auth";
 import { requestedSchoolId, requireCreatorSchool } from "../../../../lib/school-access";
+
+function timestamp(value: string | null, fallback: number, endOfDay = false) {
+  if (!value) return fallback;
+  const parsed = Date.parse(`${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function csvCell(value: unknown) {
+  return `"${String(value ?? "").replaceAll('"', '""')}"`;
+}
 
 export async function GET(request: Request) {
   const user = await requireApiUser(request);
@@ -8,69 +19,40 @@ export async function GET(request: Request) {
   const school = await requireCreatorSchool(user, requestedSchoolId(request));
   if (!school) return Response.json({ error: "Creator access required" }, { status: 403 });
 
-  const summary = await env.DB.prepare(
-    `SELECT COUNT(DISTINCT c.id) AS courses,
-      COUNT(e.id) AS enrollments,
-      SUM(CASE WHEN e.status='active' THEN 1 ELSE 0 END) AS activeEnrollments,
-      COUNT(DISTINCT CASE WHEN e.status='active' THEN e.user_id END) AS activeLearners,
-      COALESCE(ROUND(AVG(CASE WHEN e.status='active' THEN e.progress END)),0) AS averageProgress,
-      SUM(CASE WHEN e.progress>=100 AND e.status='active' THEN 1 ELSE 0 END) AS completions
-     FROM courses c
-     LEFT JOIN enrollments e ON e.course_id=c.id
-     WHERE c.school_id=?`,
-  ).bind(school.id).first();
+  const url = new URL(request.url);
+  const now = Date.now();
+  const from = timestamp(url.searchParams.get("from"), now - 29 * 86_400_000);
+  const to = timestamp(url.searchParams.get("to"), now, true);
+  if (to < from || to - from > 366 * 86_400_000) {
+    return Response.json({ error: "Choose a reporting range of up to one year." }, { status: 400 });
+  }
+  const courseId = url.searchParams.get("courseId") || null;
+  if (courseId) {
+    const course = await env.DB.prepare(
+      "SELECT id FROM courses WHERE id=? AND school_id=?",
+    ).bind(courseId, school.id).first();
+    if (!course) return Response.json({ error: "Course not found." }, { status: 404 });
+  }
 
-  const courses = await env.DB.prepare(
-    `SELECT c.id,c.title,c.status,
-      COUNT(e.id) AS enrollments,
-      SUM(CASE WHEN e.status='active' THEN 1 ELSE 0 END) AS activeLearners,
-      COALESCE(ROUND(AVG(CASE WHEN e.status='active' THEN e.progress END)),0) AS averageProgress,
-      SUM(CASE WHEN e.progress>=100 AND e.status='active' THEN 1 ELSE 0 END) AS completions
-     FROM courses c
-     LEFT JOIN enrollments e ON e.course_id=c.id
-     WHERE c.school_id=?
-     GROUP BY c.id
-     ORDER BY activeLearners DESC,c.updated_at DESC`,
-  ).bind(school.id).all();
-
-  const since = Date.now() - 13 * 24 * 60 * 60 * 1000;
-  const trend = await env.DB.prepare(
-    `SELECT strftime('%Y-%m-%d',e.created_at/1000,'unixepoch') AS day,
-      COUNT(*) AS enrollments
-     FROM enrollments e JOIN courses c ON c.id=e.course_id
-     WHERE c.school_id=? AND e.created_at>=?
-     GROUP BY day ORDER BY day`,
-  ).bind(school.id, since).all();
-
-  const recentEnrollments = await env.DB.prepare(
-    `SELECT 'enrollment' AS type,e.created_at AS occurredAt,c.title AS courseTitle,
-      COALESCE(p.display_name,p.email,'Learner') AS learnerName
-     FROM enrollments e
-     JOIN courses c ON c.id=e.course_id
-     LEFT JOIN profiles p ON p.id=e.user_id
-     WHERE c.school_id=?
-     ORDER BY e.created_at DESC LIMIT 10`,
-  ).bind(school.id).all();
-
-  const recentCompletions = await env.DB.prepare(
-    `SELECT 'completion' AS type,cert.issued_at AS occurredAt,c.title AS courseTitle,
-      COALESCE(p.display_name,p.email,'Learner') AS learnerName
-     FROM certificates cert
-     JOIN courses c ON c.id=cert.course_id
-     LEFT JOIN profiles p ON p.id=cert.user_id
-     WHERE c.school_id=?
-     ORDER BY cert.issued_at DESC LIMIT 10`,
-  ).bind(school.id).all();
-
-  const activity = [...recentEnrollments.results, ...recentCompletions.results]
-    .sort((a, b) => Number(b.occurredAt) - Number(a.occurredAt))
-    .slice(0, 12);
-
-  return Response.json({
-    school,
-    summary,
-    courses: courses.results,
-    trend: trend.results,
-    activity,
-  });
+  const report = await getSchoolReport(env.DB, school.id, { from, to, courseId });
+  if (url.searchParams.get("format") === "csv") {
+    const rows = [
+      ["Course", "Status", "Total enrolments", "Active learners", "Average progress", "Completions"],
+      ...(report.courses as Array<Record<string, unknown>>).map((course) => [
+        course.title,
+        course.status,
+        course.enrollments,
+        course.activeLearners,
+        `${course.averageProgress || 0}%`,
+        course.completions,
+      ]),
+    ];
+    return new Response(rows.map((row) => row.map(csvCell).join(",")).join("\n"), {
+      headers: {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": `attachment; filename="${school.slug}-learning-report.csv"`,
+      },
+    });
+  }
+  return Response.json({ school, ...report });
 }

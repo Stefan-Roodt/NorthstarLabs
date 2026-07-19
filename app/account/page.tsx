@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { getSupabaseBrowser } from "../../lib/supabase-client";
 
 type Profile = {
@@ -8,6 +9,13 @@ type Profile = {
   displayName: string;
   role: string;
   createdAt: number;
+};
+type NotificationPreferences = {
+  enrollmentEmails: number;
+  completionEmails: number;
+  communityEmails: number;
+  creatorSummaries: number;
+  productUpdates: number;
 };
 
 export default function AccountPage() {
@@ -18,13 +26,14 @@ export default function AccountPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [providers, setProviders] = useState<string[]>([]);
   const [verifiedAt, setVerifiedAt] = useState("");
+  const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
   const [message, setMessage] = useState("Loading your account...");
   const [busy, setBusy] = useState("");
   const supabase = getSupabaseBrowser();
 
-  async function sessionToken() {
+  const sessionToken = useCallback(async () => {
     return (await supabase?.auth.getSession())?.data.session?.access_token || "";
-  }
+  }, [supabase]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -50,9 +59,32 @@ export default function AccountPage() {
         (session.user.identities || []).map((identity) => identity.provider).filter(Boolean),
       )));
       setVerifiedAt(session.user.email_confirmed_at || "");
+      const preferencesResponse = await fetch("/api/notifications", {
+        headers: { authorization: `Bearer ${session.access_token}` },
+      });
+      if (preferencesResponse.ok) setPreferences(await preferencesResponse.json());
       setMessage("");
     })();
-  }, [supabase]);
+  }, [sessionToken, supabase]);
+
+  async function updatePreference(
+    key: keyof NotificationPreferences,
+    enabled: boolean,
+  ) {
+    if (!preferences) return;
+    const next = { ...preferences, [key]: enabled ? 1 : 0 };
+    setPreferences(next);
+    setMessage("Saving notification preferences...");
+    const response = await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${await sessionToken()}`,
+      },
+      body: JSON.stringify({ [key]: enabled }),
+    });
+    setMessage(response.ok ? "Notification preferences saved." : "Preferences could not be saved.");
+  }
 
   async function saveProfile(event: FormEvent) {
     event.preventDefault();
@@ -138,8 +170,8 @@ export default function AccountPage() {
 
   return <main className="account-page">
     <header className="account-top">
-      <a className="system-brand" href="/">✦ NORTHSTARLABS</a>
-      <nav><a href="/learn">My learning</a><a href="/dashboard">Creator workspace</a></nav>
+      <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+      <nav><Link href="/learn">My learning</Link><Link href="/dashboard">Creator workspace</Link></nav>
     </header>
     <section className="account-hero">
       <div>
@@ -212,6 +244,23 @@ export default function AccountPage() {
           {busy === "signout" ? "Signing out..." : "Sign out on every device"}
         </button>
       </article>
+
+      {preferences && <article className="panel account-card notification-card">
+        <div><p className="sys-kicker">NOTIFICATIONS</p><h2>Choose what reaches your inbox</h2></div>
+        <div className="notification-options">
+          {[
+            ["enrollmentEmails", "Course enrolments", "Confirmation when you join a course."],
+            ["completionEmails", "Completion and certificates", "Your verified certificate and completion notice."],
+            ["communityEmails", "Community activity", "Relevant community and moderation notifications."],
+            ["creatorSummaries", "Creator summaries", "Scheduled learning-performance reports."],
+            ["productUpdates", "Product updates", "Occasional NorthStarLabs product news."],
+          ].map(([key, label, description]) => <label key={key}>
+            <span><b>{label}</b><small>{description}</small></span>
+            <input type="checkbox" checked={Boolean(preferences[key as keyof NotificationPreferences])}
+              onChange={(event) => updatePreference(key as keyof NotificationPreferences, event.target.checked)} />
+          </label>)}
+        </div>
+      </article>}
     </section>
   </main>;
 }

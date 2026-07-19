@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../../lib/server-auth";
 import { requireCourseStaffAccess } from "../../../../lib/school-access";
+import { writeAuditLog } from "../../../../lib/audit-log";
 
 type QuizRow = {
   id: string;
@@ -259,5 +260,13 @@ export async function PATCH(
     Date.now(),
     courseId,
   ).run();
+  await writeAuditLog({
+    actorId: user.id,
+    schoolId: existing.schoolId,
+    action: status === "published" ? "course.publish" : "course.update",
+    targetType: "course",
+    targetId: courseId,
+    detail: { status, title: title || undefined },
+  });
   return Response.json({ saved: true, status });
 }

@@ -287,6 +287,47 @@ test("publishes branded school storefronts and routes communities by academy", a
   assert.match(metadata, /generateMetadata/);
 });
 
+test("queues transactional email and ships reporting plus secured administration", async () => {
+  const [schema, migration, email, invitations, enrollment, progress, reporting, analytics, operations, platform, admin, auth, preferences] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0012_sudden_baron_strucker.sql", import.meta.url), "utf8"),
+    readFile(new URL("../lib/email-service.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/invitations/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/enrollments/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/progress/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/reporting.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/analytics/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/operations/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/platform/overview/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/server-auth.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/notifications/route.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(schema, /export const emailMessages/);
+  assert.match(schema, /export const reportSchedules/);
+  assert.match(schema, /export const auditLogs/);
+  assert.match(migration, /CREATE TABLE `email_messages`/);
+  assert.match(migration, /CREATE TABLE `report_schedules`/);
+  assert.match(migration, /ALTER TABLE `profiles` ADD `status`/);
+  assert.match(email, /https:\/\/api\.resend\.com\/emails/);
+  assert.match(email, /idempotency-key/);
+  assert.match(email, /configuration_required/);
+  assert.match(invitations, /templateKey: "invitation"/);
+  assert.match(enrollment, /queueEnrollmentEmail/);
+  assert.match(progress, /queueCertificateEmail/);
+  assert.match(reporting, /quiz_attempts/);
+  assert.match(reporting, /email_messages/);
+  assert.match(analytics, /Export CSV/);
+  assert.match(analytics, /Assessment attempts/);
+  assert.match(operations, /scheduled summary/i);
+  assert.match(operations, /Every platform email/);
+  assert.match(platform, /requirePlatformAdmin/);
+  assert.match(platform, /You cannot suspend your own administrator account/);
+  assert.match(admin, /PLATFORM ADMIN/);
+  assert.match(auth, /profile\?\.status === "suspended"/);
+  assert.match(preferences, /notification_preferences/);
+});
+
 test("parses browser byte ranges safely", async () => {
   const { parseByteRange } = await import("../lib/media-stream.ts");
   assert.deepEqual(parseByteRange("bytes=10-19", 100), { start: 10, end: 19, length: 10 });

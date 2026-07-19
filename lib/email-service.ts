@@ -1,0 +1,320 @@
+import { env } from "cloudflare:workers";
+
+export type EmailTemplateKey =
+  | "invitation"
+  | "enrollment"
+  | "certificate"
+  | "creator_summary"
+  | "test";
+
+type EmailVariables = Record<string, string | number | null | undefined>;
+
+type QueueEmailInput = {
+  schoolId?: string | null;
+  recipientUserId?: string | null;
+  recipientEmail: string;
+  templateKey: EmailTemplateKey;
+  variables: EmailVariables;
+  idempotencyKey: string;
+  sendNow?: boolean;
+};
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function safeUrl(value: unknown) {
+  try {
+    const url = new URL(String(value || ""));
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : "#";
+  } catch {
+    return "#";
+  }
+}
+
+function templateContent(templateKey: EmailTemplateKey, values: EmailVariables) {
+  const academy = String(values.academy || "NorthStarLabs");
+  if (templateKey === "invitation") {
+    const course = values.course ? ` for “${values.course}”` : "";
+    return {
+      subject: `You’re invited to ${academy}`,
+      heading: `Your invitation to ${academy}`,
+      intro: `${values.inviter || academy} invited you to join as ${values.role || "a learner"}${course}.`,
+      actionLabel: "Accept invitation",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: `This secure invitation expires ${values.expires || "soon"}.`,
+    };
+  }
+  if (templateKey === "enrollment") {
+    return {
+      subject: `You’re enrolled in ${values.course || "your course"}`,
+      heading: "Your course is ready",
+      intro: `You now have access to “${values.course || "your course"}” from ${academy}.`,
+      actionLabel: "Start learning",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: "Your progress, notes, assessments, and certificate will stay connected to your account.",
+    };
+  }
+  if (templateKey === "certificate") {
+    return {
+      subject: `Your certificate for ${values.course || "course completion"}`,
+      heading: "You completed the course",
+      intro: `Congratulations on completing “${values.course || "your course"}” with ${academy}.`,
+      actionLabel: "View certificate",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: "Your certificate can be viewed, downloaded as a PDF, and independently verified.",
+    };
+  }
+  if (templateKey === "creator_summary") {
+    return {
+      subject: `${academy} learning report`,
+      heading: `${academy} performance summary`,
+      intro: `${values.activeLearners || 0} active learners, ${values.completions || 0} completions, and ${values.averageProgress || 0}% average progress.`,
+      actionLabel: "Open full report",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: `Reporting period: ${values.period || "latest activity"}.`,
+    };
+  }
+  return {
+    subject: `${academy} email delivery test`,
+    heading: "Email delivery is connected",
+    intro: `This test confirms that ${academy} can send platform notifications.`,
+    actionLabel: "Open academy",
+    actionUrl: safeUrl(values.actionUrl),
+    detail: "Invitations, enrolment confirmations, certificates, and scheduled reports can now be delivered.",
+  };
+}
+
+function renderEmail(templateKey: EmailTemplateKey, values: EmailVariables) {
+  const content = templateContent(templateKey, values);
+  const academy = escapeHtml(values.academy || "NorthStarLabs");
+  const primary = /^#[0-9a-f]{6}$/i.test(String(values.primaryColor || ""))
+    ? String(values.primaryColor)
+    : "#3556d8";
+  const actionUrl = safeUrl(content.actionUrl);
+  const html = `<!doctype html>
+<html><body style="margin:0;background:#f6eee5;color:#171724;font-family:Arial,sans-serif">
+<div style="max-width:640px;margin:0 auto;padding:32px 18px">
+<div style="font-weight:800;letter-spacing:.04em;margin-bottom:24px">${academy}</div>
+<div style="background:#fffaf4;border:1px solid #ddd0c4;border-radius:16px;padding:36px">
+<p style="font-size:11px;letter-spacing:.14em;font-weight:800;color:${primary};margin:0 0 14px">NORTHSTARLABS NOTIFICATION</p>
+<h1 style="font-size:34px;line-height:1.05;margin:0 0 18px">${escapeHtml(content.heading)}</h1>
+<p style="font-size:16px;line-height:1.65;color:#625d58">${escapeHtml(content.intro)}</p>
+<a href="${escapeHtml(actionUrl)}" style="display:inline-block;background:${primary};color:white;text-decoration:none;font-weight:800;padding:14px 18px;border-radius:9px;margin:16px 0">${escapeHtml(content.actionLabel)}</a>
+<p style="font-size:12px;line-height:1.6;color:#7c756f;border-top:1px solid #e5ddd5;padding-top:18px;margin-top:20px">${escapeHtml(content.detail)}</p>
+</div>
+<p style="font-size:11px;line-height:1.6;color:#817a74;margin:20px 8px">Sent by ${academy} through NorthStarLabs.</p>
+</div></body></html>`;
+  const text = `${content.heading}\n\n${content.intro}\n\n${content.actionLabel}: ${actionUrl}\n\n${content.detail}\n\nSent by ${values.academy || "NorthStarLabs"} through NorthStarLabs.`;
+  return { subject: content.subject, html, text };
+}
+
+async function emailAllowed(userId: string | null | undefined, templateKey: EmailTemplateKey) {
+  if (!userId || templateKey === "invitation" || templateKey === "test") return true;
+  const preferences = await env.DB.prepare(
+    `SELECT enrollment_emails AS enrollmentEmails,
+      completion_emails AS completionEmails,
+      creator_summaries AS creatorSummaries
+     FROM notification_preferences WHERE user_id=?`,
+  ).bind(userId).first<{
+    enrollmentEmails: number;
+    completionEmails: number;
+    creatorSummaries: number;
+  }>();
+  if (!preferences) return true;
+  if (templateKey === "enrollment") return Boolean(preferences.enrollmentEmails);
+  if (templateKey === "certificate") return Boolean(preferences.completionEmails);
+  if (templateKey === "creator_summary") return Boolean(preferences.creatorSummaries);
+  return true;
+}
+
+export async function queueEmail(input: QueueEmailInput) {
+  const existing = await env.DB.prepare(
+    `SELECT id,status FROM email_messages WHERE idempotency_key=?`,
+  ).bind(input.idempotencyKey).first<{ id: string; status: string }>();
+  if (existing) return existing;
+  if (!(await emailAllowed(input.recipientUserId, input.templateKey))) {
+    return { id: "", status: "suppressed" };
+  }
+  const rendered = renderEmail(input.templateKey, input.variables);
+  const id = crypto.randomUUID();
+  const now = Date.now();
+  await env.DB.prepare(
+    `INSERT INTO email_messages
+      (id,school_id,recipient_user_id,recipient_email,template_key,subject,
+       html_body,text_body,status,provider,idempotency_key,attempt_count,
+       available_at,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,'pending','resend',?,0,?,?,?)`,
+  ).bind(
+    id,
+    input.schoolId || null,
+    input.recipientUserId || null,
+    input.recipientEmail.trim().toLowerCase(),
+    input.templateKey,
+    rendered.subject,
+    rendered.html,
+    rendered.text,
+    input.idempotencyKey,
+    now,
+    now,
+    now,
+  ).run();
+  if (input.sendNow !== false) return deliverEmail(id);
+  return { id, status: "pending" };
+}
+
+export async function deliverEmail(id: string) {
+  const message = await env.DB.prepare(
+    `SELECT id,recipient_email AS recipientEmail,subject,html_body AS htmlBody,
+      text_body AS textBody,status,idempotency_key AS idempotencyKey,
+      attempt_count AS attemptCount
+     FROM email_messages WHERE id=?`,
+  ).bind(id).first<{
+    id: string;
+    recipientEmail: string;
+    subject: string;
+    htmlBody: string;
+    textBody: string;
+    status: string;
+    idempotencyKey: string;
+    attemptCount: number;
+  }>();
+  if (!message) return { id, status: "missing" };
+  if (message.status === "sent") return { id, status: "sent" };
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+  if (!apiKey || !from) {
+    await env.DB.prepare(
+      `UPDATE email_messages SET status='configuration_required',
+       attempt_count=attempt_count+1,last_error=?,updated_at=? WHERE id=?`,
+    ).bind("Connect RESEND_API_KEY and EMAIL_FROM to send this message.", Date.now(), id).run();
+    return { id, status: "configuration_required" };
+  }
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+      "idempotency-key": message.idempotencyKey,
+    },
+    body: JSON.stringify({
+      from,
+      to: [message.recipientEmail],
+      subject: message.subject,
+      html: message.htmlBody,
+      text: message.textBody,
+      reply_to: process.env.EMAIL_REPLY_TO || undefined,
+    }),
+  });
+  const result = await response.json().catch(() => ({})) as { id?: string; message?: string; name?: string };
+  const now = Date.now();
+  if (response.ok && result.id) {
+    await env.DB.prepare(
+      `UPDATE email_messages SET status='sent',provider_message_id=?,
+       attempt_count=attempt_count+1,last_error=NULL,sent_at=?,updated_at=? WHERE id=?`,
+    ).bind(result.id, now, now, id).run();
+    return { id, status: "sent", providerMessageId: result.id };
+  }
+  const attempts = Number(message.attemptCount || 0) + 1;
+  const status = attempts >= 3 ? "failed" : "retrying";
+  const retryAt = now + Math.min(60, 2 ** attempts) * 60_000;
+  await env.DB.prepare(
+    `UPDATE email_messages SET status=?,attempt_count=?,last_error=?,
+     available_at=?,updated_at=? WHERE id=?`,
+  ).bind(
+    status,
+    attempts,
+    String(result.message || result.name || `Email provider returned ${response.status}`).slice(0, 800),
+    retryAt,
+    now,
+    id,
+  ).run();
+  return { id, status };
+}
+
+export async function retryEmail(id: string) {
+  await env.DB.prepare(
+    `UPDATE email_messages SET status='pending',available_at=?,last_error=NULL,updated_at=?
+     WHERE id=? AND status<>'sent'`,
+  ).bind(Date.now(), Date.now(), id).run();
+  return deliverEmail(id);
+}
+
+export async function queueEnrollmentEmail(input: {
+  userId: string;
+  courseId: string;
+  enrollmentId: string;
+  origin: string;
+}) {
+  const details = await env.DB.prepare(
+    `SELECT p.email,c.title AS courseTitle,s.id AS schoolId,s.name AS schoolName,
+      s.slug AS schoolSlug,s.primary_color AS primaryColor
+     FROM profiles p
+     JOIN courses c ON c.id=?
+     JOIN schools s ON s.id=c.school_id
+     WHERE p.id=?`,
+  ).bind(input.courseId, input.userId).first<{
+    email: string;
+    courseTitle: string;
+    schoolId: string;
+    schoolName: string;
+    schoolSlug: string;
+    primaryColor: string;
+  }>();
+  if (!details?.email) return { id: "", status: "missing_recipient" };
+  return queueEmail({
+    schoolId: details.schoolId,
+    recipientUserId: input.userId,
+    recipientEmail: details.email,
+    templateKey: "enrollment",
+    variables: {
+      academy: details.schoolName,
+      course: details.courseTitle,
+      primaryColor: details.primaryColor,
+      actionUrl: `${input.origin}/learn/${input.courseId}`,
+    },
+    idempotencyKey: `enrollment:${input.enrollmentId}`,
+  });
+}
+
+export async function queueCertificateEmail(input: {
+  userId: string;
+  courseId: string;
+  certificateCode: string;
+  origin: string;
+}) {
+  const details = await env.DB.prepare(
+    `SELECT p.email,c.title AS courseTitle,s.id AS schoolId,s.name AS schoolName,
+      s.primary_color AS primaryColor
+     FROM profiles p
+     JOIN courses c ON c.id=?
+     JOIN schools s ON s.id=c.school_id
+     WHERE p.id=?`,
+  ).bind(input.courseId, input.userId).first<{
+    email: string;
+    courseTitle: string;
+    schoolId: string;
+    schoolName: string;
+    primaryColor: string;
+  }>();
+  if (!details?.email) return { id: "", status: "missing_recipient" };
+  return queueEmail({
+    schoolId: details.schoolId,
+    recipientUserId: input.userId,
+    recipientEmail: details.email,
+    templateKey: "certificate",
+    variables: {
+      academy: details.schoolName,
+      course: details.courseTitle,
+      primaryColor: details.primaryColor,
+      actionUrl: `${input.origin}/certificates/${encodeURIComponent(input.certificateCode)}`,
+    },
+    idempotencyKey: `certificate:${input.certificateCode}`,
+  });
+}

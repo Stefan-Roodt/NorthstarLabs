@@ -5,6 +5,8 @@ import {
   requestedSchoolId,
   requireCreatorSchool,
 } from "../../../../lib/school-access";
+import { writeAuditLog } from "../../../../lib/audit-log";
+import { queueEnrollmentEmail } from "../../../../lib/email-service";
 
 export async function GET(request: Request) {
   const user = await requireApiUser(request);
@@ -72,6 +74,20 @@ export async function POST(request: Request) {
     ).bind(enrollmentId, learner.id, courseId, 0, "active", "", now, now).run();
   }
   await ensureLearnerSchoolMembership(learner.id, school.id, false);
+  const emailDelivery = await queueEnrollmentEmail({
+    userId: learner.id,
+    courseId,
+    enrollmentId: enrollmentId!,
+    origin: new URL(request.url).origin,
+  }).catch(() => ({ id: "", status: "pending" }));
+  await writeAuditLog({
+    actorId: user.id,
+    schoolId: school.id,
+    action: existing ? "learner.enrollment.restore" : "learner.enrollment.create",
+    targetType: "enrollment",
+    targetId: enrollmentId!,
+    detail: { learnerId: learner.id, courseId, emailStatus: emailDelivery.status },
+  });
   const saved = await env.DB.prepare(
     `SELECT e.id,e.user_id AS userId,e.course_id AS courseId,e.progress,e.status,
       e.support_note AS supportNote,e.last_activity_at AS lastActivityAt,e.created_at AS createdAt,
@@ -108,6 +124,10 @@ export async function PATCH(request: Request) {
     await env.DB.prepare(
       "UPDATE enrollments SET status=?,last_activity_at=? WHERE id=?",
     ).bind(status, Date.now(), enrollment.id).run();
+    await writeAuditLog({
+      actorId: user.id, schoolId: school.id, action: "learner.enrollment.status",
+      targetType: "enrollment", targetId: enrollment.id, detail: { status },
+    });
     return Response.json({ saved: true, status });
   }
 
@@ -116,6 +136,11 @@ export async function PATCH(request: Request) {
     await env.DB.prepare(
       "UPDATE enrollments SET support_note=? WHERE id=?",
     ).bind(supportNote, enrollment.id).run();
+    await writeAuditLog({
+      actorId: user.id, schoolId: school.id, action: "learner.support_note",
+      targetType: "enrollment", targetId: enrollment.id,
+      detail: { hasNote: Boolean(supportNote) },
+    });
     return Response.json({ saved: true, supportNote });
   }
 
@@ -136,6 +161,11 @@ export async function PATCH(request: Request) {
         "UPDATE enrollments SET progress=0,last_activity_at=? WHERE id=?",
       ).bind(Date.now(), enrollment.id),
     ]);
+    await writeAuditLog({
+      actorId: user.id, schoolId: school.id, action: "learner.progress.reset",
+      targetType: "enrollment", targetId: enrollment.id,
+      detail: { learnerId: enrollment.userId, courseId: enrollment.courseId },
+    });
     return Response.json({ saved: true, progress: 0 });
   }
 

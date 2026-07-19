@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../../lib/server-auth";
+import { writeAuditLog } from "../../../../lib/audit-log";
 
 const publicSchoolColumns = `id,slug,name,description,logo_url AS logoUrl,
   cover_image_url AS coverImageUrl,primary_color AS primaryColor,
@@ -168,6 +169,18 @@ export async function PATCH(
     Date.now(),
     current.id,
   ).run();
+  await writeAuditLog({
+    actorId: user.id,
+    schoolId: current.id,
+    action: "school.storefront.update",
+    targetType: "school",
+    targetId: current.id,
+    detail: {
+      name: next.name,
+      fontTheme: next.fontTheme,
+      showCommunity: next.showCommunity,
+    },
+  });
 
   const school = await env.DB.prepare(
     `SELECT ${publicSchoolColumns} FROM schools WHERE id=?`,

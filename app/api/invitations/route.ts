@@ -9,6 +9,8 @@ import {
   type InvitationRole,
 } from "../../../lib/invitations";
 import { requireApiUser } from "../../../lib/server-auth";
+import { queueEmail } from "../../../lib/email-service";
+import { writeAuditLog } from "../../../lib/audit-log";
 import {
   requestedSchoolId,
   requireCreatorSchool,
@@ -115,7 +117,34 @@ export async function POST(request: Request) {
   ).bind(invitationId, school.id).first();
   const origin = new URL(request.url).origin;
   const inviteUrl = `${origin}/invite/${encodeURIComponent(token)}`;
-  return Response.json({ invitation, inviteUrl }, { status: 201 });
+  const inviter = await env.DB.prepare(
+    "SELECT display_name AS displayName FROM profiles WHERE id=?",
+  ).bind(user.id).first<{ displayName: string }>();
+  const invitationData = invitation as { courseTitle?: string | null } | null;
+  const emailDelivery = await queueEmail({
+    schoolId: school.id,
+    recipientEmail: email,
+    templateKey: "invitation",
+    variables: {
+      academy: school.name,
+      inviter: inviter?.displayName || school.name,
+      role,
+      course: invitationData?.courseTitle || null,
+      primaryColor: school.primaryColor,
+      actionUrl: inviteUrl,
+      expires: new Date(expiresAt).toLocaleDateString("en-ZA", { dateStyle: "long" }),
+    },
+    idempotencyKey: `invitation:${invitationId}`,
+  }).catch(() => ({ id: "", status: "pending" }));
+  await writeAuditLog({
+    actorId: user.id,
+    schoolId: school.id,
+    action: "invitation.create",
+    targetType: "invitation",
+    targetId: invitationId,
+    detail: { email, role, courseId, emailStatus: emailDelivery.status },
+  });
+  return Response.json({ invitation, inviteUrl, emailStatus: emailDelivery.status }, { status: 201 });
 }
 
 export async function PATCH(request: Request) {
@@ -140,5 +169,13 @@ export async function PATCH(request: Request) {
   await env.DB.prepare(
     "UPDATE invitations SET status='revoked' WHERE id=? AND school_id=? AND status='pending'",
   ).bind(invitation.id, school.id).run();
+  await writeAuditLog({
+    actorId: user.id,
+    schoolId: school.id,
+    action: "invitation.revoke",
+    targetType: "invitation",
+    targetId: invitation.id,
+    detail: { role: invitation.role },
+  });
   return Response.json({ saved: true, status: "revoked" });
 }

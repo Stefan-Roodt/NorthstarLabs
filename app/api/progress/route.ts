@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../lib/server-auth";
 import { updateCourseProgress } from "../../../lib/course-progress";
 import { getLessonGate } from "../../../lib/learner-controls";
+import { queueCertificateEmail } from "../../../lib/email-service";
 export async function POST(request:Request){
   const user=await requireApiUser(request);
   if(!user)return Response.json({error:"Unauthorized"},{status:401});
@@ -25,5 +26,13 @@ export async function POST(request:Request){
   await env.DB.prepare("INSERT INTO lesson_progress (id,user_id,lesson_id,completed,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET completed=excluded.completed,updated_at=excluded.updated_at")
     .bind(id,user.id,lessonId,completed?1:0,Date.now()).run();
   const result=await updateCourseProgress(env.DB,user.id,gate.courseId);
+  if(result.certificateCode){
+    await queueCertificateEmail({
+      userId:user.id,
+      courseId:gate.courseId,
+      certificateCode:result.certificateCode,
+      origin:new URL(request.url).origin,
+    }).catch(()=>null);
+  }
   return Response.json({saved:true,...result});
 }

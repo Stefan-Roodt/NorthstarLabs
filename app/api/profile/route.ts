@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../lib/server-auth";
+import { isPlatformAdmin } from "../../../lib/platform-admin";
 import {
   createCreatorSchool,
   ensureProfile,
@@ -19,6 +20,7 @@ async function profileResponse(user: NonNullable<Awaited<ReturnType<typeof requi
     hasCreatorSchool: schools.some((school) =>
       ["owner", "admin", "instructor"].includes(school.memberRole)
     ),
+    isPlatformAdmin: await isPlatformAdmin(user),
   };
 }
 

@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../../lib/server-auth";
 import { updateCourseProgress } from "../../../../lib/course-progress";
 import { getLessonGate } from "../../../../lib/learner-controls";
+import { queueCertificateEmail } from "../../../../lib/email-service";
 
 export async function POST(
   request: Request,
@@ -91,6 +92,14 @@ export async function POST(
   }
 
   const result = await updateCourseProgress(env.DB, user.id, gate.courseId);
+  if (result.certificateCode) {
+    await queueCertificateEmail({
+      userId: user.id,
+      courseId: gate.courseId,
+      certificateCode: result.certificateCode,
+      origin: new URL(request.url).origin,
+    }).catch(() => null);
+  }
   const nextAttemptCount = attemptCount + 1;
   return Response.json({
     score,

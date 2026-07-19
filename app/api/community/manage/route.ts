@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../../lib/server-auth";
 import { ensureCommunityAccess } from "../../../../lib/community-access";
 import { ensureLearnerSchoolMembership, requestedSchoolId } from "../../../../lib/school-access";
+import { writeAuditLog } from "../../../../lib/audit-log";
 
 export async function GET(request: Request) {
   const user = await requireApiUser(request);
@@ -45,6 +46,14 @@ export async function POST(request: Request) {
      ON CONFLICT(community_id,user_id) DO UPDATE SET status='active'`,
   ).bind(id, access.community.id, profile.id, "member", "active", Date.now()).run();
   await ensureLearnerSchoolMembership(profile.id, access.school.id, false);
+  await writeAuditLog({
+    actorId: user.id,
+    schoolId: access.school.id,
+    action: "community.member.grant",
+    targetType: "community_member",
+    targetId: profile.id,
+    detail: { email: profile.email },
+  });
   const member = await env.DB.prepare(
     `SELECT cm.id,cm.user_id AS userId,cm.role,cm.status,cm.joined_at AS joinedAt,
       p.display_name AS displayName,p.email
@@ -76,6 +85,14 @@ export async function PATCH(request: Request) {
     await env.DB.prepare(
       "UPDATE communities SET access_type=?,allow_posting=? WHERE id=?",
     ).bind(accessType, body.allowPosting === false ? 0 : 1, access.community.id).run();
+    await writeAuditLog({
+      actorId: user.id,
+      schoolId: access.school?.id || null,
+      action: "community.settings",
+      targetType: "community",
+      targetId: access.community.id,
+      detail: { accessType, allowPosting: body.allowPosting !== false },
+    });
     return Response.json({ saved: true, accessType, allowPosting: body.allowPosting !== false });
   }
 
@@ -93,6 +110,14 @@ export async function PATCH(request: Request) {
     await env.DB.prepare(
       "UPDATE community_members SET role=?,status=? WHERE id=?",
     ).bind(role, status, body.memberId).run();
+    await writeAuditLog({
+      actorId: user.id,
+      schoolId: access.school?.id || null,
+      action: "community.member.update",
+      targetType: "community_member",
+      targetId: body.memberId,
+      detail: { role, status },
+    });
     return Response.json({ saved: true, role, status });
   }
 

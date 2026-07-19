@@ -9,6 +9,7 @@ export const profiles = sqliteTable("profiles", {
   onboardingCompleted: integer("onboarding_completed", { mode: "boolean" }).notNull().default(false),
   onboardedAt: integer("onboarded_at"),
   activeSchoolId: text("active_school_id"),
+  status: text("status").notNull().default("active"),
   stripeCustomerId: text("stripe_customer_id"),
   createdAt: integer("created_at").notNull(),
 });
@@ -239,4 +240,73 @@ export const certificates = sqliteTable("certificates", {
   uniqueIndex("certificates_code_unique").on(table.code),
   index("certificates_user_course_idx").on(table.userId, table.courseId, table.issuedAt),
   index("certificates_course_status_idx").on(table.courseId, table.status, table.issuedAt),
+]);
+
+export const emailMessages = sqliteTable("email_messages", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id"),
+  recipientUserId: text("recipient_user_id"),
+  recipientEmail: text("recipient_email").notNull(),
+  templateKey: text("template_key").notNull(),
+  subject: text("subject").notNull(),
+  htmlBody: text("html_body").notNull(),
+  textBody: text("text_body").notNull(),
+  status: text("status").notNull().default("pending"),
+  provider: text("provider").notNull().default("resend"),
+  providerMessageId: text("provider_message_id"),
+  idempotencyKey: text("idempotency_key").notNull(),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  lastError: text("last_error"),
+  availableAt: integer("available_at").notNull(),
+  sentAt: integer("sent_at"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("email_messages_idempotency_unique").on(table.idempotencyKey),
+  index("email_messages_status_available_idx").on(table.status, table.availableAt),
+  index("email_messages_school_created_idx").on(table.schoolId, table.createdAt),
+  index("email_messages_recipient_created_idx").on(table.recipientEmail, table.createdAt),
+]);
+
+export const notificationPreferences = sqliteTable("notification_preferences", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  enrollmentEmails: integer("enrollment_emails", { mode: "boolean" }).notNull().default(true),
+  completionEmails: integer("completion_emails", { mode: "boolean" }).notNull().default(true),
+  communityEmails: integer("community_emails", { mode: "boolean" }).notNull().default(true),
+  creatorSummaries: integer("creator_summaries", { mode: "boolean" }).notNull().default(true),
+  productUpdates: integer("product_updates", { mode: "boolean" }).notNull().default(false),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("notification_preferences_user_unique").on(table.userId),
+]);
+
+export const reportSchedules = sqliteTable("report_schedules", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull(),
+  createdBy: text("created_by").notNull(),
+  frequency: text("frequency").notNull().default("weekly"),
+  recipientEmail: text("recipient_email").notNull(),
+  status: text("status").notNull().default("active"),
+  nextRunAt: integer("next_run_at").notNull(),
+  lastRunAt: integer("last_run_at"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  index("report_schedules_due_idx").on(table.status, table.nextRunAt),
+  index("report_schedules_school_idx").on(table.schoolId, table.status),
+]);
+
+export const auditLogs = sqliteTable("audit_logs", {
+  id: text("id").primaryKey(),
+  actorId: text("actor_id").notNull(),
+  schoolId: text("school_id"),
+  action: text("action").notNull(),
+  targetType: text("target_type").notNull(),
+  targetId: text("target_id").notNull(),
+  detailJson: text("detail_json").notNull().default("{}"),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  index("audit_logs_school_created_idx").on(table.schoolId, table.createdAt),
+  index("audit_logs_actor_created_idx").on(table.actorId, table.createdAt),
 ]);

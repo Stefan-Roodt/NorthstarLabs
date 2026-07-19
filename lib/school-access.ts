@@ -41,6 +41,7 @@ type ProfileRow = {
   onboardingCompleted: boolean;
   onboardedAt: number | null;
   activeSchoolId: string | null;
+  status: string;
   createdAt: number;
 };
 
@@ -102,7 +103,7 @@ export async function ensureProfile(user: ApiUser) {
     `SELECT id,email,display_name AS displayName,role,
       onboarding_path AS onboardingPath,
       onboarding_completed AS onboardingCompleted,onboarded_at AS onboardedAt,
-      active_school_id AS activeSchoolId,created_at AS createdAt
+      active_school_id AS activeSchoolId,status,created_at AS createdAt
      FROM profiles WHERE id=?`,
   ).bind(user.id).first<ProfileRow>();
 }
