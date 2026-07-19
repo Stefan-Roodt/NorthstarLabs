@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getStarterCourse, starterCourses, type CatalogCourse } from "../../lib/starter-courses";
 
 export default function Catalog() {
@@ -20,9 +21,10 @@ export default function Catalog() {
   return (
     <main className="catalog-page">
       <header>
-        <a className="system-brand" href="/">✦ NORTHSTARLABS</a>
+        <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
         <nav>
-          <a href="/">Home</a>
+          <Link href="/">Home</Link>
+          <Link href="/tutors">Find a tutor</Link>
           <a href="/login">Sign in</a>
         </nav>
       </header>
@@ -83,9 +85,9 @@ export default function Catalog() {
       </section>
 
       <footer className="catalog-footer">
-        <a className="system-brand" href="/">✦ NORTHSTARLABS</a>
+        <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
         <nav>
-          <a href="/">Platform</a>
+          <Link href="/">Platform</Link>
           <a href="/legal/terms">Terms</a>
           <a href="/legal/privacy">Privacy</a>
         </nav>

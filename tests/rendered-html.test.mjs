@@ -485,6 +485,7 @@ test("ships academy tutor discovery, direct contact, and protected enquiries", a
     tutorProfile,
     tutorAdmin,
     tutoring,
+    marketplace,
     learnerHome,
     storefront,
     email,
@@ -499,6 +500,7 @@ test("ships academy tutor discovery, direct contact, and protected enquiries", a
     readFile(new URL("../app/schools/[slug]/tutors/[tutorSlug]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/dashboard/tutors/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/tutoring/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/tutors/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/learn/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/schools/[slug]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/email-service.ts", import.meta.url), "utf8"),
@@ -512,6 +514,8 @@ test("ships academy tutor discovery, direct contact, and protected enquiries", a
   assert.match(bookingMigration, /ALTER TABLE `tutor_inquiries` ADD `slot_id`/);
   assert.match(tutorsApi, /showDirectContact/);
   assert.match(tutorsApi, /Creator access required/);
+  assert.match(tutorsApi, /publicTutorMarketplace/);
+  assert.match(tutorsApi, /availableSlotCount/);
   assert.match(inquiriesApi, /Sign in to contact a tutor/);
   assert.match(inquiriesApi, /tutor\.inquiry_created/);
   assert.match(inquiriesApi, /learner_cancel/);
@@ -525,6 +529,9 @@ test("ships academy tutor discovery, direct contact, and protected enquiries", a
   assert.match(tutorAdmin, /Bookable appointment times/);
   assert.match(tutoring, /Personal help, without the admin chase/);
   assert.match(tutoring, /Cancel request/);
+  assert.match(marketplace, /Find the person who can get you/);
+  assert.match(marketplace, /Compare what matters/);
+  assert.match(marketplace, /View profile & times/);
   assert.match(learnerHome, /My tutoring/);
   assert.match(storefront, /ONE-TO-ONE SUPPORT/);
   assert.match(email, /tutor_enquiry/);

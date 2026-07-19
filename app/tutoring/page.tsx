@@ -120,6 +120,7 @@ export default function TutoringPage() {
       <Link className="system-brand" href="/learn">✦ NORTHSTARLABS</Link>
       <nav>
         <Link href="/learn">My learning</Link>
+        <Link href="/tutors">Find a tutor</Link>
         <Link href="/courses">Explore courses</Link>
         <Link href="/account">Account</Link>
         <button onClick={signOut}>Sign out</button>

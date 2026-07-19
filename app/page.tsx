@@ -138,6 +138,7 @@ export default function Home() {
           <a href="#platform">Platform</a>
           <a href="#value">Why Northstar</a>
           <Link href="/courses">Free courses</Link>
+          <Link href="/tutors">Find a tutor</Link>
           <a href="#pricing">Pricing</a>
         </nav>
         <div className="nav-actions"><a className="login" href="/login?mode=login">Log in</a><a className="button small" href={generalSignupHref}>Join free</a></div>
@@ -146,7 +147,7 @@ export default function Home() {
 
       <section className="hero shell" id="top">
         <div className="hero-copy">
-          <p className="eyebrow">Courses <span>•</span> Live learning <span>•</span> Community <span>•</span> Progress</p>
+          <p className="eyebrow">Courses <span>•</span> Live learning <span>•</span> Human tutoring <span>•</span> Progress</p>
           <h1>One place to build, deliver, and grow <em>learning that works.</em></h1>
           <p className="lede">Create courses, host protected video, run live sessions and a community, invite learners, track progress, and award certificates—from one branded platform.</p>
           <div className="hero-actions"><a className="button" href={creatorSignupHref}>Build my academy free <span>↗</span></a><a className="text-link" href="#value">See everything included <span>↓</span></a></div>
@@ -179,6 +180,15 @@ export default function Home() {
         <div><strong>Engage</strong><span>learners through one community</span></div>
         <div><strong>Improve</strong><span>with progress and reporting</span></div>
       </div></section>
+
+      <section className="home-tutor-discovery shell">
+        <div>
+          <p className="section-kicker">WHEN YOU NEED A PERSON, NOT ANOTHER VIDEO</p>
+          <h2>Find one-to-one help for the part that has you stuck.</h2>
+        </div>
+        <p>Compare tutors across NorthstarLabs academies by subject, experience, price, format, and real appointment availability.</p>
+        <Link href="/tutors">Find my tutor <span>→</span></Link>
+      </section>
 
       <section className="logos shell" aria-label="Who NorthstarLabs is designed for">
         <p>Designed for people who teach, guide, and enable others</p>

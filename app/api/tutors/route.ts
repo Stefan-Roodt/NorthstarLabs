@@ -92,6 +92,44 @@ async function publicTutors(schoolSlug: string, tutorSlug?: string | null) {
   });
 }
 
+async function publicTutorMarketplace() {
+  const now = Date.now();
+  const rows = await env.DB.prepare(
+    `SELECT ${tutorColumns},
+      s.name AS schoolName,s.slug AS schoolSlug,s.logo_url AS schoolLogoUrl,
+      s.primary_color AS schoolPrimaryColor,
+      COUNT(CASE WHEN ts.status='open' AND ts.starts_at>? THEN 1 END) AS availableSlotCount,
+      MIN(CASE WHEN ts.status='open' AND ts.starts_at>? THEN ts.starts_at END) AS nextAvailableAt
+     FROM tutors t
+     JOIN schools s ON s.id=t.school_id
+     LEFT JOIN tutor_slots ts ON ts.tutor_id=t.id
+     WHERE t.status='published' AND s.status='active'
+     GROUP BY t.id
+     ORDER BY t.verified DESC,
+       CASE WHEN nextAvailableAt IS NULL THEN 1 ELSE 0 END,
+       nextAvailableAt ASC,t.updated_at DESC
+     LIMIT 250`,
+  ).bind(now, now).all<TutorRow & {
+    schoolName: string;
+    schoolSlug: string;
+    schoolLogoUrl: string | null;
+    schoolPrimaryColor: string;
+    availableSlotCount: number;
+    nextAvailableAt: number | null;
+  }>();
+  return Response.json({
+    tutors: rows.results.map((row) => ({
+      ...serializeTutor(row),
+      schoolName: row.schoolName,
+      schoolSlug: row.schoolSlug,
+      schoolLogoUrl: row.schoolLogoUrl,
+      schoolPrimaryColor: row.schoolPrimaryColor,
+      availableSlotCount: Number(row.availableSlotCount || 0),
+      nextAvailableAt: row.nextAvailableAt ? Number(row.nextAvailableAt) : null,
+    })),
+  });
+}
+
 async function creatorContext(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return { error: Response.json({ error: "Unauthorized" }, { status: 401 }) };
@@ -104,6 +142,7 @@ async function creatorContext(request: Request) {
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  if (url.searchParams.get("marketplace") === "1") return publicTutorMarketplace();
   const schoolSlug = url.searchParams.get("schoolSlug");
   if (schoolSlug) return publicTutors(schoolSlug, url.searchParams.get("slug"));
 
