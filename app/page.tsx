@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+
+const creatorSignupHref = "/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcreator";
+const generalSignupHref = "/login?mode=signup&next=%2Fwelcome";
 
 const features = [
   {
@@ -24,6 +28,48 @@ const features = [
     href: "#product-tour",
     link: "Explore the platform",
   },
+];
+
+const valueStack = [
+  {
+    n: "01",
+    title: "Course creation",
+    text: "Turn your expertise into structured lessons with text, protected video, downloads, quizzes, prerequisites, and completion rules.",
+  },
+  {
+    n: "02",
+    title: "Learner momentum",
+    text: "Give every learner one clear home for lessons, saved progress, live sessions, community, and certificates.",
+  },
+  {
+    n: "03",
+    title: "Products that retain",
+    text: "Package courses into bundles, memberships, and live programmes instead of selling disconnected files.",
+  },
+  {
+    n: "04",
+    title: "Less administration",
+    text: "Invite learners, grant or pause access, review progress, send updates, and manage support without a spreadsheet maze.",
+  },
+  {
+    n: "05",
+    title: "A brand people remember",
+    text: "Bring your academy, catalogue, courses, community, and learner experience together under one consistent identity.",
+  },
+  {
+    n: "06",
+    title: "Clarity as you grow",
+    text: "Use reporting, exports, audit history, and backups to understand what is working and operate with confidence.",
+  },
+];
+
+const disconnectedTools = [
+  "Course builder",
+  "Video host",
+  "Quiz tool",
+  "Community app",
+  "Live calendar",
+  "Progress reports",
 ];
 
 const plans = [
@@ -60,6 +106,10 @@ const faqs = [
     answer: "Yes. Create one free account, choose whether to create or learn, and start immediately without entering payment details.",
   },
   {
+    question: "What do I get immediately after signing up?",
+    answer: "Creators can open an academy workspace and begin a course draft. Learners can choose a practical starter course. Both paths keep learning, progress, live sessions, and community access under one account.",
+  },
+  {
     question: "What can I publish?",
     answer: "You can build structured courses with text, private video, quizzes, completion requirements, and certificates. You can also run a member community alongside the learning experience.",
   },
@@ -86,21 +136,25 @@ export default function Home() {
         <a className="brand" href="#top" aria-label="NorthstarLabs home"><span className="brand-mark">✦</span> NORTHSTARLABS</a>
         <nav className={menuOpen ? "nav-links open" : "nav-links"} aria-label="Main navigation">
           <a href="#platform">Platform</a>
-          <a href="/courses">Free courses</a>
-          <a href="#product-tour">Product tour</a>
+          <a href="#value">Why Northstar</a>
+          <Link href="/courses">Free courses</Link>
           <a href="#pricing">Pricing</a>
         </nav>
-        <div className="nav-actions"><a className="login" href="/login">Log in</a><a className="button small" href="/login?next=/welcome">Join free</a></div>
+        <div className="nav-actions"><a className="login" href="/login?mode=login">Log in</a><a className="button small" href={generalSignupHref}>Join free</a></div>
         <button className="menu" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-label="Toggle navigation">{menuOpen ? "Close" : "Menu"}</button>
       </header>
 
       <section className="hero shell" id="top">
         <div className="hero-copy">
-          <p className="eyebrow">Courses <span>•</span> Communities <span>•</span> Learner success</p>
-          <h1>Build a course people can <em>join, finish, and use.</em></h1>
-          <p className="lede">NorthstarLabs gives you one practical place to create the learning, welcome the people, guide their progress, and improve what you teach.</p>
-          <div className="hero-actions"><a className="button" href="/login?next=/welcome?path=creator">Create my free account <span>↗</span></a><a className="text-link" href="/courses">Experience a real course <span>→</span></a></div>
-          <div className="micro-proof"><span className="micro-mark">✓</span><p><strong>One account. Two clear paths.</strong> Create or learn without a credit card.</p></div>
+          <p className="eyebrow">Courses <span>•</span> Live learning <span>•</span> Community <span>•</span> Progress</p>
+          <h1>One place to build, deliver, and grow <em>learning that works.</em></h1>
+          <p className="lede">Create courses, host protected video, run live sessions and a community, invite learners, track progress, and award certificates—from one branded platform.</p>
+          <div className="hero-actions"><a className="button" href={creatorSignupHref}>Build my academy free <span>↗</span></a><a className="text-link" href="#value">See everything included <span>↓</span></a></div>
+          <ul className="hero-benefits" aria-label="Free account benefits">
+            <li><span>✓</span> No credit card</li>
+            <li><span>✓</span> Guided setup</li>
+            <li><span>✓</span> Start with one useful idea</li>
+          </ul>
         </div>
 
         <div className="product-stage" aria-label="Sample NorthstarLabs creator dashboard">
@@ -121,9 +175,9 @@ export default function Home() {
 
       <section className="proof-strip" id="results"><div className="shell stats">
         <div><strong>Build</strong><span>courses, quizzes, and certificates</span></div>
-        <div><strong>Engage</strong><span>learners in one community</span></div>
-        <div><strong>Support</strong><span>individual progress and access</span></div>
-        <div><strong>Improve</strong><span>with practical reporting</span></div>
+        <div><strong>Deliver</strong><span>protected media and live learning</span></div>
+        <div><strong>Engage</strong><span>learners through one community</span></div>
+        <div><strong>Improve</strong><span>with progress and reporting</span></div>
       </div></section>
 
       <section className="logos shell" aria-label="Who NorthstarLabs is designed for">
@@ -131,11 +185,53 @@ export default function Home() {
         <div><span>INDEPENDENT EDUCATORS</span><span>COACHES</span><span>TRAINING TEAMS</span><span>CUSTOMER ACADEMIES</span><span>MEMBERSHIP CREATORS</span></div>
       </section>
 
+      <section className="value shell" id="value">
+        <div className="value-heading">
+          <p className="section-kicker">THE VALUE OF ONE CONNECTED PLATFORM</p>
+          <h2>Stop stitching tools together. Start building learner momentum.</h2>
+          <p>NorthstarLabs connects the work before enrolment, the experience during learning, and the insight you need afterwards. Nothing important gets stranded in another app.</p>
+        </div>
+
+        <div className="value-comparison" aria-label="Disconnected tools compared with NorthstarLabs">
+          <div className="tool-pile">
+            <p className="sys-kicker">THE SCATTERED SETUP</p>
+            <div>{disconnectedTools.map((tool) => <span key={tool}>{tool}</span>)}</div>
+            <small>Separate logins, bills, data, and learner journeys.</small>
+          </div>
+          <div className="value-arrow" aria-hidden="true">→</div>
+          <div className="northstar-core">
+            <p className="sys-kicker">THE NORTHSTAR WAY</p>
+            <strong><i>✦</i> One academy workspace</strong>
+            <ul>
+              <li>One creator workflow</li>
+              <li>One learner experience</li>
+              <li>One source of progress data</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="value-grid">{valueStack.map((item) => <article key={item.n}>
+          <span>{item.n}</span>
+          <h3>{item.title}</h3>
+          <p>{item.text}</p>
+        </article>)}</div>
+
+        <div className="value-cta">
+          <div><p className="section-kicker">BUILD BEFORE YOU BUY</p><h3>Start with the complete workflow, not another disconnected trial.</h3></div>
+          <a className="button" href={creatorSignupHref}>Create my free academy <span>→</span></a>
+        </div>
+      </section>
+
       <section className="join-path shell" id="start">
         <div className="join-path-heading">
-          <p className="section-kicker">JOIN ONCE. START THE RIGHT WAY.</p>
-          <h2>Choose the result you want first.</h2>
-          <p>Your free account includes both experiences. Pick a starting point now and switch whenever you need to.</p>
+          <p className="section-kicker">SIMPLE TO JOIN. USEFUL FROM THE FIRST SESSION.</p>
+          <h2>Three clear steps. No blank dashboard.</h2>
+          <p>Join with Google or email, choose what you want to do first, and arrive in the right workspace with a useful next step waiting.</p>
+        </div>
+        <div className="signup-steps" aria-label="How to join NorthstarLabs">
+          <div><span>01</span><p><b>Create your free account</b><small>Google or email. No payment details.</small></p></div>
+          <div><span>02</span><p><b>Choose creator or learner</b><small>Your account includes both paths.</small></p></div>
+          <div><span>03</span><p><b>Start in the right place</b><small>Build an academy or choose a course.</small></p></div>
         </div>
         <div className="join-path-grid">
           <article>
@@ -143,7 +239,7 @@ export default function Home() {
             <p className="section-kicker">FOR CREATORS</p>
             <h3>I want to build a course.</h3>
             <p>Open a guided workspace, create your first draft, and turn one useful idea into a clear learning path.</p>
-            <a className="button" href="/login?next=/welcome?path=creator">Start creating free →</a>
+            <a className="button" href={creatorSignupHref}>Start creating free →</a>
             <small>No payment details required</small>
           </article>
           <article>
@@ -151,7 +247,7 @@ export default function Home() {
             <p className="section-kicker">FOR LEARNERS</p>
             <h3>I want to learn something useful.</h3>
             <p>Choose a short practical course, enrol free, and keep your lessons, progress, and certificate together.</p>
-            <a className="button dark" href="/courses">Choose a free course →</a>
+            <Link className="button dark" href="/courses">Choose a free course →</Link>
             <small>Three starter courses available</small>
           </article>
         </div>
@@ -164,27 +260,31 @@ export default function Home() {
       </section>
 
       <section className="story" id="solutions"><div className="shell story-grid">
-        <div className="story-copy"><p className="section-kicker">MADE FOR MOMENTUM</p><h2>One home for your knowledge—and your next chapter.</h2><p>Launch a signature course. Train customers. Build a member academy. NorthstarLabs adapts to the learning business you have and the one you’re building.</p><ul><li><span>✓</span> Your brand, courses, and learner experience together</li><li><span>✓</span> Quizzes, progress rules, and certificates built in</li><li><span>✓</span> Community, analytics, and learner support connected</li></ul><a className="button dark" href="/courses">Experience a real course</a></div>
+        <div className="story-copy"><p className="section-kicker">MADE FOR MOMENTUM</p><h2>One home for your knowledge—and your next chapter.</h2><p>Launch a signature course. Train customers. Build a member academy. NorthstarLabs adapts to the learning business you have and the one you’re building.</p><ul><li><span>✓</span> Your brand, courses, and learner experience together</li><li><span>✓</span> Quizzes, progress rules, and certificates built in</li><li><span>✓</span> Community, analytics, and learner support connected</li></ul><Link className="button dark" href="/courses">Experience a real course</Link></div>
         <div className="course-card"><div className="course-visual"><span>NORTHSTARLABS ORIGINAL</span><div className="sun"/><h4>Ideas into<br/>impact.</h4></div><div className="course-meta"><div><small>FREE STARTER COURSE</small><b>Launch Your First Online Course</b></div><span>6 lessons<br/>90 minutes</span></div><div className="progress"><i/><span>72% complete</span></div></div>
       </div></section>
 
       <section className="product-tour shell" id="product-tour">
         <div className="tour-heading"><p className="section-kicker">A CLEAR PATH FROM IDEA TO IMPACT</p><h2>See how the work fits together.</h2><p>NorthstarLabs is built around the actual journey: create something useful, publish it clearly, then help learners succeed.</p></div>
         <div className="tour-steps">
-          <article><span>01</span><p className="sys-kicker">BUILD</p><h3>Shape the curriculum.</h3><p>Create lessons, add private video, design knowledge checks, and decide what completion means.</p><a href="/login?next=/welcome?path=creator">Open the creator workspace →</a></article>
-          <article><span>02</span><p className="sys-kicker">PUBLISH</p><h3>Give the course a real home.</h3><p>Present the promise, curriculum, format, and enrolment path in a focused branded storefront.</p><a href="/courses">Explore a live example →</a></article>
-          <article><span>03</span><p className="sys-kicker">GUIDE</p><h3>Support learner progress.</h3><p>Review enrolment and completion, manage access, take support notes, and improve the learning experience.</p><a href="/login?next=/welcome?path=creator">Start with the guided setup →</a></article>
+          <article><span>01</span><p className="sys-kicker">BUILD</p><h3>Shape the curriculum.</h3><p>Create lessons, add private video, design knowledge checks, and decide what completion means.</p><a href={creatorSignupHref}>Open the creator workspace →</a></article>
+          <article><span>02</span><p className="sys-kicker">PUBLISH</p><h3>Give the course a real home.</h3><p>Present the promise, curriculum, format, and enrolment path in a focused branded storefront.</p><Link href="/courses">Explore a live example →</Link></article>
+          <article><span>03</span><p className="sys-kicker">GUIDE</p><h3>Support learner progress.</h3><p>Review enrolment and completion, manage access, take support notes, and improve the learning experience.</p><a href={creatorSignupHref}>Start with the guided setup →</a></article>
         </div>
       </section>
 
       <section className="pricing" id="pricing"><div className="shell">
-        <p className="section-kicker">PRICING BUILT FOR MOMENTUM</p>
-        <div className="pricing-head"><h2>Plans that grow with your learning business.</h2><div><p>Start free today. Choose a paid plan only when live upgrades open and you need more capacity or support.</p><span>Prices shown in ZAR · paid upgrades are not yet active</span></div></div>
-        <div className="momentum-kit"><div><span>INCLUDED FROM DAY ONE</span><h3>The NorthstarLabs Momentum Kit</h3><p>A practical launch checklist, pricing worksheet, email prompts, milestone guidance, and a seven-day path from blank course to publish-ready first version.</p></div><strong>FREE<br/><small>with every plan</small></strong></div>
+        <p className="section-kicker">START FREE. GROW WHEN THE VALUE IS CLEAR.</p>
+        <div className="pricing-head"><h2>Build before you make a buying decision.</h2><div><p>Create your academy, begin a course draft, and experience the learner journey before choosing a paid plan.</p><span>Prices shown in ZAR · paid upgrades are not yet active</span></div></div>
+        <div className="free-start">
+          <div><span>YOUR STARTING PLAN</span><h3>Free to begin</h3><p>Open your academy workspace, shape your first course, and explore NorthstarLabs without entering payment details.</p></div>
+          <ul><li>Creator and learner paths</li><li>Guided academy setup</li><li>Practical starter courses</li></ul>
+          <a className="button" href={creatorSignupHref}>Start building free <span>→</span></a>
+        </div>
         <div className="pricing-grid">{plans.map((plan) => <article className={plan.popular ? "price-card popular" : "price-card"} key={plan.name}>
           {plan.popular && <b className="popular-label">FOR GROWING ACADEMIES</b>}<p className="plan-name">{plan.name}</p><p className="plan-description">{plan.description}</p>
           <div className="plan-price"><span>R{plan.price.toLocaleString("en-ZA")}</span><small>/ month</small></div>
-          <a className="button" href="/login?next=/welcome?path=creator">Start free <span>→</span></a><ul><li className="kit-feature"><span>✦</span>Momentum Kit included</li>{plan.features.map((feature) => <li key={feature}><span>✓</span>{feature}</li>)}</ul>
+          <a className="button" href={creatorSignupHref}>Start building free <span>→</span></a><ul>{plan.features.map((feature) => <li key={feature}><span>✓</span>{feature}</li>)}</ul>
         </article>)}</div>
         <p className="pricing-note">Create an account and build for free now. Paid upgrades will be enabled only after live billing passes final testing.</p>
       </div></section>
@@ -194,9 +294,9 @@ export default function Home() {
         <div className="faq-list">{faqs.map((faq) => <details key={faq.question}><summary>{faq.question}<span>+</span></summary><p>{faq.answer}</p></details>)}</div>
       </section>
 
-      <section className="cta"><div className="shell"><p className="eyebrow">YOUR NEXT USEFUL STEP STARTS HERE</p><h2>Join once.<br/>Start clearly.</h2><p>Create your free account, choose your path, and let NorthstarLabs guide the next step.</p><div><a className="button" href="/login?next=/welcome">Create my free account <span>↗</span></a><a className="text-link light" href="/courses">Explore free courses →</a></div></div></section>
+      <section className="cta"><div className="shell"><p className="eyebrow">YOUR KNOWLEDGE DESERVES A WORKING SYSTEM</p><h2>Build it once.<br/>Help people grow.</h2><p>Give your expertise a clear structure, a memorable home, and a learner experience you can improve over time.</p><div><a className="button" href={creatorSignupHref}>Build my academy free <span>↗</span></a><Link className="text-link light" href="/courses">Experience a real course →</Link></div><small className="cta-reassurance">No credit card · Guided setup · Switch between creating and learning anytime</small></div></section>
 
-      <footer className="footer shell"><div className="brand">✦ NORTHSTARLABS</div><p>One connected platform for practical learning businesses.</p><div className="footer-links"><a href="#platform">Platform</a><a href="/courses">Courses</a><a href="#product-tour">Product tour</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><a href="/legal/terms">Terms</a><a href="/legal/privacy">Privacy</a></div><small>© 2026 Northstar Labs. All rights reserved.</small></footer>
+      <footer className="footer shell"><div className="brand">✦ NORTHSTARLABS</div><p>One connected platform for practical learning businesses.</p><div className="footer-links"><a href="#platform">Platform</a><Link href="/courses">Courses</Link><a href="#product-tour">Product tour</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><Link href="/legal/terms">Terms</Link><Link href="/legal/privacy">Privacy</Link></div><small>© 2026 Northstar Labs. All rights reserved.</small></footer>
     </main>
   );
 }

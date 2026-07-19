@@ -4,9 +4,9 @@ import test from "node:test";
 
 test("defines NorthstarLabs production metadata", async () => {
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
-  assert.match(layout, /NorthstarLabs — Build learning that grows/);
+  assert.match(layout, /NorthstarLabs — Build learning that works/);
   assert.match(layout, /metadataBase/);
-  assert.match(layout, /og\.png/);
+  assert.match(layout, /og-value\.png/);
   assert.match(layout, /summary_large_image/);
   assert.doesNotMatch(layout, /codex-preview|Starter Project/);
 });
@@ -95,8 +95,8 @@ test("guides new members into creating or learning with a low-friction join flow
     readFile(new URL("../app/welcome/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
   ]);
-  assert.match(home, /Choose the result you want first/);
-  assert.match(home, /Create my free account/);
+  assert.match(home, /Three clear steps\. No blank dashboard/);
+  assert.match(home, /Build my academy free/);
   assert.match(login, /No payment details/);
   assert.match(login, /emailRedirectTo: new URL\(destination/);
   assert.match(welcome, /Build my first course/);

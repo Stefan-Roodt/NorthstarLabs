@@ -12,10 +12,10 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://northstar-learning-platform.pikster.chatgpt.site"),
   title: {
-    default: "NorthstarLabs — Build learning that grows",
+    default: "NorthstarLabs — Build learning that works",
     template: "%s | NorthstarLabs",
   },
-  description: "Create courses, communities, and a learning business that compounds with NorthstarLabs.",
+  description: "Create courses, host protected media, run live learning and community, guide progress, and award certificates from one connected platform.",
   manifest: "/manifest.webmanifest",
   icons: { icon: "/favicon.svg" },
   appleWebApp: {
@@ -27,15 +27,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "NorthstarLabs",
-    title: "NorthstarLabs — Turn what you know into growth",
-    description: "The all-in-one platform for ambitious learning businesses.",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "NorthstarLabs learning platform" }],
+    title: "NorthstarLabs — Build learning that works",
+    description: "One connected platform to create, deliver, and grow practical learning.",
+    images: [{ url: "/og-value.png", width: 1200, height: 630, alt: "NorthstarLabs connected learning platform" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "NorthstarLabs — Turn what you know into growth",
-    description: "The all-in-one platform for ambitious learning businesses.",
-    images: ["/og.png"],
+    title: "NorthstarLabs — Build learning that works",
+    description: "One connected platform to create, deliver, and grow practical learning.",
+    images: ["/og-value.png"],
   },
 };
 
