@@ -7,6 +7,7 @@ import {
   rateLimitPolicy,
   sha256Hex,
 } from "../lib/security.ts";
+import { serializeTutor, tutorColumns } from "../lib/tutors.ts";
 
 async function migratedDatabase() {
   const database = new DatabaseSync(":memory:");
@@ -378,6 +379,69 @@ test("grants and revokes bundle, community, and live-session access", async () =
   );
 });
 
+test("publishes academy tutors and protects learner enquiry details", async () => {
+  const db = await migratedDatabase();
+  const now = Date.UTC(2026, 6, 19, 12);
+  db.exec(`
+    INSERT INTO profiles (id,email,display_name,role,status,created_at)
+    VALUES
+      ('tutor-owner','tutor-owner@example.com','Tutor Owner','creator','active',${now}),
+      ('tutor-learner','tutor-learner@example.com','Tutor Learner','learner','active',${now});
+    INSERT INTO schools
+      (id,slug,name,description,primary_color,accent_color,hero_title,hero_description,
+       font_theme,support_email,seo_title,seo_description,show_community,
+       owner_id,status,created_at,updated_at)
+    VALUES
+      ('tutor-school','tutor-academy','Tutor Academy','','#3556d8','#ffbd8a','','',
+       'modern','academy@example.com','','',1,'tutor-owner','active',${now},${now});
+    INSERT INTO school_members (id,school_id,user_id,role,status,joined_at)
+    VALUES ('tutor-owner-membership','tutor-school','tutor-owner','owner','active',${now});
+    INSERT INTO tutors
+      (id,school_id,created_by,slug,display_name,headline,subjects_json,
+       contact_email,phone_number,show_direct_contact,status,created_at,updated_at)
+    VALUES
+      ('tutor-profile','tutor-school','tutor-owner','lindiwe-mokoena',
+       'Lindiwe Mokoena','Mathematics tutor for Grades 10–12',
+       '["Mathematics","Physical Science"]','lindiwe@example.com',
+       '+264 81 000 0000',0,'published',${now},${now});
+    INSERT INTO tutor_inquiries
+      (id,tutor_id,school_id,learner_id,learner_name,learner_email,
+       subject,message,status,created_at,updated_at)
+    VALUES
+      ('tutor-inquiry','tutor-profile','tutor-school','tutor-learner',
+       'Tutor Learner','tutor-learner@example.com','Algebra support',
+       'I need help preparing for my algebra exam.','new',${now},${now});
+  `);
+  const privateRow = db.prepare(
+    `SELECT ${tutorColumns} FROM tutors t WHERE t.id='tutor-profile'`,
+  ).get();
+  const publicTutor = serializeTutor(privateRow);
+  assert.equal(publicTutor.displayName, "Lindiwe Mokoena");
+  assert.deepEqual(publicTutor.subjects, ["Mathematics", "Physical Science"]);
+  assert.equal(publicTutor.phoneNumber, "");
+  assert.equal(publicTutor.contactEmail, undefined);
+
+  db.exec("UPDATE tutors SET show_direct_contact=1 WHERE id='tutor-profile'");
+  const directRow = db.prepare(
+    `SELECT ${tutorColumns} FROM tutors t WHERE t.id='tutor-profile'`,
+  ).get();
+  assert.equal(serializeTutor(directRow).phoneNumber, "+264 81 000 0000");
+  assert.equal(
+    db.prepare(`
+      SELECT COUNT(*) AS count FROM tutor_inquiries
+      WHERE school_id='tutor-school' AND status='new'
+    `).get().count,
+    1,
+  );
+  assert.equal(
+    db.prepare(`
+      SELECT COUNT(*) AS count FROM tutor_inquiries
+      WHERE school_id='another-school'
+    `).get().count,
+    0,
+  );
+});
+
 test("security policy limits abusive writes and rejects oversized JSON", async () => {
   assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/uploads", { method: "POST" })),
@@ -386,6 +450,10 @@ test("security policy limits abusive writes and rejects oversized JSON", async (
   assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/community", { method: "POST" })),
     { scope: "community_write", limit: 30, windowMs: 60_000 },
+  );
+  assert.deepEqual(
+    rateLimitPolicy(new Request("https://northstarlabs.co.za/api/tutor-inquiries", { method: "POST" })),
+    { scope: "tutor_inquiry", limit: 10, windowMs: 3_600_000 },
   );
   assert.equal(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/catalog")),

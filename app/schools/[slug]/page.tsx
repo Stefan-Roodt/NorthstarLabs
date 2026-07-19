@@ -42,6 +42,22 @@ type SchoolData = {
     liveSessionCount: number;
   }>;
   courses: CatalogCourse[];
+  tutors: PublicTutor[];
+};
+
+type PublicTutor = {
+  id: string;
+  slug: string;
+  displayName: string;
+  headline: string;
+  subjects: string[];
+  priceCents: number;
+  priceUnit: string;
+  sessionMode: string;
+  location: string;
+  availability: string;
+  photoUrl: string | null;
+  verified: boolean;
 };
 
 function productFit(productType: string) {
@@ -96,7 +112,20 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
   const privacy = school.privacyUrl || "/legal/privacy";
   const hasLiveLearning = data.products.some((product) => product.liveSessionCount > 0);
   const hasCommunity = Boolean(school.showCommunity && data.community);
-  const primaryDestination = data.products.length ? "#products" : "#courses";
+  const primaryDestination = data.products.length
+    ? "#products"
+    : data.courses.length
+      ? "#courses"
+      : data.tutors.length
+        ? "#tutors"
+        : "#courses";
+  const primaryLabel = data.products.length
+    ? "Explore programmes"
+    : data.courses.length
+      ? "Explore courses"
+      : data.tutors.length
+        ? "Find a tutor"
+        : "Explore courses";
 
   async function joinProduct(productId: string) {
     if (!supabase) return;
@@ -133,6 +162,7 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
       <nav>
         {data.products.length > 0 && <a href="#products">Products</a>}
         <a href="#courses">Courses</a>
+        {data.tutors.length > 0 && <a href="#tutors">Tutors</a>}
         {school.showCommunity && data.community &&
           <Link href={`/schools/${school.slug}/community`}>Community</Link>}
         {school.websiteUrl && <a href={school.websiteUrl}>Website</a>}
@@ -150,13 +180,13 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
         <h1>{heroTitle}</h1>
         <p>{heroDescription}</p>
         <div className="school-hero-actions">
-          <a className="school-primary-action" href={data.products.length ? "#products" : "#courses"}>{data.products.length ? "Explore programmes" : "Explore courses"}</a>
+          <a className="school-primary-action" href={primaryDestination}>{primaryLabel}</a>
           {school.showCommunity && data.community &&
             <Link href={`/schools/${school.slug}/community`}>Enter the community →</Link>}
         </div>
       </div>
       <aside>
-        <strong>{String(data.products.length + data.courses.length).padStart(2, "0")}</strong>
+        <strong>{String(data.products.length + data.courses.length + data.tutors.length).padStart(2, "0")}</strong>
         <span>ways to learn</span>
       </aside>
     </section>
@@ -167,9 +197,10 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
       <span>Earn certificates</span>
       {hasLiveLearning && <span>Join live sessions</span>}
       {hasCommunity && <span>Learn with a community</span>}
+      {data.tutors.length > 0 && <span>Book personal support</span>}
     </section>
 
-    {(data.courses.length > 0 || data.products.length > 0) && <section className="school-learning-modes" aria-labelledby="learning-mode-title">
+    {(data.courses.length > 0 || data.products.length > 0 || data.tutors.length > 0) && <section className="school-learning-modes" aria-labelledby="learning-mode-title">
       <div className="school-mode-heading">
         <p className="sys-kicker">CHOOSE WHAT FITS YOU</p>
         <h2 id="learning-mode-title">How do you learn best?</h2>
@@ -190,8 +221,15 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
           <p>Join a bundle or membership designed around an outcome, not a collection of disconnected lessons.</p>
           <b>Explore programmes →</b>
         </a>}
-        {(hasLiveLearning || hasCommunity) && <a href={hasLiveLearning ? "#products" : `/schools/${school.slug}/community`}>
+        {data.tutors.length > 0 && <a href="#tutors">
           <span>03</span>
+          <small>PERSONAL</small>
+          <h3>Work with a tutor</h3>
+          <p>Book one-to-one help from a real person who understands the subject and your goals.</p>
+          <b>Find a tutor →</b>
+        </a>}
+        {(hasLiveLearning || hasCommunity) && <a href={hasLiveLearning ? "#products" : `/schools/${school.slug}/community`}>
+          <span>{data.tutors.length > 0 ? "04" : "03"}</span>
           <small>SUPPORTED</small>
           <h3>Learn with people</h3>
           <p>Use live sessions and community support to ask questions, stay accountable and keep moving.</p>
@@ -254,6 +292,34 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
       <p>Check back after the creator publishes their first learning experience.</p>
     </section>}
 
+    {data.tutors.length > 0 && <>
+      <section className="school-catalog-heading" id="tutors">
+        <div><p className="sys-kicker">ONE-TO-ONE SUPPORT</p><h2>Find the person who can help.</h2></div>
+        <p>Compare subjects, session formats and prices, then call directly or send a protected enquiry through NorthstarLabs.</p>
+      </section>
+      <section className="school-tutor-grid">
+        {data.tutors.slice(0, 3).map((tutor) => <article className="school-tutor-card" key={tutor.id}>
+          <div className="school-tutor-person">
+            {tutor.photoUrl
+              ? <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={tutor.photoUrl} alt="" />
+              </>
+              : <span>{tutor.displayName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span>}
+            <div><small>{tutor.verified ? "✓ VERIFIED TUTOR" : "ACADEMY TUTOR"}</small><h3>{tutor.displayName}</h3></div>
+          </div>
+          <p>{tutor.headline}</p>
+          <div className="school-tutor-subjects">{tutor.subjects.slice(0, 4).map((subject) => <span key={subject}>{subject}</span>)}</div>
+          <dl>
+            <div><dt>Sessions</dt><dd>{tutor.sessionMode.replaceAll("_", " ")}</dd></div>
+            <div><dt>From</dt><dd>{tutor.priceCents ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}/${tutor.priceUnit}` : "Ask for price"}</dd></div>
+          </dl>
+          <Link href={`/schools/${school.slug}/tutors/${tutor.slug}`}>View tutor & book →</Link>
+        </article>)}
+      </section>
+      <div className="school-tutor-all"><Link href={`/schools/${school.slug}/tutors`}>See every available tutor →</Link></div>
+    </>}
+
     {school.showCommunity && data.community && <section className="school-community-cta">
       <div>
         <p className="sys-kicker">PRIVATE LEARNING COMMUNITY</p>
@@ -284,13 +350,14 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
       <nav>
         {data.products.length > 0 && <a href="#products">Products</a>}
         <a href="#courses">Courses</a>
+        {data.tutors.length > 0 && <Link href={`/schools/${school.slug}/tutors`}>Tutors</Link>}
         {school.supportEmail && <a href={`mailto:${school.supportEmail}`}>Support</a>}
         <a href={terms}>Terms</a>
         <a href={privacy}>Privacy</a>
       </nav>
       <small>Powered by <Link href="/">NorthStarLabs</Link></small>
     </footer>
-    {(data.courses.length > 0 || data.products.length > 0) && <div className="school-mobile-join">
+    {(data.courses.length > 0 || data.products.length > 0 || data.tutors.length > 0) && <div className="school-mobile-join">
       <div><small>Ready when you are</small><b>Choose your learning path</b></div>
       <a href={primaryDestination}>Explore →</a>
     </div>}

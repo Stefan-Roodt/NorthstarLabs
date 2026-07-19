@@ -473,6 +473,44 @@ test("guides creators, learners, and academy visitors to their next useful actio
   assert.match(styles, /\.school-mobile-join/);
 });
 
+test("ships academy tutor discovery, direct contact, and protected enquiries", async () => {
+  const [
+    schema,
+    migration,
+    tutorsApi,
+    inquiriesApi,
+    tutorDirectory,
+    tutorProfile,
+    tutorAdmin,
+    storefront,
+    email,
+  ] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0015_special_kang.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/tutors/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/tutor-inquiries/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/schools/[slug]/tutors/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/schools/[slug]/tutors/[tutorSlug]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/tutors/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/schools/[slug]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/email-service.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(schema, /export const tutors/);
+  assert.match(schema, /export const tutorInquiries/);
+  assert.match(migration, /CREATE TABLE `tutors`/);
+  assert.match(migration, /CREATE TABLE `tutor_inquiries`/);
+  assert.match(tutorsApi, /showDirectContact/);
+  assert.match(tutorsApi, /Creator access required/);
+  assert.match(inquiriesApi, /Sign in to contact a tutor/);
+  assert.match(inquiriesApi, /tutor\.inquiry_created/);
+  assert.match(tutorDirectory, /Find a tutor who fits how you learn/);
+  assert.match(tutorProfile, /Send a private enquiry/);
+  assert.match(tutorProfile, /Call tutor/);
+  assert.match(tutorAdmin, /Learner enquiries/);
+  assert.match(storefront, /ONE-TO-ONE SUPPORT/);
+  assert.match(email, /tutor_enquiry/);
+});
+
 test("parses browser byte ranges safely", async () => {
   const { parseByteRange } = await import("../lib/media-stream.ts");
   assert.deepEqual(parseByteRange("bytes=10-19", 100), { start: 10, end: 19, length: 10 });

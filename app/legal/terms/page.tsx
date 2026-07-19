@@ -15,7 +15,7 @@ export default function TermsPage() {
         <p>These terms describe the responsibilities shared by NorthstarLabs, creators, administrators, and learners who use the platform.</p>
       </section>
       <article className="legal-document">
-        <p className="legal-updated">Effective and last updated: 17 July 2026</p>
+        <p className="legal-updated">Effective and last updated: 19 July 2026</p>
 
         <section>
           <h2>1. Accepting these terms</h2>
@@ -31,11 +31,13 @@ export default function TermsPage() {
           <h2>3. Creator responsibilities</h2>
           <p>Creators are responsible for their courses, communities, offers, learner communications, and any promises they make. Content must be accurate enough not to mislead learners and must comply with applicable consumer, advertising, accessibility, intellectual-property, and privacy laws.</p>
           <p>Creators may administer learners only within learning products they own. They must use learner information and private support notes for legitimate educational, operational, or support purposes.</p>
+          <p>Academies that list tutors must have permission to publish each profile and must keep qualifications, experience, pricing, availability, contact information, and verification claims accurate. Academies and tutors remain responsible for safeguarding learners, delivering tutoring services, and complying with professional, consumer, tax, and child-protection requirements.</p>
         </section>
 
         <section>
           <h2>4. Learner responsibilities</h2>
           <p>Learners must participate respectfully, submit their own work where required, and avoid copying, redistributing, recording, or reselling protected course materials without permission. Certificates reflect completion against the configured course requirements and are not academic accreditation unless expressly stated by the creator.</p>
+          <p>When contacting a tutor, learners must provide accurate enquiry information and use contact details responsibly. Session time, location, cancellation terms, suitability, and payment must be confirmed directly with the tutor unless NorthstarLabs expressly presents an integrated booking or checkout.</p>
         </section>
 
         <section>
@@ -52,6 +54,7 @@ export default function TermsPage() {
         <section>
           <h2>7. Plans, payments, and refunds</h2>
           <p>Paid features, billing frequency, taxes, processing charges, renewal terms, and cancellation options will be shown before purchase. Unless a specific offer says otherwise, access continues through the paid period after cancellation. Refund rights are governed by the applicable offer, creator policy, and mandatory consumer law. Payment activation remains subject to the final checkout configuration.</p>
+          <p>The tutor directory currently facilitates introductions and enquiries. NorthstarLabs does not collect or hold payment for independently arranged tutoring sessions unless a future booking screen expressly states otherwise. Tutors are responsible for disclosing their own pricing, payment, cancellation, and refund terms before a session is confirmed.</p>
         </section>
 
         <section>
@@ -66,7 +69,7 @@ export default function TermsPage() {
 
         <section>
           <h2>10. Liability</h2>
-          <p>Nothing in these terms excludes liability that cannot lawfully be limited. To the extent permitted by law, NorthstarLabs is not responsible for indirect or consequential loss, lost profits, lost opportunity, or creator-provided content. Any aggregate liability will be limited to the amount paid for the service during the twelve months before the event giving rise to the claim.</p>
+          <p>Nothing in these terms excludes liability that cannot lawfully be limited. To the extent permitted by law, NorthstarLabs is not responsible for indirect or consequential loss, lost profits, lost opportunity, creator-provided content, or independently delivered tutoring services and arrangements. Any aggregate liability will be limited to the amount paid for the service during the twelve months before the event giving rise to the claim.</p>
         </section>
 
         <section>

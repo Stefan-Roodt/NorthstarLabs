@@ -44,6 +44,9 @@ export function rateLimitPolicy(request: Request): RateLimitPolicy | null {
   if (path === "/api/enrollments") {
     return { scope: "enrollment_write", limit: 30, windowMs: 60_000 };
   }
+  if (path === "/api/tutor-inquiries") {
+    return { scope: "tutor_inquiry", limit: 10, windowMs: 60 * 60_000 };
+  }
   if (path === "/api/media/playback") {
     return { scope: "media_grant", limit: 120, windowMs: 60_000 };
   }
@@ -129,4 +132,3 @@ export function oversizedJsonRequest(request: Request, maxBytes = 1_048_576) {
   const length = Number(request.headers.get("content-length") || 0);
   return Number.isFinite(length) && length > maxBytes;
 }
-

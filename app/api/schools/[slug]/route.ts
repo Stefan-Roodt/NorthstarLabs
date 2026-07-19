@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../../lib/server-auth";
 import { writeAuditLog } from "../../../../lib/audit-log";
+import { serializeTutor, tutorColumns, type TutorRow } from "../../../../lib/tutors";
 
 const publicSchoolColumns = `id,slug,name,description,logo_url AS logoUrl,
   cover_image_url AS coverImageUrl,primary_color AS primaryColor,
@@ -104,7 +105,19 @@ export async function GET(
      GROUP BY p.id ORDER BY p.updated_at DESC`,
   ).bind(Date.now(), school.id).all();
 
-  return Response.json({ school, community, products: products.results, courses: courses.results });
+  const tutors = await env.DB.prepare(
+    `SELECT ${tutorColumns}
+     FROM tutors t WHERE t.school_id=? AND t.status='published'
+     ORDER BY t.verified DESC,t.updated_at DESC LIMIT 6`,
+  ).bind(school.id).all<TutorRow>();
+
+  return Response.json({
+    school,
+    community,
+    products: products.results,
+    courses: courses.results,
+    tutors: tutors.results.map((tutor) => serializeTutor(tutor)),
+  });
 }
 
 export async function PATCH(

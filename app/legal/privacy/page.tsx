@@ -15,11 +15,11 @@ export default function PrivacyPage() {
         <p>This policy explains what information NorthstarLabs processes when you create, sell, manage, or take learning products on the platform.</p>
       </section>
       <article className="legal-document">
-        <p className="legal-updated">Effective and last updated: 17 July 2026</p>
+        <p className="legal-updated">Effective and last updated: 19 July 2026</p>
 
         <section>
           <h2>1. Information we collect</h2>
-          <p>We collect information you provide directly, including your name, email address, account profile, course content, community posts, learner records, support notes, and communications. We also process account activity such as enrolments, lesson progress, quiz results, certificates, and administrative actions.</p>
+          <p>We collect information you provide directly, including your name, email address, account profile, course content, community posts, learner records, support notes, tutor profiles, tutoring enquiries, preferred contact method, and communications. We also process account activity such as enrolments, lesson progress, quiz results, certificates, and administrative actions.</p>
           <p>Technical information may include device and browser details, IP address, timestamps, security events, and diagnostic data needed to operate and protect the service.</p>
         </section>
 
@@ -38,12 +38,14 @@ export default function PrivacyPage() {
           <h2>3. Creators and learner data</h2>
           <p>Creators control the learning products they publish and may view information about learners enrolled in their courses, including progress and completion activity. Creators must use that information only for legitimate learning, administration, and support purposes and must comply with applicable privacy laws.</p>
           <p>Private support notes are visible only within the relevant creator administration area and should not contain unnecessary sensitive information.</p>
+          <p>When a learner sends a tutoring enquiry, the learner’s name, email address, optional phone number, requested subject, message, preferred times, and contact preference are shared with the selected tutor and the academy that published the profile. Public phone, WhatsApp, or external booking links appear only when the academy enables direct contact for that tutor.</p>
         </section>
 
         <section>
           <h2>4. Service providers and sharing</h2>
           <p>We use service providers for hosting, authentication, storage, communications, analytics, and payment processing. They may process information only to provide their services to us and under appropriate confidentiality and security obligations.</p>
           <p>We may also disclose information when required by law, to protect people or the platform, in connection with a corporate transaction, or when you direct or consent to the disclosure. We do not sell personal information.</p>
+          <p>If you call, message, or book with a tutor using an external phone, WhatsApp, calendar, or other service, that provider and the tutor process the information you share under their own privacy practices.</p>
         </section>
 
         <section>
@@ -63,7 +65,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2>8. Children</h2>
-          <p>NorthstarLabs is not directed to children under 13, and users must meet the minimum age required to consent to online services in their country. Creators offering learning to minors are responsible for obtaining required permissions and configuring their programmes appropriately.</p>
+          <p>NorthstarLabs is not directed to children under 13, and users must meet the minimum age required to consent to online services in their country. Creators and tutors offering learning to minors are responsible for obtaining required guardian permissions, applying appropriate safeguarding practices, and configuring communications and sessions appropriately.</p>
         </section>
 
         <section>

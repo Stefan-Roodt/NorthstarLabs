@@ -5,6 +5,7 @@ export type EmailTemplateKey =
   | "enrollment"
   | "product_access"
   | "certificate"
+  | "tutor_enquiry"
   | "creator_summary"
   | "test";
 
@@ -83,6 +84,16 @@ function templateContent(templateKey: EmailTemplateKey, values: EmailVariables) 
       detail: "Your certificate can be viewed, downloaded as a PDF, and independently verified.",
     };
   }
+  if (templateKey === "tutor_enquiry") {
+    return {
+      subject: `New tutoring enquiry for ${values.tutor || "your academy"}`,
+      heading: `A learner wants to meet with ${values.tutor || "a tutor"}`,
+      intro: `${values.learner || "A learner"} is asking for personal help with ${values.subject || "their learning"}.`,
+      actionLabel: "Review enquiry",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: `Preferred contact: ${values.contactPreference || "email"}. Preferred times: ${values.preferredTimes || "Not supplied"}.`,
+    };
+  }
   if (templateKey === "creator_summary") {
     return {
       subject: `${academy} learning report`,
@@ -144,6 +155,7 @@ async function emailAllowed(userId: string | null | undefined, templateKey: Emai
     return Boolean(preferences.enrollmentEmails);
   }
   if (templateKey === "certificate") return Boolean(preferences.completionEmails);
+  if (templateKey === "tutor_enquiry") return true;
   if (templateKey === "creator_summary") return Boolean(preferences.creatorSummaries);
   return true;
 }
