@@ -165,6 +165,54 @@ test("completes an isolated creator-to-learner production journey", async () => 
   `), /UNIQUE constraint failed/);
 });
 
+test("seeds three substantial free courses with sections and assessments", async () => {
+  const db = await migratedDatabase();
+  const courseIds = [
+    "design-lessons-people-remember",
+    "build-a-trusted-tutoring-practice",
+    "teach-with-ai-responsibly",
+  ];
+  for (const courseId of courseIds) {
+    const course = db.prepare(`
+      SELECT status,price_cents AS priceCents,
+        enforce_lesson_order AS enforceLessonOrder
+      FROM courses WHERE id=?
+    `).get(courseId);
+    assert.equal(course.status, "published");
+    assert.equal(course.priceCents, 0);
+    assert.equal(course.enforceLessonOrder, 1);
+    assert.equal(
+      db.prepare("SELECT COUNT(*) AS count FROM course_sections WHERE course_id=?")
+        .get(courseId).count,
+      2,
+    );
+    assert.equal(
+      db.prepare("SELECT COUNT(*) AS count FROM lessons WHERE course_id=?")
+        .get(courseId).count,
+      6,
+    );
+    assert.ok(
+      db.prepare("SELECT MIN(length(content)) AS shortest FROM lessons WHERE course_id=?")
+        .get(courseId).shortest > 900,
+    );
+    assert.equal(
+      db.prepare(`
+        SELECT COUNT(*) AS count FROM quizzes q
+        JOIN lessons l ON l.id=q.lesson_id WHERE l.course_id=?
+      `).get(courseId).count,
+      1,
+    );
+    assert.equal(
+      db.prepare(`
+        SELECT COUNT(*) AS count FROM quiz_questions qq
+        JOIN quizzes q ON q.id=qq.quiz_id
+        JOIN lessons l ON l.id=q.lesson_id WHERE l.course_id=?
+      `).get(courseId).count,
+      5,
+    );
+  }
+});
+
 test("safe course deletion leaves no learner or assessment orphans", async () => {
   const db = await migratedDatabase();
   const now = Date.UTC(2026, 6, 19);

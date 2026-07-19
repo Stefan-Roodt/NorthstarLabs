@@ -70,11 +70,12 @@ test("isolates creator schools, memberships, courses, and communities", async ()
 });
 
 test("ships a real starter catalogue without placeholder proof", async () => {
-  const [home, catalog, courseData, migration] = await Promise.all([
+  const [home, catalog, courseData, migration, collectionMigration] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/courses/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/starter-courses.ts", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0005_starter_course_catalog.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0017_free_course_collection.sql", import.meta.url), "utf8"),
   ]);
   assert.doesNotMatch(home, /href="#"/);
   assert.doesNotMatch(home, /32k\+|\$1\.4B|96M|4\.8\/5|Avery Lin|21% less/);
@@ -84,8 +85,17 @@ test("ships a real starter catalogue without placeholder proof", async () => {
   assert.match(courseData, /Launch Your First Online Course/);
   assert.match(courseData, /Price Your Expertise/);
   assert.match(courseData, /Build a Learning Community/);
+  assert.match(courseData, /Design Lessons People Remember/);
+  assert.match(courseData, /Build a Trusted Tutoring Practice/);
+  assert.match(courseData, /Teach With AI Responsibly/);
   assert.match(migration, /launch-your-first-online-course/);
   assert.match(migration, /starter-community-06/);
+  assert.match(collectionMigration, /remember-course-quiz/);
+  assert.match(collectionMigration, /tutor-practice-course-quiz/);
+  assert.match(collectionMigration, /responsible-ai-course-quiz/);
+  assert.match(collectionMigration, /CAST Universal Design for Learning Guidelines/);
+  assert.match(collectionMigration, /NSPCC safeguarding guidance for tutors/);
+  assert.match(collectionMigration, /UNESCO AI Competency Framework for Teachers/);
 });
 
 test("guides new members into creating or learning with a low-friction join flow", async () => {

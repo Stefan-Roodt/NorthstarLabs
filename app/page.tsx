@@ -258,7 +258,7 @@ export default function Home() {
             <h3>I want to learn something useful.</h3>
             <p>Choose a short practical course, enrol free, and keep your lessons, progress, and certificate together.</p>
             <Link className="button dark" href="/courses">Choose a free course →</Link>
-            <small>Three starter courses available</small>
+            <small>Six free practical courses available</small>
           </article>
         </div>
       </section>

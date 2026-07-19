@@ -151,7 +151,7 @@ export default function WelcomePage() {
           <h2>Start a practical free course.</h2>
           <p>Choose a focused NorthstarLabs Original, enrol free, and keep your lessons, progress, and certificate together.</p>
           <ul>
-            <li>Three practical starter courses</li>
+            <li>Six practical free courses</li>
             <li>Short, action-focused lessons</li>
             <li>Progress saved automatically</li>
           </ul>
