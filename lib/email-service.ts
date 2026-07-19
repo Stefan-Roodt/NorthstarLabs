@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 export type EmailTemplateKey =
   | "invitation"
   | "enrollment"
+  | "product_access"
   | "certificate"
   | "creator_summary"
   | "test";
@@ -58,6 +59,18 @@ function templateContent(templateKey: EmailTemplateKey, values: EmailVariables) 
       actionLabel: "Start learning",
       actionUrl: safeUrl(values.actionUrl),
       detail: "Your progress, notes, assessments, and certificate will stay connected to your account.",
+    };
+  }
+  if (templateKey === "product_access") {
+    return {
+      subject: `Your access to ${values.product || "a learning programme"}`,
+      heading: "Your programme is ready",
+      intro: `You now have access to “${values.product || "your programme"}” from ${academy}.`,
+      actionLabel: "Open my learning",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: values.expires
+        ? `Your access is available until ${values.expires}. Included courses, community, and live sessions are connected automatically.`
+        : "Included courses, community, and live sessions are connected automatically.",
     };
   }
   if (templateKey === "certificate") {
@@ -127,7 +140,9 @@ async function emailAllowed(userId: string | null | undefined, templateKey: Emai
     creatorSummaries: number;
   }>();
   if (!preferences) return true;
-  if (templateKey === "enrollment") return Boolean(preferences.enrollmentEmails);
+  if (templateKey === "enrollment" || templateKey === "product_access") {
+    return Boolean(preferences.enrollmentEmails);
+  }
   if (templateKey === "certificate") return Boolean(preferences.completionEmails);
   if (templateKey === "creator_summary") return Boolean(preferences.creatorSummaries);
   return true;
@@ -316,5 +331,46 @@ export async function queueCertificateEmail(input: {
       actionUrl: `${input.origin}/certificates/${encodeURIComponent(input.certificateCode)}`,
     },
     idempotencyKey: `certificate:${input.certificateCode}`,
+  });
+}
+
+export async function queueProductAccessEmail(input: {
+  userId: string;
+  productId: string;
+  entitlementId: string;
+  grantedAt: number;
+  expiresAt: number | null;
+  origin: string;
+}) {
+  const details = await env.DB.prepare(
+    `SELECT pr.email,p.name AS productName,s.id AS schoolId,s.name AS schoolName,
+      s.primary_color AS primaryColor
+     FROM profiles pr
+     JOIN products p ON p.id=?
+     JOIN schools s ON s.id=p.school_id
+     WHERE pr.id=?`,
+  ).bind(input.productId, input.userId).first<{
+    email: string;
+    productName: string;
+    schoolId: string;
+    schoolName: string;
+    primaryColor: string;
+  }>();
+  if (!details?.email) return { id: "", status: "missing_recipient" };
+  return queueEmail({
+    schoolId: details.schoolId,
+    recipientUserId: input.userId,
+    recipientEmail: details.email,
+    templateKey: "product_access",
+    variables: {
+      academy: details.schoolName,
+      product: details.productName,
+      primaryColor: details.primaryColor,
+      expires: input.expiresAt
+        ? new Date(input.expiresAt).toLocaleDateString("en-ZA")
+        : null,
+      actionUrl: `${input.origin}/learn`,
+    },
+    idempotencyKey: `product-access:${input.entitlementId}:${input.grantedAt}`,
   });
 }

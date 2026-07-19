@@ -161,11 +161,14 @@ export const enrollments = sqliteTable("enrollments", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), courseId: text("course_id").notNull(),
   progress: integer("progress").notNull().default(0), status: text("status").notNull().default("active"),
   supportNote: text("support_note").notNull().default(""), lastActivityAt: integer("last_activity_at"),
+  accessSource: text("access_source").notNull().default("direct"),
+  accessSourceId: text("access_source_id"),
   createdAt: integer("created_at").notNull(),
 }, (table) => [
   uniqueIndex("enrollments_user_course_unique").on(table.userId, table.courseId),
   index("enrollments_course_status_idx").on(table.courseId, table.status),
   index("enrollments_user_status_idx").on(table.userId, table.status),
+  index("enrollments_access_source_idx").on(table.accessSource, table.accessSourceId),
 ]);
 export const communities = sqliteTable("communities", {
   id: text("id").primaryKey(), schoolId: text("school_id").notNull().default("northstarlabs"),
@@ -210,9 +213,12 @@ export const contentReports = sqliteTable("content_reports", {
 export const communityMembers = sqliteTable("community_members", {
   id: text("id").primaryKey(), communityId: text("community_id").notNull(), userId: text("user_id").notNull(),
   role: text("role").notNull().default("member"), status: text("status").notNull().default("active"), joinedAt: integer("joined_at").notNull(),
+  accessSource: text("access_source").notNull().default("direct"),
+  accessSourceId: text("access_source_id"),
 }, (table) => [
   uniqueIndex("community_members_community_user_unique").on(table.communityId, table.userId),
   index("community_members_user_status_idx").on(table.userId, table.status),
+  index("community_members_access_source_idx").on(table.accessSource, table.accessSourceId),
 ]);
 export const memberships = sqliteTable("memberships", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), stripeSubscriptionId: text("stripe_subscription_id"),
@@ -220,6 +226,122 @@ export const memberships = sqliteTable("memberships", {
   plan: text("plan").notNull(), status: text("status").notNull(), currentPeriodEnd: integer("current_period_end"), createdAt: integer("created_at").notNull(),
 }, (table) => [
   index("memberships_user_status_idx").on(table.userId, table.status),
+]);
+export const products = sqliteTable("products", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull(),
+  ownerId: text("owner_id").notNull(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  description: text("description").notNull().default(""),
+  productType: text("product_type").notNull().default("bundle"),
+  priceCents: integer("price_cents").notNull().default(0),
+  billingInterval: text("billing_interval").notNull().default("one_time"),
+  status: text("status").notNull().default("draft"),
+  includesCommunity: integer("includes_community", { mode: "boolean" }).notNull().default(false),
+  accessDurationDays: integer("access_duration_days").notNull().default(0),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("products_school_slug_unique").on(table.schoolId, table.slug),
+  index("products_school_status_updated_idx").on(table.schoolId, table.status, table.updatedAt),
+  index("products_school_type_status_idx").on(table.schoolId, table.productType, table.status),
+]);
+export const productItems = sqliteTable("product_items", {
+  id: text("id").primaryKey(),
+  productId: text("product_id").notNull(),
+  itemType: text("item_type").notNull().default("course"),
+  itemId: text("item_id").notNull(),
+  position: integer("position").notNull().default(0),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  uniqueIndex("product_items_product_target_unique").on(table.productId, table.itemType, table.itemId),
+  index("product_items_target_idx").on(table.itemType, table.itemId),
+  index("product_items_product_position_idx").on(table.productId, table.position),
+]);
+export const productEntitlements = sqliteTable("product_entitlements", {
+  id: text("id").primaryKey(),
+  productId: text("product_id").notNull(),
+  userId: text("user_id").notNull(),
+  source: text("source").notNull().default("manual"),
+  sourceReference: text("source_reference"),
+  status: text("status").notNull().default("active"),
+  startsAt: integer("starts_at").notNull(),
+  expiresAt: integer("expires_at"),
+  grantedBy: text("granted_by"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("product_entitlements_product_user_unique").on(table.productId, table.userId),
+  index("product_entitlements_user_status_idx").on(table.userId, table.status, table.expiresAt),
+  index("product_entitlements_product_status_idx").on(table.productId, table.status, table.createdAt),
+]);
+export const liveSessions = sqliteTable("live_sessions", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull(),
+  productId: text("product_id"),
+  courseId: text("course_id"),
+  hostId: text("host_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  startsAt: integer("starts_at").notNull(),
+  endsAt: integer("ends_at").notNull(),
+  timezone: text("timezone").notNull().default("Africa/Johannesburg"),
+  meetingProvider: text("meeting_provider").notNull().default("other"),
+  meetingUrl: text("meeting_url").notNull(),
+  capacity: integer("capacity").notNull().default(0),
+  recordingAssetId: text("recording_asset_id"),
+  status: text("status").notNull().default("scheduled"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  index("live_sessions_school_start_idx").on(table.schoolId, table.startsAt),
+  index("live_sessions_product_start_idx").on(table.productId, table.startsAt),
+  index("live_sessions_course_start_idx").on(table.courseId, table.startsAt),
+]);
+export const liveAttendance = sqliteTable("live_attendance", {
+  id: text("id").primaryKey(),
+  sessionId: text("session_id").notNull(),
+  userId: text("user_id").notNull(),
+  status: text("status").notNull().default("registered"),
+  registeredAt: integer("registered_at").notNull(),
+  attendedAt: integer("attended_at"),
+  attendanceMinutes: integer("attendance_minutes").notNull().default(0),
+}, (table) => [
+  uniqueIndex("live_attendance_session_user_unique").on(table.sessionId, table.userId),
+  index("live_attendance_user_status_idx").on(table.userId, table.status, table.registeredAt),
+  index("live_attendance_session_status_idx").on(table.sessionId, table.status),
+]);
+export const integrations = sqliteTable("integrations", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull(),
+  createdBy: text("created_by").notNull(),
+  provider: text("provider").notNull().default("webhook"),
+  name: text("name").notNull(),
+  endpointUrl: text("endpoint_url"),
+  eventTypesJson: text("event_types_json").notNull().default("[]"),
+  signingSecret: text("signing_secret"),
+  status: text("status").notNull().default("active"),
+  lastDeliveryAt: integer("last_delivery_at"),
+  lastDeliveryStatus: text("last_delivery_status"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  index("integrations_school_status_idx").on(table.schoolId, table.status, table.provider),
+]);
+export const integrationDeliveries = sqliteTable("integration_deliveries", {
+  id: text("id").primaryKey(),
+  integrationId: text("integration_id").notNull(),
+  eventType: text("event_type").notNull(),
+  payloadJson: text("payload_json").notNull(),
+  status: text("status").notNull().default("pending"),
+  responseStatus: integer("response_status"),
+  errorMessage: text("error_message"),
+  createdAt: integer("created_at").notNull(),
+  deliveredAt: integer("delivered_at"),
+}, (table) => [
+  index("integration_deliveries_integration_created_idx").on(table.integrationId, table.createdAt),
+  index("integration_deliveries_status_created_idx").on(table.status, table.createdAt),
 ]);
 export const lessonProgress = sqliteTable("lesson_progress", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), lessonId: text("lesson_id").notNull(),

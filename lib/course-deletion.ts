@@ -51,6 +51,20 @@ export async function deleteCourseSafely(input: {
       "DELETE FROM lesson_resources WHERE lesson_id IN (SELECT id FROM lessons WHERE course_id=?)",
     ).bind(input.courseId),
     env.DB.prepare("DELETE FROM media_playback_grants WHERE course_id=?").bind(input.courseId),
+    env.DB.prepare(
+      `DELETE FROM live_attendance WHERE session_id IN (
+        SELECT id FROM live_sessions WHERE course_id=? AND product_id IS NULL
+      )`,
+    ).bind(input.courseId),
+    env.DB.prepare(
+      "DELETE FROM live_sessions WHERE course_id=? AND product_id IS NULL",
+    ).bind(input.courseId),
+    env.DB.prepare(
+      "UPDATE live_sessions SET course_id=NULL,updated_at=? WHERE course_id=?",
+    ).bind(Date.now(), input.courseId),
+    env.DB.prepare(
+      "DELETE FROM product_items WHERE item_type='course' AND item_id=?",
+    ).bind(input.courseId),
     env.DB.prepare("DELETE FROM lessons WHERE course_id=?").bind(input.courseId),
     env.DB.prepare("DELETE FROM course_sections WHERE course_id=?").bind(input.courseId),
     env.DB.prepare("DELETE FROM enrollments WHERE course_id=?").bind(input.courseId),
@@ -97,4 +111,3 @@ export async function deleteCourseSafely(input: {
   });
   return { deleted: true, removedAssets };
 }
-

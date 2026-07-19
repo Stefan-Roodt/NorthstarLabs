@@ -22,6 +22,8 @@ type AnalyticsData = {
   certificates: Record<string, number>;
   community: Record<string, number>;
   email: Record<string, number>;
+  products: Record<string, number>;
+  liveLearning: Record<string, number>;
   courses: CourseMetric[];
   trend: Array<{ day: string; enrollments: number }>;
   activity: Activity[];
@@ -150,6 +152,8 @@ export default function AnalyticsPage() {
         <article className="panel"><span>Certificates issued</span><strong>{data.certificates.issued || 0}</strong><small>{data.certificates.active || 0} active credentials</small></article>
         <article className="panel"><span>Community participation</span><strong>{data.community.posts || 0}</strong><small>{data.community.contributors || 0} contributors</small></article>
         <article className="panel"><span>Email delivery</span><strong>{data.email.sent || 0}</strong><small>{data.email.needsAttention || 0} need attention · {data.email.queued || 0} queued</small></article>
+        <article className="panel"><span>Product access</span><strong>{data.products.activeEntitlements || 0}</strong><small>{data.products.grants || 0} grants in this period · {data.products.published || 0} published</small></article>
+        <article className="panel"><span>Live learning</span><strong>{data.liveLearning.registrations || 0}</strong><small>{data.liveLearning.attended || 0} attended · {data.liveLearning.sessions || 0} sessions</small></article>
       </div>
 
       <div className="analytics-layout">

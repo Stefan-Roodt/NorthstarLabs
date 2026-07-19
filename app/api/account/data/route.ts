@@ -6,7 +6,7 @@ import { requireApiUser } from "../../../../lib/server-auth";
 import { recordSystemEvent, safeErrorMessage } from "../../../../lib/system-monitor";
 
 async function accountExport(userId: string) {
-  const [profile, schools, enrollments, progress, attempts, certificates, posts, preferences] =
+  const [profile, schools, enrollments, progress, attempts, certificates, posts, preferences, products, live] =
     await Promise.all([
       env.DB.prepare(
         `SELECT id,email,display_name AS displayName,role,onboarding_path AS onboardingPath,
@@ -57,6 +57,20 @@ async function accountExport(userId: string) {
           updated_at AS updatedAt
          FROM notification_preferences WHERE user_id=?`,
       ).bind(userId).first(),
+      env.DB.prepare(
+        `SELECT pe.id,p.name AS productName,p.product_type AS productType,
+          pe.source,pe.status,pe.starts_at AS startsAt,pe.expires_at AS expiresAt,
+          pe.created_at AS createdAt
+         FROM product_entitlements pe JOIN products p ON p.id=pe.product_id
+         WHERE pe.user_id=? ORDER BY pe.created_at DESC`,
+      ).bind(userId).all(),
+      env.DB.prepare(
+        `SELECT la.status,la.registered_at AS registeredAt,
+          la.attended_at AS attendedAt,la.attendance_minutes AS attendanceMinutes,
+          ls.title,ls.starts_at AS startsAt,ls.ends_at AS endsAt
+         FROM live_attendance la JOIN live_sessions ls ON ls.id=la.session_id
+         WHERE la.user_id=? ORDER BY ls.starts_at DESC`,
+      ).bind(userId).all(),
     ]);
   return {
     format: "northstarlabs-personal-data-export",
@@ -70,6 +84,8 @@ async function accountExport(userId: string) {
     certificates: certificates.results,
     communityPosts: posts.results,
     notificationPreferences: preferences,
+    productEntitlements: products.results,
+    liveAttendance: live.results,
   };
 }
 
@@ -159,6 +175,12 @@ export async function DELETE(request: Request) {
         "DELETE FROM enrollments WHERE user_id=?",
       ).bind(user.id),
       env.DB.prepare(
+        "DELETE FROM product_entitlements WHERE user_id=?",
+      ).bind(user.id),
+      env.DB.prepare(
+        "DELETE FROM live_attendance WHERE user_id=?",
+      ).bind(user.id),
+      env.DB.prepare(
         "DELETE FROM community_members WHERE user_id=?",
       ).bind(user.id),
       env.DB.prepare(
@@ -178,6 +200,20 @@ export async function DELETE(request: Request) {
       ).bind(user.id),
       env.DB.prepare(
         "DELETE FROM report_schedules WHERE created_by=?",
+      ).bind(user.id),
+      env.DB.prepare(
+        "UPDATE product_entitlements SET granted_by=NULL WHERE granted_by=?",
+      ).bind(user.id),
+      env.DB.prepare(
+        `UPDATE products SET owner_id=(
+          SELECT owner_id FROM schools WHERE schools.id=products.school_id
+        ) WHERE owner_id=?`,
+      ).bind(user.id),
+      env.DB.prepare(
+        "UPDATE live_sessions SET host_id='deleted-user' WHERE host_id=?",
+      ).bind(user.id),
+      env.DB.prepare(
+        "UPDATE integrations SET created_by='deleted-user' WHERE created_by=?",
       ).bind(user.id),
       env.DB.prepare(
         "UPDATE invitations SET accepted_by=NULL WHERE accepted_by=?",

@@ -146,6 +146,10 @@ function withSecurityHeaders(response: Response, url: URL, currentRequestId: str
   if (url.pathname.startsWith("/api/") && url.pathname !== "/api/catalog") {
     headers.set("cache-control", "private, no-store");
   }
+  if (url.pathname === "/sw.js") {
+    headers.set("cache-control", "no-cache, no-store, must-revalidate");
+    headers.set("service-worker-allowed", "/");
+  }
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,

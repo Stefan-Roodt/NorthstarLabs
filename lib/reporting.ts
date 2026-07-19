@@ -80,6 +80,34 @@ export async function getSchoolReport(
      FROM email_messages WHERE school_id=? AND created_at BETWEEN ? AND ?`,
   ).bind(schoolId, window.from, window.to).first();
 
+  const products = await db.prepare(
+    `SELECT COUNT(DISTINCT p.id) AS products,
+      COUNT(DISTINCT CASE WHEN p.status='published' THEN p.id END) AS published,
+      COUNT(DISTINCT CASE WHEN pe.status='active' AND pe.starts_at<=?
+        AND (pe.expires_at IS NULL OR pe.expires_at>?) THEN pe.id END) AS activeEntitlements,
+      COUNT(DISTINCT CASE WHEN pe.created_at BETWEEN ? AND ? THEN pe.id END) AS grants
+     FROM products p
+     LEFT JOIN product_entitlements pe ON pe.product_id=p.id
+     WHERE p.school_id=? AND p.status<>'archived'`,
+  ).bind(
+    window.to,
+    window.to,
+    window.from,
+    window.to,
+    schoolId,
+  ).first();
+
+  const liveLearning = await db.prepare(
+    `SELECT COUNT(DISTINCT ls.id) AS sessions,
+      COUNT(DISTINCT CASE WHEN ls.status='scheduled' THEN ls.id END) AS scheduled,
+      COUNT(DISTINCT CASE WHEN ls.status='completed' THEN ls.id END) AS completed,
+      COUNT(la.id) AS registrations,
+      SUM(CASE WHEN la.status='attended' THEN 1 ELSE 0 END) AS attended
+     FROM live_sessions ls
+     LEFT JOIN live_attendance la ON la.session_id=ls.id
+     WHERE ls.school_id=? AND ls.starts_at BETWEEN ? AND ?`,
+  ).bind(schoolId, window.from, window.to).first();
+
   const recentEnrollments = await db.prepare(
     `SELECT 'enrollment' AS type,e.created_at AS occurredAt,c.title AS courseTitle,
       COALESCE(p.display_name,p.email,'Learner') AS learnerName
@@ -115,6 +143,8 @@ export async function getSchoolReport(
     certificates,
     community,
     email,
+    products,
+    liveLearning,
     activity,
   };
 }

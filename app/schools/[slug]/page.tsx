@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type CSSProperties, useEffect, useState } from "react";
 import type { CatalogCourse } from "../../../lib/starter-courses";
+import { getSupabaseBrowser } from "../../../lib/supabase-client";
 
 type School = {
   id: string;
@@ -28,6 +29,18 @@ type School = {
 type SchoolData = {
   school: School;
   community: { name: string; description: string; accessType: string } | null;
+  products: Array<{
+    id: string;
+    name: string;
+    description: string;
+    productType: string;
+    priceCents: number;
+    billingInterval: string;
+    includesCommunity: number;
+    accessDurationDays: number;
+    courseCount: number;
+    liveSessionCount: number;
+  }>;
   courses: CatalogCourse[];
 };
 
@@ -35,6 +48,9 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
   const [slug, setSlug] = useState("");
   const [data, setData] = useState<SchoolData | null>(null);
   const [error, setError] = useState("");
+  const [joining, setJoining] = useState("");
+  const [notice, setNotice] = useState("");
+  const supabase = getSupabaseBrowser();
 
   useEffect(() => {
     params.then(({ slug: schoolSlug }) => setSlug(schoolSlug));
@@ -73,12 +89,40 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
   const terms = school.termsUrl || "/legal/terms";
   const privacy = school.privacyUrl || "/legal/privacy";
 
+  async function joinProduct(productId: string) {
+    if (!supabase) return;
+    const session = (await supabase.auth.getSession()).data.session;
+    if (!session) {
+      window.location.assign(`/login?next=${encodeURIComponent(`/schools/${school.slug}#products`)}`);
+      return;
+    }
+    setJoining(productId);
+    setNotice("");
+    const response = await fetch("/api/products/claim", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ productId }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      setNotice(result.error || "This product could not be joined.");
+      setJoining("");
+      return;
+    }
+    setNotice("Access granted. Your courses and live sessions are ready.");
+    window.location.assign(result.courseIds?.[0] ? `/learn/${result.courseIds[0]}` : "/live");
+  }
+
   return <main className={`school-storefront font-${school.fontTheme}`} style={style}>
     <header className="school-storefront-nav">
       <Link className="school-brand" href={`/schools/${school.slug}`}>
         <SchoolLogo school={school} />
       </Link>
       <nav>
+        {data.products.length > 0 && <a href="#products">Products</a>}
         <a href="#courses">Courses</a>
         {school.showCommunity && data.community &&
           <Link href={`/schools/${school.slug}/community`}>Community</Link>}
@@ -97,14 +141,14 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
         <h1>{heroTitle}</h1>
         <p>{heroDescription}</p>
         <div className="school-hero-actions">
-          <a className="school-primary-action" href="#courses">Explore courses</a>
+          <a className="school-primary-action" href={data.products.length ? "#products" : "#courses"}>{data.products.length ? "Explore programmes" : "Explore courses"}</a>
           {school.showCommunity && data.community &&
             <Link href={`/schools/${school.slug}/community`}>Enter the community →</Link>}
         </div>
       </div>
       <aside>
-        <strong>{String(data.courses.length).padStart(2, "0")}</strong>
-        <span>published {data.courses.length === 1 ? "course" : "courses"}</span>
+        <strong>{String(data.products.length + data.courses.length).padStart(2, "0")}</strong>
+        <span>ways to learn</span>
       </aside>
     </section>
 
@@ -112,8 +156,36 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
       <span>Learn at your pace</span>
       <span>Track your progress</span>
       <span>Earn certificates</span>
+      {data.products.some((product) => product.liveSessionCount > 0) && <span>Join live sessions</span>}
       {school.showCommunity && data.community && <span>Learn with a community</span>}
     </section>
+
+    {notice && <div className="school-product-notice" role="status">{notice}</div>}
+    {data.products.length > 0 && <>
+      <section className="school-catalog-heading" id="products">
+        <div><p className="sys-kicker">PROGRAMMES & MEMBERSHIPS</p><h2>Choose the complete path.</h2></div>
+        <p>Bundles bring courses, live learning and community access together, so you can focus on the outcome instead of assembling it yourself.</p>
+      </section>
+      <section className="school-product-grid">
+        {data.products.map((product) => <article className="school-product-card" key={product.id}>
+          <div className="school-product-type"><span>{product.productType.replaceAll("_", " ")}</span><b>{product.priceCents ? `R${(product.priceCents / 100).toLocaleString("en-ZA")}` : "Free"}</b></div>
+          <h3>{product.name}</h3>
+          <p>{product.description || "A complete learning path with everything you need to make progress."}</p>
+          <ul>
+            {product.courseCount > 0 && <li>{product.courseCount} {product.courseCount === 1 ? "course" : "courses"}</li>}
+            {product.liveSessionCount > 0 && <li>{product.liveSessionCount} upcoming live {product.liveSessionCount === 1 ? "session" : "sessions"}</li>}
+            {product.includesCommunity ? <li>Private community</li> : null}
+            {product.accessDurationDays > 0 ? <li>{product.accessDurationDays} days of access</li> : <li>Ongoing access</li>}
+          </ul>
+          {product.priceCents === 0
+            ? <button className="school-primary-action" disabled={joining === product.id} onClick={() => joinProduct(product.id)}>{joining === product.id ? "Joining..." : "Join free"}</button>
+            : school.supportEmail
+              ? <a className="school-primary-action" href={`mailto:${school.supportEmail}?subject=${encodeURIComponent(`Access to ${product.name}`)}`}>Ask about access</a>
+              : <button className="school-primary-action" disabled>Paid checkout coming next</button>}
+          <small>{product.billingInterval === "monthly" ? "Billed monthly" : product.billingInterval === "yearly" ? "Billed yearly" : product.priceCents ? "One-time access" : "No payment required"}</small>
+        </article>)}
+      </section>
+    </>}
 
     <section className="school-catalog-heading" id="courses">
       <div><p className="sys-kicker">COURSE CATALOGUE</p><h2>Choose where to begin.</h2></div>
@@ -156,6 +228,7 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
         <p>{school.description || "Learning that moves people forward."}</p>
       </div>
       <nav>
+        {data.products.length > 0 && <a href="#products">Products</a>}
         <a href="#courses">Courses</a>
         {school.supportEmail && <a href={`mailto:${school.supportEmail}`}>Support</a>}
         <a href={terms}>Terms</a>

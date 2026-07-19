@@ -75,6 +75,19 @@ for (const table of [
     throw new Error(`The ${table} production-hardening table was not created.`);
   }
 }
+for (const table of [
+  "products",
+  "product_items",
+  "product_entitlements",
+  "live_sessions",
+  "live_attendance",
+  "integrations",
+  "integration_deliveries",
+]) {
+  if (!tables.some((item) => item.name === table)) {
+    throw new Error(`The ${table} product-growth table was not created.`);
+  }
+}
 if (!tables.some((item) => item.name === "quiz_attempts")) {
   throw new Error("The quiz_attempts assessment table was not created.");
 }
@@ -139,6 +152,22 @@ const progressColumns = database.prepare(
 for (const column of ["watched_percent", "notes", "bookmarked"]) {
   if (!progressColumns.some((item) => item.name === column)) {
     throw new Error(`The lesson_progress.${column} learning-state column was not created.`);
+  }
+}
+const enrollmentColumns = database.prepare(
+  "PRAGMA table_info(enrollments)",
+).all();
+for (const column of ["access_source", "access_source_id"]) {
+  if (!enrollmentColumns.some((item) => item.name === column)) {
+    throw new Error(`The enrollments.${column} entitlement column was not created.`);
+  }
+}
+const communityMemberColumns = database.prepare(
+  "PRAGMA table_info(community_members)",
+).all();
+for (const column of ["access_source", "access_source_id"]) {
+  if (!communityMemberColumns.some((item) => item.name === column)) {
+    throw new Error(`The community_members.${column} entitlement column was not created.`);
   }
 }
 const certificateColumns = database.prepare(
@@ -224,6 +253,15 @@ console.log(JSON.stringify({
     "backup_runs",
     "content_reports",
     "data_requests",
+  ],
+  growthTables: [
+    "products",
+    "product_items",
+    "product_entitlements",
+    "live_sessions",
+    "live_attendance",
+    "integrations",
+    "integration_deliveries",
   ],
   schools,
   courseScopes,

@@ -4,7 +4,9 @@ NorthstarLabs is a multi-academy learning platform built with vinext, Cloudflare
 D1 and R2, and Supabase authentication. It includes creator onboarding, course
 authoring, protected media, learner progress, assessments, certificates,
 communities, reporting, email operations, platform administration, and
-production reliability controls.
+production reliability controls. Creators can also package courses and
+communities as bundles, memberships or live programmes, schedule live sessions,
+grant product access, and connect signed webhooks.
 
 ## Prerequisites
 
@@ -29,6 +31,25 @@ This starter does not use `wrangler.jsonc`.
 - `/api/health` provides a minimal public health signal.
 - `/admin` contains platform health, moderation, storage, backup, and audit
   controls for allowlisted platform administrators.
+- `/dashboard/products` manages bundles, creator memberships, product access,
+  and storefront publishing.
+- `/dashboard/live` schedules provider-linked live learning and records
+  registrations and attendance.
+- `/dashboard/integrations` manages signed outbound webhooks. Calendar export
+  and installable mobile/PWA access require no external credentials.
+
+## Product and live-learning access
+
+- A product can include any number of courses and the academy community.
+- Free published products support signed-in self-enrolment from the academy
+  storefront. Paid products can be granted manually until checkout is connected.
+- Product entitlements materialise protected course, community, and upcoming
+  live-session access. Revocation pauses only access originating from that
+  entitlement and preserves direct enrolments.
+- Live sessions support Zoom, Google Meet, Microsoft Teams, or another secure
+  HTTPS provider link. Eligible learners can download an `.ics` calendar file.
+- Webhooks include timestamped HMAC-SHA256 signatures in
+  `x-northstar-signature`; the signing secret is shown once at creation.
 
 ## Required production configuration
 
@@ -48,8 +69,9 @@ Optional quota overrides:
 
 Call `POST /api/platform/maintenance` from a trusted daily scheduler with the
 secret in `x-maintenance-secret`. It creates a daily backup when due and removes
-expired rate-limit buckets, playback grants, and old resolved events. Backup
-integrity can be verified from the platform reliability console.
+expired rate-limit buckets, playback grants, old resolved events, and expired
+product access. Backup integrity can be verified from the platform reliability
+console.
 
 ## Workspace Auth Headers
 
@@ -114,8 +136,8 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 - `npm run dev`: start local development
 - `npm run build`: verify the vinext build output
 - `npm test`: build the platform and run all release checks
-- `npm run test:journeys`: run creator-to-learner, isolation, deletion, and
-  security journey checks
+- `npm run test:journeys`: run creator-to-learner, product entitlement,
+  isolation, deletion, and security journey checks
 - `npm run db:generate`: generate Drizzle migrations after schema changes
 - `npm run db:validate`: apply every migration to a fresh database and validate
   the resulting model

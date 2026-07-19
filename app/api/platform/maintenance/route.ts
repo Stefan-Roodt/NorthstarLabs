@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { createPlatformBackup } from "../../../../lib/platform-backup";
+import { revokeProductAccess } from "../../../../lib/product-access";
 import { recordSystemEvent } from "../../../../lib/system-monitor";
 
 function authorized(request: Request) {
@@ -20,6 +21,17 @@ export async function POST(request: Request) {
   let backup: Awaited<ReturnType<typeof createPlatformBackup>> | null = null;
   if (!lastBackup?.completedAt || lastBackup.completedAt < now - 24 * 60 * 60_000) {
     backup = await createPlatformBackup("scheduled-maintenance");
+  }
+  const expired = await env.DB.prepare(
+    `SELECT id FROM product_entitlements
+     WHERE status='active' AND expires_at IS NOT NULL AND expires_at<=?
+     ORDER BY expires_at LIMIT 1000`,
+  ).bind(now).all<{ id: string }>();
+  for (const entitlement of expired.results) {
+    await revokeProductAccess(env.DB, entitlement.id, now);
+    await env.DB.prepare(
+      "UPDATE product_entitlements SET status='expired',updated_at=? WHERE id=?",
+    ).bind(now, entitlement.id).run();
   }
   const cleanup = await env.DB.batch([
     env.DB.prepare("DELETE FROM rate_limit_buckets WHERE reset_at<?").bind(
@@ -42,6 +54,7 @@ export async function POST(request: Request) {
       rateLimitBuckets: cleanup[0].meta.changes,
       playbackGrants: cleanup[1].meta.changes,
       resolvedEvents: cleanup[2].meta.changes,
+      expiredEntitlements: expired.results.length,
     },
   });
   return Response.json({
@@ -51,7 +64,7 @@ export async function POST(request: Request) {
       rateLimitBuckets: cleanup[0].meta.changes,
       playbackGrants: cleanup[1].meta.changes,
       resolvedEvents: cleanup[2].meta.changes,
+      expiredEntitlements: expired.results.length,
     },
   });
 }
-

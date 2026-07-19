@@ -378,6 +378,82 @@ test("hardens production with rate limits, monitoring, backups, safe deletion, a
   assert.match(journeys, /safe course deletion/);
 });
 
+test("ships bundles, memberships, live learning, mobile installation, and integrations", async () => {
+  const [
+    schema,
+    migration,
+    productsApi,
+    grantsApi,
+    access,
+    liveApi,
+    calendar,
+    integrationsApi,
+    integrations,
+    productStudio,
+    liveStudio,
+    learnerLive,
+    manifest,
+    serviceWorker,
+    storefront,
+  ] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0014_hot_mauler.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/products/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/products/grants/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/product-access.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/live-sessions/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/live-sessions/[sessionId]/calendar/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/integrations/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/integrations.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/products/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/live/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/live/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/manifest.ts", import.meta.url), "utf8"),
+    readFile(new URL("../public/sw.js", import.meta.url), "utf8"),
+    readFile(new URL("../app/schools/[slug]/page.tsx", import.meta.url), "utf8"),
+  ]);
+  for (const table of [
+    "products",
+    "productItems",
+    "productEntitlements",
+    "liveSessions",
+    "liveAttendance",
+    "integrations",
+    "integrationDeliveries",
+  ]) {
+    assert.match(schema, new RegExp(`export const ${table}`));
+  }
+  assert.match(migration, /CREATE TABLE `products`/);
+  assert.match(migration, /CREATE TABLE `product_entitlements`/);
+  assert.match(migration, /CREATE TABLE `live_sessions`/);
+  assert.match(migration, /CREATE TABLE `integrations`/);
+  assert.match(migration, /ALTER TABLE `enrollments` ADD `access_source`/);
+  assert.match(productsApi, /productTypes.*bundle.*membership.*live_program/s);
+  assert.match(productsApi, /product\.publish/);
+  assert.match(grantsApi, /activateProductAccess/);
+  assert.match(grantsApi, /revokeProductAccess/);
+  assert.match(access, /access_source_id/);
+  assert.match(access, /status='paused'/);
+  assert.match(liveApi, /live_session\.created/);
+  assert.match(liveApi, /attendance_minutes/);
+  assert.match(calendar, /BEGIN:VCALENDAR/);
+  assert.match(calendar, /live_attendance/);
+  assert.match(calendar, /la\.id IS NOT NULL OR sm\.id IS NOT NULL/);
+  assert.match(integrationsApi, /public HTTPS webhook endpoint/);
+  assert.match(integrations, /HMAC/);
+  assert.match(integrations, /x-northstar-signature/);
+  assert.match(productStudio, /Create a product/);
+  assert.match(productStudio, /Grant product access/);
+  assert.match(liveStudio, /Schedule a session/);
+  assert.match(liveStudio, /Attendance register/);
+  assert.match(learnerLive, /Reserve my place/);
+  assert.match(manifest, /display: "standalone"/);
+  assert.match(serviceWorker, /northstarlabs-shell-v1/);
+  assert.match(serviceWorker, /request\.mode === "navigate"/);
+  assert.match(storefront, /Join free/);
+  assert.match(storefront, /PROGRAMMES & MEMBERSHIPS/);
+});
+
 test("parses browser byte ranges safely", async () => {
   const { parseByteRange } = await import("../lib/media-stream.ts");
   assert.deepEqual(parseByteRange("bytes=10-19", 100), { start: 10, end: 19, length: 10 });

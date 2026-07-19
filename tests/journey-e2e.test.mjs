@@ -250,6 +250,134 @@ test("safe course deletion leaves no learner or assessment orphans", async () =>
   }
 });
 
+test("grants and revokes bundle, community, and live-session access", async () => {
+  const db = await migratedDatabase();
+  const now = Date.UTC(2026, 6, 19, 10);
+  db.exec(`
+    INSERT INTO profiles (id,email,display_name,role,status,created_at)
+    VALUES
+      ('growth-owner','growth-owner@example.com','Growth Owner','creator','active',${now}),
+      ('growth-learner','growth-learner@example.com','Growth Learner','learner','active',${now}),
+      ('growth-outsider','growth-outsider@example.com','Growth Outsider','learner','active',${now});
+    INSERT INTO schools
+      (id,slug,name,description,primary_color,accent_color,hero_title,hero_description,
+       font_theme,support_email,seo_title,seo_description,show_community,
+       owner_id,status,created_at,updated_at)
+    VALUES
+      ('growth-school','growth-academy','Growth Academy','','#3556d8','#ffbd8a','','',
+       'modern','','','',1,'growth-owner','active',${now},${now});
+    INSERT INTO school_members (id,school_id,user_id,role,status,joined_at)
+    VALUES
+      ('growth-owner-membership','growth-school','growth-owner','owner','active',${now}),
+      ('growth-learner-membership','growth-school','growth-learner','learner','active',${now});
+    INSERT INTO communities
+      (id,school_id,owner_id,name,description,access_type,allow_posting,created_at)
+    VALUES
+      ('growth-community','growth-school','growth-owner','Growth Community','','enrolled',1,${now});
+    INSERT INTO courses
+      (id,school_id,owner_id,title,description,status,price_cents,created_at,updated_at)
+    VALUES
+      ('growth-course','growth-school','growth-owner','Growth Course','','published',0,${now},${now});
+    INSERT INTO products
+      (id,school_id,owner_id,name,slug,description,product_type,price_cents,
+       billing_interval,status,includes_community,access_duration_days,created_at,updated_at)
+    VALUES
+      ('growth-product','growth-school','growth-owner','Growth Membership','growth-membership','',
+       'membership',9900,'monthly','published',1,30,${now},${now});
+    INSERT INTO product_items (id,product_id,item_type,item_id,position,created_at)
+    VALUES ('growth-item','growth-product','course','growth-course',0,${now});
+    INSERT INTO product_entitlements
+      (id,product_id,user_id,source,status,starts_at,expires_at,granted_by,created_at,updated_at)
+    VALUES
+      ('growth-entitlement','growth-product','growth-learner','manual','active',${now},
+       ${now + 30 * 86_400_000},'growth-owner',${now},${now});
+    INSERT INTO enrollments
+      (id,user_id,course_id,progress,status,support_note,last_activity_at,
+       access_source,access_source_id,created_at)
+    VALUES
+      ('growth-enrollment','growth-learner','growth-course',0,'active','',${now},
+       'product','growth-entitlement',${now});
+    INSERT INTO community_members
+      (id,community_id,user_id,role,status,joined_at,access_source,access_source_id)
+    VALUES
+      ('growth-community-member','growth-community','growth-learner','member','active',${now},
+       'product','growth-entitlement');
+    INSERT INTO live_sessions
+      (id,school_id,product_id,host_id,title,description,starts_at,ends_at,timezone,
+       meeting_provider,meeting_url,capacity,status,created_at,updated_at)
+    VALUES
+      ('growth-session','growth-school','growth-product','growth-owner','Growth Live','','${now + 86_400_000}',
+       '${now + 90_000_000}','Africa/Johannesburg','zoom','https://example.com/meeting',50,
+       'scheduled',${now},${now});
+    INSERT INTO live_attendance
+      (id,session_id,user_id,status,registered_at,attendance_minutes)
+    VALUES
+      ('growth-attendance','growth-session','growth-learner','registered',${now},0);
+    INSERT INTO integrations
+      (id,school_id,created_by,provider,name,endpoint_url,event_types_json,signing_secret,
+       status,created_at,updated_at)
+    VALUES
+      ('growth-webhook','growth-school','growth-owner','webhook','Growth CRM',
+       'https://example.com/hooks','["entitlement.granted"]','secret','active',${now},${now});
+    INSERT INTO integration_deliveries
+      (id,integration_id,event_type,payload_json,status,response_status,created_at,delivered_at)
+    VALUES
+      ('growth-delivery','growth-webhook','entitlement.granted','{}','delivered',200,${now},${now});
+  `);
+
+  const access = db.prepare(`
+    SELECT p.name,e.status AS enrollmentStatus,cm.status AS communityStatus,
+      la.status AS attendanceStatus
+    FROM product_entitlements pe
+    JOIN products p ON p.id=pe.product_id
+    JOIN enrollments e ON e.access_source_id=pe.id
+    JOIN community_members cm ON cm.access_source_id=pe.id
+    JOIN live_attendance la ON la.user_id=pe.user_id
+    WHERE pe.user_id='growth-learner' AND pe.status='active'
+  `).get();
+  assert.deepEqual({ ...access }, {
+    name: "Growth Membership",
+    enrollmentStatus: "active",
+    communityStatus: "active",
+    attendanceStatus: "registered",
+  });
+  assert.equal(
+    db.prepare(`
+      SELECT COUNT(*) AS count FROM product_entitlements
+      WHERE user_id='growth-outsider' AND status='active'
+    `).get().count,
+    0,
+  );
+  assert.equal(
+    db.prepare(`
+      SELECT status FROM integration_deliveries
+      WHERE integration_id='growth-webhook'
+    `).get().status,
+    "delivered",
+  );
+
+  db.exec(`
+    UPDATE product_entitlements SET status='revoked',updated_at=${now + 1}
+    WHERE id='growth-entitlement';
+    UPDATE enrollments SET status='paused' WHERE access_source_id='growth-entitlement';
+    UPDATE community_members SET status='paused' WHERE access_source_id='growth-entitlement';
+    UPDATE live_attendance SET status='cancelled'
+    WHERE user_id='growth-learner' AND session_id='growth-session';
+  `);
+  assert.equal(
+    db.prepare("SELECT status FROM enrollments WHERE id='growth-enrollment'").get().status,
+    "paused",
+  );
+  assert.equal(
+    db.prepare("SELECT status FROM community_members WHERE id='growth-community-member'").get().status,
+    "paused",
+  );
+  assert.equal(
+    db.prepare("SELECT status FROM live_attendance WHERE id='growth-attendance'").get().status,
+    "cancelled",
+  );
+});
+
 test("security policy limits abusive writes and rejects oversized JSON", async () => {
   assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/uploads", { method: "POST" })),

@@ -46,6 +46,25 @@ export async function GET(request: Request) {
         `${course.averageProgress || 0}%`,
         course.completions,
       ]),
+      [],
+      ["Product access summary"],
+      ["Products", "Published", "Active entitlements", "Grants in period"],
+      [
+        (report.products as Record<string, unknown>)?.products,
+        (report.products as Record<string, unknown>)?.published,
+        (report.products as Record<string, unknown>)?.activeEntitlements,
+        (report.products as Record<string, unknown>)?.grants,
+      ],
+      [],
+      ["Live learning summary"],
+      ["Sessions", "Scheduled", "Completed", "Registrations", "Attended"],
+      [
+        (report.liveLearning as Record<string, unknown>)?.sessions,
+        (report.liveLearning as Record<string, unknown>)?.scheduled,
+        (report.liveLearning as Record<string, unknown>)?.completed,
+        (report.liveLearning as Record<string, unknown>)?.registrations,
+        (report.liveLearning as Record<string, unknown>)?.attended,
+      ],
     ];
     return new Response(rows.map((row) => row.map(csvCell).join(",")).join("\n"), {
       headers: {

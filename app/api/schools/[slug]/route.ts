@@ -88,7 +88,23 @@ export async function GET(
     ).bind(school.id).first()
     : null;
 
-  return Response.json({ school, community, courses: courses.results });
+  const products = await env.DB.prepare(
+    `SELECT p.id,p.name,p.slug,p.description,
+      p.product_type AS productType,p.price_cents AS priceCents,
+      p.billing_interval AS billingInterval,
+      p.includes_community AS includesCommunity,
+      p.access_duration_days AS accessDurationDays,
+      COUNT(DISTINCT CASE WHEN pi.item_type='course' THEN pi.item_id END) AS courseCount,
+      COUNT(DISTINCT ls.id) AS liveSessionCount
+     FROM products p
+     LEFT JOIN product_items pi ON pi.product_id=p.id
+     LEFT JOIN live_sessions ls ON ls.product_id=p.id
+       AND ls.status='scheduled' AND ls.ends_at>?
+     WHERE p.school_id=? AND p.status='published'
+     GROUP BY p.id ORDER BY p.updated_at DESC`,
+  ).bind(Date.now(), school.id).all();
+
+  return Response.json({ school, community, products: products.results, courses: courses.results });
 }
 
 export async function PATCH(
