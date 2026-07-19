@@ -64,6 +64,13 @@
       "when": 1784452460875,
       "tag": "0008_rainy_molten_man",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1784454722152,
+      "tag": "0009_high_giant_man",
+      "breakpoints": true
     }
   ]
 }

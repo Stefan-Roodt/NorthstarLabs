@@ -47,55 +47,83 @@ function formatBytes(bytes: number) {
 
 function MediaViewer({
   asset,
+  lessonId,
   accessToken,
 }: {
   asset: Asset;
+  lessonId: string;
   accessToken: () => Promise<string>;
 }) {
   const [source, setSource] = useState(() => asset.key.startsWith("r2:") ? "" : asset.key);
   const [error, setError] = useState("");
+  const [renewal, setRenewal] = useState(0);
 
   useEffect(() => {
-    let objectUrl = "";
     let cancelled = false;
     if (!asset.key.startsWith("r2:")) {
       return;
     }
     (async () => {
-      const response = await fetch(`/api/uploads?key=${encodeURIComponent(asset.key)}`, {
-        headers: { authorization: `Bearer ${await accessToken()}` },
+      setError("");
+      const response = await fetch("/api/media/playback", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${await accessToken()}`,
+        },
+        body: JSON.stringify({ lessonId }),
       });
+      const result = await response.json() as { url?: string; error?: string };
       if (!response.ok) {
-        if (!cancelled) setError("This media could not be loaded.");
+        if (!cancelled) setError(result.error || "This media could not be loaded.");
         return;
       }
-      objectUrl = URL.createObjectURL(await response.blob());
-      if (!cancelled) setSource(objectUrl);
+      if (!cancelled) setSource(result.url || "");
     })();
     return () => {
       cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [accessToken, asset.key]);
+  }, [accessToken, asset.key, lessonId, renewal]);
+
+  function playbackFailed() {
+    if (asset.key.startsWith("r2:") && renewal < 1) {
+      setSource("");
+      setRenewal(renewal + 1);
+      return;
+    }
+    setError("This media could not be played.");
+  }
 
   if (error) return <div className="media-placeholder"><p>{error}</p></div>;
   if (!source) return <div className="media-placeholder"><p>Loading lesson media…</p></div>;
   if (asset.kind === "image") {
     return <figure className="lesson-image">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={source} alt={asset.altText || asset.filename} />
+      <img src={source} alt={asset.altText || asset.filename} onError={playbackFailed} />
       {asset.altText && <figcaption>{asset.altText}</figcaption>}
     </figure>;
   }
   if (asset.kind === "audio") {
     return <div className="lesson-audio">
       <b>{asset.filename}</b>
-      <audio controls preload="metadata" src={source}>Your browser does not support audio playback.</audio>
+      <audio controls controlsList="nodownload" preload="metadata" src={source} onError={playbackFailed}>
+        Your browser does not support audio playback.
+      </audio>
     </div>;
   }
   if (asset.kind === "video") {
     return <div className="lesson-video">
-      <video controls preload="metadata" src={source}>Your browser does not support video playback.</video>
+      <video
+        controls
+        controlsList="nodownload"
+        disablePictureInPicture
+        playsInline
+        preload="metadata"
+        src={source}
+        onError={playbackFailed}
+      >
+        Your browser does not support video playback.
+      </video>
     </div>;
   }
   return null;
@@ -309,7 +337,12 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       </aside>
       <section>
         {lesson.primaryAsset
-          ? <MediaViewer key={lesson.primaryAsset.key} asset={lesson.primaryAsset} accessToken={token} />
+          ? <MediaViewer
+              key={`${lesson.id}:${lesson.primaryAsset.key}`}
+              asset={lesson.primaryAsset}
+              lessonId={lesson.id}
+              accessToken={token}
+            />
           : <div className="lesson-banner">NORTHSTARLABS · {lesson.lessonType.toUpperCase()} LESSON</div>}
         <p className="sys-kicker">LESSON {current + 1} OF {lessons.length}{lesson.durationMinutes ? ` · ${lesson.durationMinutes} MIN` : ""}</p>
         <h1>{lesson.title}</h1>

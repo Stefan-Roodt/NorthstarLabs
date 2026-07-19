@@ -174,3 +174,46 @@ test("ships a structured course editor, reusable media library, and safe learner
   assert.match(learner, /Creator preview · progress is disabled/);
   assert.doesNotMatch(renderer, /dangerouslySetInnerHTML/);
 });
+
+test("streams protected lesson media with short-lived grants and byte ranges", async () => {
+  const [schema, migration, playback, stream, learnApi, learner, helper] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0009_high_giant_man.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/media/playback/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/media/stream/[token]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/learn/[courseId]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/media-stream.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(schema, /export const mediaPlaybackGrants/);
+  assert.match(migration, /CREATE TABLE `media_playback_grants`/);
+  assert.match(migration, /`token_hash` text PRIMARY KEY NOT NULL/);
+  assert.match(playback, /requireApiUser/);
+  assert.match(playback, /e\.status='active'/);
+  assert.match(playback, /sm\.role IN \('owner','admin','instructor'\)/);
+  assert.match(playback, /hashPlaybackToken/);
+  assert.match(playback, /INSERT INTO media_playback_grants/);
+  assert.match(stream, /g\.expires_at>\?/);
+  assert.match(stream, /env\.UPLOADS\.head/);
+  assert.match(stream, /range: \{ offset: range\.start, length: range\.length \}/);
+  assert.match(stream, /content-range/);
+  assert.match(stream, /accept-ranges/);
+  assert.match(helper, /PLAYBACK_GRANT_TTL_MS/);
+  assert.match(helper, /header\.includes\(","\)/);
+  assert.match(learnApi, /"r2:protected"/);
+  assert.match(learnApi, /key: learnerMediaKey\(lesson\.primaryKey\)/);
+  assert.match(learner, /\/api\/media\/playback/);
+  assert.match(learner, /controlsList="nodownload"/);
+  assert.doesNotMatch(learner, /\/api\/uploads\?key=\$\{encodeURIComponent\(asset\.key\)\}/);
+});
+
+test("parses browser byte ranges safely", async () => {
+  const { parseByteRange } = await import("../lib/media-stream.ts");
+  assert.deepEqual(parseByteRange("bytes=10-19", 100), { start: 10, end: 19, length: 10 });
+  assert.deepEqual(parseByteRange("bytes=90-", 100), { start: 90, end: 99, length: 10 });
+  assert.deepEqual(parseByteRange("bytes=-8", 100), { start: 92, end: 99, length: 8 });
+  assert.deepEqual(parseByteRange("bytes=95-200", 100), { start: 95, end: 99, length: 5 });
+  assert.equal(parseByteRange("bytes=100-120", 100), "invalid");
+  assert.equal(parseByteRange("bytes=0-1,4-5", 100), "invalid");
+  assert.equal(parseByteRange(null, 100), null);
+});

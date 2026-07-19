@@ -95,6 +95,21 @@ export const mediaAssets = sqliteTable("media_assets", {
   uniqueIndex("media_assets_key_unique").on(table.key),
   index("media_assets_school_kind_created_idx").on(table.schoolId, table.kind, table.createdAt),
 ]);
+export const mediaPlaybackGrants = sqliteTable("media_playback_grants", {
+  tokenHash: text("token_hash").primaryKey(),
+  userId: text("user_id").notNull(),
+  courseId: text("course_id").notNull(),
+  lessonId: text("lesson_id").notNull(),
+  assetKey: text("asset_key").notNull(),
+  filename: text("filename").notNull(),
+  contentType: text("content_type").notNull(),
+  kind: text("kind").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  index("media_playback_grants_user_expiry_idx").on(table.userId, table.expiresAt),
+  index("media_playback_grants_course_expiry_idx").on(table.courseId, table.expiresAt),
+]);
 export const lessons = sqliteTable("lessons", {
   id: text("id").primaryKey(), courseId: text("course_id").notNull(), title: text("title").notNull(),
   sectionId: text("section_id"), lessonType: text("lesson_type").notNull().default("text"),

@@ -1,6 +1,10 @@
 import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../../lib/server-auth";
 
+function learnerMediaKey(key: unknown) {
+  return typeof key === "string" && key.startsWith("r2:") ? "r2:protected" : key;
+}
+
 export async function GET(request: Request, context: { params: Promise<{ courseId: string }> }) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -85,14 +89,14 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
       ...lesson,
       primaryAsset: lesson.primaryAssetId ? {
         id: lesson.primaryAssetId,
-        key: lesson.primaryKey,
+        key: learnerMediaKey(lesson.primaryKey),
         filename: lesson.primaryFilename,
         contentType: lesson.primaryContentType,
         kind: lesson.primaryKind,
         altText: lesson.primaryAltText,
       } : lesson.videoKey ? {
         id: null,
-        key: lesson.videoKey,
+        key: learnerMediaKey(lesson.videoKey),
         filename: "Lesson video",
         contentType: "video/mp4",
         kind: "video",
