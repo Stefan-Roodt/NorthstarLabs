@@ -40,6 +40,24 @@ async function migratedDatabase() {
           ('legacy-community-owner','northstar-circle','creator-fixture','owner','active',1784400000000);
       `);
     }
+    if (file.startsWith("0018_")) {
+      database.exec(`
+        INSERT OR IGNORE INTO profiles
+          (id,email,display_name,role,active_school_id,onboarding_path,
+           onboarding_completed,status,created_at)
+        VALUES
+          ('stefan-course-owner-fixture','stefan@example.com','Stefan Roodt','creator',
+           'stefan-course-school-fixture','creator',1,'active',1784483000000);
+        INSERT OR IGNORE INTO schools
+          (id,slug,name,description,primary_color,accent_color,hero_title,
+           hero_description,font_theme,support_email,seo_title,seo_description,
+           show_community,owner_id,status,created_at,updated_at)
+        VALUES
+          ('stefan-course-school-fixture','stefan-roodt-s-academy',
+           'Stefan Roodt''s Academy','','#3556d8','#ffbd8a','','','modern','','','',
+           1,'stefan-course-owner-fixture','active',1784483000000,1784483000000);
+      `);
+    }
     const sql = await readFile(new URL(file, directory), "utf8");
     for (const statement of sql
       .split(/--> statement-breakpoint\s*/)
@@ -50,6 +68,58 @@ async function migratedDatabase() {
   }
   return database;
 }
+
+test("seeds Stefan's video-first Web3 course as a complete private draft", async () => {
+  const db = await migratedDatabase();
+  const course = db.prepare(`
+    SELECT c.title,c.status,c.price_cents AS priceCents,
+      c.enforce_lesson_order AS enforceLessonOrder,c.certificate_title AS certificateTitle,
+      c.owner_id AS ownerId,c.school_id AS schoolId
+    FROM courses c
+    WHERE c.id='stefan-web3-foundations'
+  `).get();
+  assert.deepEqual({ ...course }, {
+    title: "Web3 Foundations: From Blocks to Builders",
+    status: "draft",
+    priceCents: 0,
+    enforceLessonOrder: 1,
+    certificateTitle: "Certificate: Web3 Foundations",
+    ownerId: "stefan-course-owner-fixture",
+    schoolId: "stefan-course-school-fixture",
+  });
+
+  const curriculum = db.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM course_sections WHERE course_id='stefan-web3-foundations') AS sections,
+      (SELECT COUNT(*) FROM lessons WHERE course_id='stefan-web3-foundations') AS lessons,
+      (SELECT COUNT(*) FROM lessons WHERE course_id='stefan-web3-foundations' AND lesson_type='video') AS videos,
+      (SELECT COUNT(*) FROM quizzes q JOIN lessons l ON l.id=q.lesson_id WHERE l.course_id='stefan-web3-foundations') AS quizzes,
+      (SELECT COUNT(*) FROM quiz_questions qq JOIN quizzes q ON q.id=qq.quiz_id JOIN lessons l ON l.id=q.lesson_id WHERE l.course_id='stefan-web3-foundations') AS questions,
+      (SELECT MIN(duration_minutes) FROM lessons WHERE course_id='stefan-web3-foundations') AS shortest,
+      (SELECT MAX(duration_minutes) FROM lessons WHERE course_id='stefan-web3-foundations') AS longest,
+      (SELECT COUNT(*) FROM lessons WHERE course_id='stefan-web3-foundations' AND lesson_type='video' AND LENGTH(transcript)>1800) AS scriptedVideos
+  `).get();
+  assert.deepEqual({ ...curriculum }, {
+    sections: 6,
+    lessons: 24,
+    videos: 14,
+    quizzes: 6,
+    questions: 33,
+    shortest: 6,
+    longest: 6,
+    scriptedVideos: 14,
+  });
+
+  const orphans = db.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM course_sections cs LEFT JOIN courses c ON c.id=cs.course_id WHERE c.id IS NULL) +
+      (SELECT COUNT(*) FROM lessons l LEFT JOIN courses c ON c.id=l.course_id WHERE c.id IS NULL) +
+      (SELECT COUNT(*) FROM quizzes q LEFT JOIN lessons l ON l.id=q.lesson_id WHERE l.id IS NULL) +
+      (SELECT COUNT(*) FROM quiz_questions qq LEFT JOIN quizzes q ON q.id=qq.quiz_id WHERE q.id IS NULL)
+      AS count
+  `).get();
+  assert.equal(orphans.count, 0);
+});
 
 test("completes an isolated creator-to-learner production journey", async () => {
   const db = await migratedDatabase();

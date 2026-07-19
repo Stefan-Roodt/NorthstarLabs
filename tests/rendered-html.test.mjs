@@ -98,6 +98,27 @@ test("ships a real starter catalogue without placeholder proof", async () => {
   assert.match(collectionMigration, /UNESCO AI Competency Framework for Teachers/);
 });
 
+test("ships Stefan's source-grounded Web3 course production draft", async () => {
+  const migration = await readFile(
+    new URL("../drizzle/0018_stefan_web3_foundations.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migration, /Web3 Foundations: From Blocks to Builders/);
+  assert.match(migration, /WHERE s\.slug='stefan-roodt-s-academy'/);
+  assert.match(migration, /'draft'/);
+  assert.match(migration, /'video'/);
+  assert.match(migration, /required_watch_percent/);
+  assert.match(migration, /Capstone: pitch, architecture, and threat model/);
+  assert.match(migration, /Final assessment: think like a Web3 builder/);
+  assert.match(migration, /https:\/\/ethereum\.org\/web3\//);
+  assert.match(migration, /https:\/\/bitcoin\.org\/bitcoin\.pdf/);
+  assert.match(migration, /https:\/\/eips\.ethereum\.org\/EIPS\/eip-20/);
+  assert.match(migration, /https:\/\/docs\.ipfs\.tech\/concepts\/what-is-ipfs\//);
+  assert.match(migration, /https:\/\/www\.w3\.org\/TR\/vc-data-model\//);
+  assert.match(migration, /Never share a recovery phrase or private key/);
+  assert.doesNotMatch(migration, /buy this token|guaranteed profit|risk-free return/i);
+});
+
 test("guides new members into creating or learning with a low-friction join flow", async () => {
   const [home, login, welcome, course] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),

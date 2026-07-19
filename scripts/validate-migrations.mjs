@@ -30,6 +30,24 @@ for (const file of files) {
         (id,community_id,user_id,role,status,joined_at)
       VALUES
         ('legacy-community-owner','northstar-circle','creator-fixture','owner','active',1784400000000);
+      `);
+  }
+  if (file.startsWith("0018_")) {
+    database.exec(`
+      INSERT OR IGNORE INTO profiles
+        (id,email,display_name,role,active_school_id,onboarding_path,
+         onboarding_completed,status,created_at)
+      VALUES
+        ('stefan-course-owner-fixture','stefan@example.com','Stefan Roodt','creator',
+         'stefan-course-school-fixture','creator',1,'active',1784483000000);
+      INSERT OR IGNORE INTO schools
+        (id,slug,name,description,primary_color,accent_color,hero_title,
+         hero_description,font_theme,support_email,seo_title,seo_description,
+         show_community,owner_id,status,created_at,updated_at)
+      VALUES
+        ('stefan-course-school-fixture','stefan-roodt-s-academy',
+         'Stefan Roodt''s Academy','','#3556d8','#ffbd8a','','','modern','','','',
+         1,'stefan-course-owner-fixture','active',1784483000000,1784483000000);
     `);
   }
   const sql = await readFile(new URL(file, migrationDirectory), "utf8");
@@ -49,9 +67,29 @@ const schools = database.prepare(
 const courseScopes = database.prepare(
   "SELECT school_id AS schoolId,COUNT(*) AS courses FROM courses GROUP BY school_id",
 ).all();
+const stefanWeb3Course = database.prepare(`
+  SELECT c.id,c.status,c.owner_id AS ownerId,c.school_id AS schoolId,
+    COUNT(DISTINCT cs.id) AS sections,COUNT(DISTINCT l.id) AS lessons,
+    COUNT(DISTINCT q.id) AS quizzes
+  FROM courses c
+  LEFT JOIN course_sections cs ON cs.course_id=c.id
+  LEFT JOIN lessons l ON l.course_id=c.id
+  LEFT JOIN quizzes q ON q.lesson_id=l.id
+  WHERE c.id='stefan-web3-foundations'
+  GROUP BY c.id
+`).get();
 
 if (!tables.some((table) => table.name === "schools")) {
   throw new Error("The schools table was not created.");
+}
+if (!stefanWeb3Course ||
+    stefanWeb3Course.status !== "draft" ||
+    stefanWeb3Course.ownerId !== "stefan-course-owner-fixture" ||
+    stefanWeb3Course.schoolId !== "stefan-course-school-fixture" ||
+    stefanWeb3Course.sections !== 6 ||
+    stefanWeb3Course.lessons !== 24 ||
+    stefanWeb3Course.quizzes !== 6) {
+  throw new Error("The Stefan Web3 draft course did not migrate with its complete curriculum.");
 }
 if (!tables.some((table) => table.name === "school_members")) {
   throw new Error("The school_members table was not created.");
