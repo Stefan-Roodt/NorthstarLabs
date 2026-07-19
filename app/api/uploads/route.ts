@@ -1,73 +1,262 @@
 import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../lib/server-auth";
-import { requireCreatorSchool, requestedSchoolId } from "../../../lib/school-access";
+import { requireCourseStaffAccess } from "../../../lib/school-access";
 
-const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
-const VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/ogg"]);
+const MEDIA_RULES: Record<string, { kind: string; maxBytes: number }> = {
+  "video/mp4": { kind: "video", maxBytes: 200 * 1024 * 1024 },
+  "video/webm": { kind: "video", maxBytes: 200 * 1024 * 1024 },
+  "video/ogg": { kind: "video", maxBytes: 200 * 1024 * 1024 },
+  "audio/mpeg": { kind: "audio", maxBytes: 50 * 1024 * 1024 },
+  "audio/mp4": { kind: "audio", maxBytes: 50 * 1024 * 1024 },
+  "audio/ogg": { kind: "audio", maxBytes: 50 * 1024 * 1024 },
+  "audio/wav": { kind: "audio", maxBytes: 50 * 1024 * 1024 },
+  "image/jpeg": { kind: "image", maxBytes: 20 * 1024 * 1024 },
+  "image/png": { kind: "image", maxBytes: 20 * 1024 * 1024 },
+  "image/webp": { kind: "image", maxBytes: 20 * 1024 * 1024 },
+  "image/gif": { kind: "image", maxBytes: 20 * 1024 * 1024 },
+  "application/pdf": { kind: "document", maxBytes: 50 * 1024 * 1024 },
+  "application/msword": { kind: "document", maxBytes: 50 * 1024 * 1024 },
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+    kind: "document",
+    maxBytes: 50 * 1024 * 1024,
+  },
+  "application/vnd.ms-powerpoint": { kind: "document", maxBytes: 50 * 1024 * 1024 },
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
+    kind: "document",
+    maxBytes: 50 * 1024 * 1024,
+  },
+  "application/vnd.ms-excel": { kind: "document", maxBytes: 50 * 1024 * 1024 },
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+    kind: "document",
+    maxBytes: 50 * 1024 * 1024,
+  },
+  "text/plain": { kind: "document", maxBytes: 10 * 1024 * 1024 },
+  "application/zip": { kind: "archive", maxBytes: 100 * 1024 * 1024 },
+};
+
+function safeFilename(value: string | null) {
+  return (value || "course-file")
+    .replace(/[^a-zA-Z0-9._ -]/g, "-")
+    .replace(/\s+/g, "-")
+    .slice(0, 140);
+}
+
+function inferredContentType(filename: string) {
+  const extension = filename.split(".").at(-1)?.toLowerCase() || "";
+  return ({
+    mp4: "video/mp4", webm: "video/webm", ogv: "video/ogg",
+    mp3: "audio/mpeg", m4a: "audio/mp4", oga: "audio/ogg", wav: "audio/wav",
+    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif",
+    pdf: "application/pdf", doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ppt: "application/vnd.ms-powerpoint",
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    txt: "text/plain", zip: "application/zip",
+  } as Record<string, string>)[extension] || "";
+}
 
 export async function POST(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  if (!await requireCreatorSchool(user, requestedSchoolId(request))) {
-    return Response.json({ error: "Creator access required" }, { status: 403 });
-  }
+  const url = new URL(request.url);
+  const courseId = url.searchParams.get("courseId") || "";
+  const course = await requireCourseStaffAccess(user.id, courseId);
+  if (!course) return Response.json({ error: "Course not found." }, { status: 404 });
 
-  const contentType = request.headers.get("content-type")?.split(";")[0] || "";
+  const filename = safeFilename(url.searchParams.get("filename"));
+  const receivedType = request.headers.get("content-type")?.split(";")[0] || "";
+  const contentType = receivedType === "application/octet-stream" || !receivedType
+    ? inferredContentType(filename)
+    : receivedType;
+  const rule = MEDIA_RULES[contentType];
+  if (!rule) {
+    return Response.json(
+      { error: "Upload a supported video, audio, image, PDF, Office file, text file, or ZIP archive." },
+      { status: 415 },
+    );
+  }
   const contentLength = Number(request.headers.get("content-length") || 0);
-  if (!VIDEO_TYPES.has(contentType)) {
-    return Response.json({ error: "Upload an MP4, WebM, or Ogg video." }, { status: 415 });
+  if (contentLength > rule.maxBytes) {
+    return Response.json({ error: `This ${rule.kind} file is too large.` }, { status: 413 });
   }
-  if (contentLength > MAX_VIDEO_BYTES) {
-    return Response.json({ error: "Video files must be 200 MB or smaller." }, { status: 413 });
-  }
+  if (!request.body) return Response.json({ error: "File content required." }, { status: 400 });
 
-  const filename = new URL(request.url).searchParams
-    .get("filename")
-    ?.replace(/[^a-zA-Z0-9._-]/g, "-") || "lesson-video";
-  const key = `users/${user.id}/${crypto.randomUUID()}-${filename}`;
-
-  await env.UPLOADS.put(key, request.body, {
+  const objectKey = `schools/${course.schoolId}/${crypto.randomUUID()}-${filename}`;
+  const key = `r2:${objectKey}`;
+  const assetId = crypto.randomUUID();
+  const now = Date.now();
+  const saved = await env.UPLOADS.put(objectKey, request.body, {
     httpMetadata: { contentType },
-    customMetadata: { owner: user.id },
+    customMetadata: {
+      owner: user.id,
+      school: course.schoolId,
+      originalFilename: filename,
+    },
   });
+  if (saved.size > rule.maxBytes) {
+    await env.UPLOADS.delete(objectKey);
+    return Response.json({ error: `This ${rule.kind} file is too large.` }, { status: 413 });
+  }
 
-  return Response.json({ key: `r2:${key}` });
+  try {
+    await env.DB.prepare(
+      `INSERT INTO media_assets
+       (id,school_id,owner_id,key,filename,content_type,size_bytes,kind,alt_text,created_at,updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+    ).bind(
+      assetId,
+      course.schoolId,
+      user.id,
+      key,
+      filename,
+      contentType,
+      saved.size,
+      rule.kind,
+      "",
+      now,
+      now,
+    ).run();
+  } catch (error) {
+    await env.UPLOADS.delete(objectKey);
+    throw error;
+  }
+
+  return Response.json({
+    id: assetId,
+    filename,
+    contentType,
+    sizeBytes: saved.size,
+    kind: rule.kind,
+    altText: "",
+    createdAt: now,
+    updatedAt: now,
+  }, { status: 201 });
 }
 
 export async function GET(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const url = new URL(request.url);
+  const rawKey = url.searchParams.get("key") || "";
 
-  const rawKey = new URL(request.url).searchParams.get("key") || "";
-  const key = rawKey.replace(/^r2:/, "");
-  if (!key) return Response.json({ error: "Video key required" }, { status: 400 });
-
-  const lesson = await env.DB.prepare(
-    `SELECT l.id,c.owner_id AS ownerId,c.id AS courseId,c.school_id AS schoolId
-     FROM lessons l JOIN courses c ON c.id=l.course_id
-     WHERE l.video_key=?`,
-  ).bind(`r2:${key}`).first<{ id: string; ownerId: string; courseId: string; schoolId: string }>();
-  if (!lesson) return Response.json({ error: "Video not found" }, { status: 404 });
-
-  const enrollment = await env.DB.prepare(
-    "SELECT id FROM enrollments WHERE user_id=? AND course_id=? AND status='active'",
-  ).bind(user.id, lesson.courseId).first();
-  const staff = await env.DB.prepare(
-    `SELECT id FROM school_members
-     WHERE school_id=? AND user_id=? AND status='active'
-       AND role IN ('owner','admin','instructor')`,
-  ).bind(lesson.schoolId, user.id).first();
-  if (!staff && !enrollment) {
-    return Response.json({ error: "Not enrolled" }, { status: 403 });
+  if (!rawKey) {
+    const courseId = url.searchParams.get("courseId") || "";
+    const course = await requireCourseStaffAccess(user.id, courseId);
+    if (!course) return Response.json({ error: "Course not found." }, { status: 404 });
+    const rows = await env.DB.prepare(
+      `SELECT id,filename,content_type AS contentType,size_bytes AS sizeBytes,
+        kind,alt_text AS altText,created_at AS createdAt,updated_at AS updatedAt
+       FROM media_assets WHERE school_id=?
+       ORDER BY created_at DESC LIMIT 200`,
+    ).bind(course.schoolId).all();
+    return Response.json(rows.results);
   }
 
-  const object = await env.UPLOADS.get(key);
-  if (!object) return Response.json({ error: "Video not found" }, { status: 404 });
+  const key = rawKey.startsWith("r2:") ? rawKey : `r2:${rawKey}`;
+  const asset = await env.DB.prepare(
+    `SELECT id,school_id AS schoolId,key,filename,content_type AS contentType
+     FROM media_assets WHERE key=?`,
+  ).bind(key).first<{
+    id: string;
+    schoolId: string;
+    key: string;
+    filename: string;
+    contentType: string;
+  }>();
 
+  const objectKey = key.replace(/^r2:/, "");
+  let filename = "course-file";
+  if (asset) {
+    filename = asset.filename;
+    const staff = await env.DB.prepare(
+      `SELECT id FROM school_members
+       WHERE school_id=? AND user_id=? AND status='active'
+         AND role IN ('owner','admin','instructor')`,
+    ).bind(asset.schoolId, user.id).first();
+    const enrollment = staff ? null : await env.DB.prepare(
+      `SELECT e.id
+       FROM lessons l
+       JOIN enrollments e ON e.course_id=l.course_id
+         AND e.user_id=? AND e.status='active'
+       LEFT JOIN lesson_resources lr ON lr.lesson_id=l.id
+       WHERE l.primary_asset_id=? OR lr.asset_id=?
+       LIMIT 1`,
+    ).bind(user.id, asset.id, asset.id).first();
+    if (!staff && !enrollment) {
+      return Response.json({ error: "Not enrolled." }, { status: 403 });
+    }
+  } else {
+    const legacyLesson = await env.DB.prepare(
+      `SELECT l.id,c.id AS courseId,c.school_id AS schoolId
+       FROM lessons l JOIN courses c ON c.id=l.course_id
+       WHERE l.video_key=?`,
+    ).bind(key).first<{ id: string; courseId: string; schoolId: string }>();
+    if (!legacyLesson) return Response.json({ error: "Media not found." }, { status: 404 });
+    const enrollment = await env.DB.prepare(
+      "SELECT id FROM enrollments WHERE user_id=? AND course_id=? AND status='active'",
+    ).bind(user.id, legacyLesson.courseId).first();
+    const staff = await env.DB.prepare(
+      `SELECT id FROM school_members
+       WHERE school_id=? AND user_id=? AND status='active'
+         AND role IN ('owner','admin','instructor')`,
+    ).bind(legacyLesson.schoolId, user.id).first();
+    if (!staff && !enrollment) return Response.json({ error: "Not enrolled." }, { status: 403 });
+    filename = objectKey.split("/").at(-1) || filename;
+  }
+
+  const object = await env.UPLOADS.get(objectKey);
+  if (!object) return Response.json({ error: "Media not found." }, { status: 404 });
   const headers = new Headers();
   object.writeHttpMetadata(headers);
   headers.set("content-length", String(object.size));
   headers.set("cache-control", "private, max-age=3600");
-  headers.set("accept-ranges", "bytes");
+  headers.set(
+    "content-disposition",
+    `${url.searchParams.get("download") === "1" ? "attachment" : "inline"}; filename="${filename.replace(/["\r\n]/g, "_")}"`,
+  );
   return new Response(object.body, { headers });
+}
+
+export async function PATCH(request: Request) {
+  const user = await requireApiUser(request);
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const body = await request.json() as { courseId?: string; assetId?: string; altText?: string };
+  const course = await requireCourseStaffAccess(user.id, body.courseId || "");
+  if (!course || !body.assetId) return Response.json({ error: "Media not found." }, { status: 404 });
+  await env.DB.prepare(
+    "UPDATE media_assets SET alt_text=?,updated_at=? WHERE id=? AND school_id=?",
+  ).bind((body.altText || "").trim().slice(0, 300), Date.now(), body.assetId, course.schoolId).run();
+  return Response.json({ saved: true });
+}
+
+export async function DELETE(request: Request) {
+  const user = await requireApiUser(request);
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const url = new URL(request.url);
+  const courseId = url.searchParams.get("courseId") || "";
+  const assetId = url.searchParams.get("assetId") || "";
+  const course = await requireCourseStaffAccess(user.id, courseId);
+  if (!course) return Response.json({ error: "Course not found." }, { status: 404 });
+  const asset = await env.DB.prepare(
+    "SELECT id,key FROM media_assets WHERE id=? AND school_id=?",
+  ).bind(assetId, course.schoolId).first<{ id: string; key: string }>();
+  if (!asset) return Response.json({ error: "Media not found." }, { status: 404 });
+  const used = await env.DB.prepare(
+    `SELECT
+      EXISTS(SELECT 1 FROM lessons WHERE primary_asset_id=?) AS isPrimary,
+      EXISTS(SELECT 1 FROM lesson_resources WHERE asset_id=?) AS isResource`,
+  ).bind(asset.id, asset.id).first<{ isPrimary: number; isResource: number }>();
+  if (used?.isPrimary || used?.isResource) {
+    return Response.json(
+      { error: "Remove this file from its lessons before deleting it." },
+      { status: 409 },
+    );
+  }
+  await env.UPLOADS.delete(asset.key.replace(/^r2:/, ""));
+  await env.DB.prepare(
+    "DELETE FROM media_assets WHERE id=? AND school_id=?",
+  ).bind(asset.id, course.schoolId).run();
+  return Response.json({ deleted: true });
 }

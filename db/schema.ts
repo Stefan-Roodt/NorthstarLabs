@@ -70,11 +70,51 @@ export const courses = sqliteTable("courses", {
   index("courses_school_status_idx").on(table.schoolId, table.status, table.updatedAt),
   index("courses_owner_idx").on(table.ownerId),
 ]);
+export const courseSections = sqliteTable("course_sections", {
+  id: text("id").primaryKey(),
+  courseId: text("course_id").notNull(),
+  title: text("title").notNull(),
+  position: integer("position").notNull().default(0),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  index("course_sections_course_position_idx").on(table.courseId, table.position),
+]);
+export const mediaAssets = sqliteTable("media_assets", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull(),
+  ownerId: text("owner_id").notNull(),
+  key: text("key").notNull(),
+  filename: text("filename").notNull(),
+  contentType: text("content_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull(),
+  kind: text("kind").notNull(),
+  altText: text("alt_text").notNull().default(""),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("media_assets_key_unique").on(table.key),
+  index("media_assets_school_kind_created_idx").on(table.schoolId, table.kind, table.createdAt),
+]);
 export const lessons = sqliteTable("lessons", {
   id: text("id").primaryKey(), courseId: text("course_id").notNull(), title: text("title").notNull(),
-  content: text("content").notNull().default(""), videoKey: text("video_key"), position: integer("position").notNull().default(0),
+  sectionId: text("section_id"), lessonType: text("lesson_type").notNull().default("text"),
+  content: text("content").notNull().default(""), contentFormat: text("content_format").notNull().default("markdown"),
+  videoKey: text("video_key"), primaryAssetId: text("primary_asset_id"),
+  durationMinutes: integer("duration_minutes").notNull().default(0),
+  isPreview: integer("is_preview", { mode: "boolean" }).notNull().default(false),
+  position: integer("position").notNull().default(0), updatedAt: integer("updated_at").notNull().default(0),
 }, (table) => [
-  index("lessons_course_position_idx").on(table.courseId, table.position),
+  index("lessons_course_position_idx").on(table.courseId, table.sectionId, table.position),
+]);
+export const lessonResources = sqliteTable("lesson_resources", {
+  id: text("id").primaryKey(),
+  lessonId: text("lesson_id").notNull(),
+  assetId: text("asset_id").notNull(),
+  title: text("title").notNull(),
+  position: integer("position").notNull().default(0),
+}, (table) => [
+  uniqueIndex("lesson_resources_lesson_asset_unique").on(table.lessonId, table.assetId),
+  index("lesson_resources_asset_idx").on(table.assetId),
 ]);
 export const enrollments = sqliteTable("enrollments", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), courseId: text("course_id").notNull(),

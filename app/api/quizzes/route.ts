@@ -31,15 +31,8 @@ export async function POST(request: Request) {
     "SELECT id FROM quizzes WHERE lesson_id=?",
   ).bind(body.lessonId).first<{ id: string }>();
 
-  const questions = (body.questions || [])
-    .map((question) => ({
-      prompt: question.prompt?.trim() || "",
-      options: (question.options || []).map((option) => option.trim()),
-      correctIndex: Number(question.correctIndex || 0),
-    }))
-    .filter((question) => question.prompt && question.options.filter(Boolean).length >= 2);
-
-  if (!questions.length) {
+  const questionInputs = body.questions || [];
+  if (!questionInputs.length) {
     if (existing) {
       await env.DB.batch([
         env.DB.prepare("DELETE FROM quiz_questions WHERE quiz_id=?").bind(existing.id),
@@ -49,8 +42,15 @@ export async function POST(request: Request) {
     return Response.json({ saved: true, removed: true });
   }
 
+  const questions = questionInputs.map((question) => ({
+    prompt: question.prompt?.trim() || "",
+    options: (question.options || []).map((option) => option.trim()),
+    correctIndex: Number(question.correctIndex || 0),
+  }));
   for (const question of questions) {
     if (
+      !question.prompt ||
+      question.options.length < 2 ||
       question.correctIndex < 0 ||
       question.correctIndex >= question.options.length ||
       question.options.some((option) => !option)

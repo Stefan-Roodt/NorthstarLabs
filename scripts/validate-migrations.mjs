@@ -59,6 +59,11 @@ if (!tables.some((table) => table.name === "school_members")) {
 if (!tables.some((table) => table.name === "invitations")) {
   throw new Error("The invitations table was not created.");
 }
+for (const table of ["course_sections", "media_assets", "lesson_resources"]) {
+  if (!tables.some((item) => item.name === table)) {
+    throw new Error(`The ${table} course-authoring table was not created.`);
+  }
+}
 const profileColumns = database.prepare(
   "PRAGMA table_info(profiles)",
 ).all();
@@ -73,6 +78,22 @@ const invitationIndexes = database.prepare(
 if (!invitationIndexes.some((item) => item.name === "invitations_token_hash_unique" && item.unique === 1)) {
   throw new Error("Invitation tokens are not protected by a unique hash index.");
 }
+const lessonColumns = database.prepare(
+  "PRAGMA table_info(lessons)",
+).all();
+for (const column of [
+  "section_id",
+  "lesson_type",
+  "content_format",
+  "primary_asset_id",
+  "duration_minutes",
+  "is_preview",
+  "updated_at",
+]) {
+  if (!lessonColumns.some((item) => item.name === column)) {
+    throw new Error(`The lessons.${column} authoring column was not created.`);
+  }
+}
 if (!schools.some((school) => school.id === "northstarlabs")) {
   throw new Error("The existing NorthstarLabs school was not migrated.");
 }
@@ -84,6 +105,24 @@ const legacyCourse = database.prepare(
 ).get();
 if (legacyCourse?.schoolId !== "school-creator-fixture") {
   throw new Error("An existing creator course was not moved into its own school.");
+}
+const legacySection = database.prepare(
+  "SELECT id,title FROM course_sections WHERE course_id='legacy-fixture-course'",
+).get();
+if (legacySection?.id !== "section-legacy-fixture-course") {
+  throw new Error("The existing course was not given a default curriculum section.");
+}
+const legacyLessonSection = database.prepare(
+  "SELECT section_id AS sectionId FROM lessons WHERE course_id='legacy-fixture-course' LIMIT 1",
+).get();
+if (legacyLessonSection && legacyLessonSection.sectionId !== legacySection.id) {
+  throw new Error("An existing lesson was not moved into the migrated course section.");
+}
+const unsectionedLessons = database.prepare(
+  "SELECT COUNT(*) AS count FROM lessons WHERE section_id IS NULL",
+).get();
+if (unsectionedLessons.count !== 0) {
+  throw new Error("At least one existing lesson was left outside a curriculum section.");
 }
 const legacyRoles = database.prepare(
   `SELECT user_id AS userId,role FROM school_members
@@ -113,6 +152,7 @@ console.log(JSON.stringify({
   migrations: files.length,
   tables: tables.length,
   invitationIndexes: invitationIndexes.map((item) => item.name),
+  authoringTables: ["course_sections", "media_assets", "lesson_resources"],
   schools,
   courseScopes,
 }, null, 2));

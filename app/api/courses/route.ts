@@ -34,9 +34,16 @@ export async function POST(request: Request) {
   const body = await request.json() as { title?: string };
   if (!body.title?.trim()) return Response.json({ error: "Title required" }, { status: 400 });
   const id = crypto.randomUUID();
+  const sectionId = crypto.randomUUID();
   const now = Date.now();
-  await env.DB.prepare("INSERT INTO courses (id,school_id,owner_id,title,description,status,price_cents,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)")
-    .bind(id, school.id, user.id, body.title.trim(), "", "draft", 0, now, now).run();
+  await env.DB.batch([
+    env.DB.prepare(
+      "INSERT INTO courses (id,school_id,owner_id,title,description,status,price_cents,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
+    ).bind(id, school.id, user.id, body.title.trim(), "", "draft", 0, now, now),
+    env.DB.prepare(
+      "INSERT INTO course_sections (id,course_id,title,position,created_at) VALUES (?,?,?,?,?)",
+    ).bind(sectionId, id, "Course content", 0, now),
+  ]);
   return Response.json({
     id,
     schoolId: school.id,

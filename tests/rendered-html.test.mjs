@@ -38,7 +38,7 @@ test("prevents cross-school lesson edits and external sign-in redirects", async 
     readFile(new URL("../lib/school-access.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
   ]);
-  assert.match(lessons, /requireCourseStaffAccess\(user\.id,body\.courseId\)/);
+  assert.match(lessons, /requireCourseStaffAccess\(user\.id,\s*body\.courseId\)/);
   assert.match(schoolAccess, /sm\.role IN \('owner','admin','instructor'\)/);
   assert.match(schoolAccess, /JOIN school_members sm ON sm\.school_id=c\.school_id/);
   assert.doesNotMatch(lessons, /ON CONFLICT\(id\) DO UPDATE/);
@@ -134,4 +134,43 @@ test("persists onboarding and supports secure invitations for new or existing ac
   assert.match(profile, /onboarding_completed=1/);
   assert.match(login, /onboarding_path/);
   assert.match(login, /searchParams\.get\("mode"\)/);
+});
+
+test("ships a structured course editor, reusable media library, and safe learner rendering", async () => {
+  const [schema, migration, builder, lessonsApi, uploadsApi, courseApi, learnApi, learner, renderer] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0008_rainy_molten_man.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/lessons/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/uploads/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/courses/[courseId]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/learn/[courseId]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/lesson-content.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(schema, /export const courseSections/);
+  assert.match(schema, /export const mediaAssets/);
+  assert.match(schema, /export const lessonResources/);
+  assert.match(migration, /CREATE TABLE `course_sections`/);
+  assert.match(migration, /CREATE TABLE `media_assets`/);
+  assert.match(migration, /INSERT INTO `course_sections`/);
+  assert.match(migration, /UPDATE `lessons`[\s\S]+`section_id`/);
+  assert.match(lessonsApi, /requireCourseStaffAccess\(user\.id, body\.courseId\)/);
+  assert.match(lessonsApi, /media_assets WHERE id=\? AND school_id=\?/);
+  assert.match(lessonsApi, /DELETE FROM lesson_resources WHERE lesson_id=\?/);
+  assert.match(uploadsApi, /await env\.UPLOADS\.put/);
+  assert.match(uploadsApi, /INSERT INTO media_assets/);
+  assert.match(uploadsApi, /Remove this file from its lessons before deleting it/);
+  assert.match(courseApi, /publishing checklist first/i);
+  assert.match(courseApi, /Finish every lesson title and add content or media/);
+  assert.match(builder, /Autosave pending/);
+  assert.match(builder, /Academy media library/);
+  assert.match(builder, /draggable/);
+  assert.match(builder, /Learner preview/);
+  assert.match(builder, /Upload files/);
+  assert.match(learnApi, /lesson_resources/);
+  assert.match(learner, /LessonContent/);
+  assert.match(learner, /Files to keep and use/);
+  assert.match(learner, /Creator preview · progress is disabled/);
+  assert.doesNotMatch(renderer, /dangerouslySetInnerHTML/);
 });
