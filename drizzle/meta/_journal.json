@@ -134,6 +134,13 @@
       "when": 1784484000000,
       "tag": "0018_stefan_web3_foundations",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1784488000000,
+      "tag": "0019_stefan_bitcoin_deep_dive",
+      "breakpoints": true
     }
   ]
 }

@@ -78,6 +78,17 @@ const stefanWeb3Course = database.prepare(`
   WHERE c.id='stefan-web3-foundations'
   GROUP BY c.id
 `).get();
+const stefanBitcoinCourse = database.prepare(`
+  SELECT c.id,c.status,c.owner_id AS ownerId,c.school_id AS schoolId,
+    COUNT(DISTINCT cs.id) AS sections,COUNT(DISTINCT l.id) AS lessons,
+    COUNT(DISTINCT q.id) AS quizzes
+  FROM courses c
+  LEFT JOIN course_sections cs ON cs.course_id=c.id
+  LEFT JOIN lessons l ON l.course_id=c.id
+  LEFT JOIN quizzes q ON q.lesson_id=l.id
+  WHERE c.id='stefan-bitcoin-genesis-next-era'
+  GROUP BY c.id
+`).get();
 
 if (!tables.some((table) => table.name === "schools")) {
   throw new Error("The schools table was not created.");
@@ -90,6 +101,15 @@ if (!stefanWeb3Course ||
     stefanWeb3Course.lessons !== 24 ||
     stefanWeb3Course.quizzes !== 6) {
   throw new Error("The Stefan Web3 draft course did not migrate with its complete curriculum.");
+}
+if (!stefanBitcoinCourse ||
+    stefanBitcoinCourse.status !== "draft" ||
+    stefanBitcoinCourse.ownerId !== "stefan-course-owner-fixture" ||
+    stefanBitcoinCourse.schoolId !== "stefan-course-school-fixture" ||
+    stefanBitcoinCourse.sections !== 7 ||
+    stefanBitcoinCourse.lessons !== 35 ||
+    stefanBitcoinCourse.quizzes !== 7) {
+  throw new Error("The Stefan Bitcoin draft course did not migrate with its complete curriculum.");
 }
 if (!tables.some((table) => table.name === "school_members")) {
   throw new Error("The school_members table was not created.");

@@ -121,6 +121,64 @@ test("seeds Stefan's video-first Web3 course as a complete private draft", async
   assert.equal(orphans.count, 0);
 });
 
+test("seeds Stefan's evidence-led Bitcoin deep dive as a complete private draft", async () => {
+  const db = await migratedDatabase();
+  const course = db.prepare(`
+    SELECT c.title,c.status,c.price_cents AS priceCents,
+      c.enforce_lesson_order AS enforceLessonOrder,c.certificate_title AS certificateTitle,
+      c.owner_id AS ownerId,c.school_id AS schoolId
+    FROM courses c
+    WHERE c.id='stefan-bitcoin-genesis-next-era'
+  `).get();
+  assert.deepEqual({ ...course }, {
+    title: "Bitcoin: From Genesis to the Next Era",
+    status: "draft",
+    priceCents: 0,
+    enforceLessonOrder: 1,
+    certificateTitle: "Certificate: Bitcoin Foundations and Futures",
+    ownerId: "stefan-course-owner-fixture",
+    schoolId: "stefan-course-school-fixture",
+  });
+
+  const curriculum = db.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM course_sections WHERE course_id='stefan-bitcoin-genesis-next-era') AS sections,
+      (SELECT COUNT(*) FROM lessons WHERE course_id='stefan-bitcoin-genesis-next-era') AS lessons,
+      (SELECT COUNT(*) FROM lessons WHERE course_id='stefan-bitcoin-genesis-next-era' AND lesson_type='video') AS videos,
+      (SELECT COUNT(*) FROM quizzes q JOIN lessons l ON l.id=q.lesson_id WHERE l.course_id='stefan-bitcoin-genesis-next-era') AS quizzes,
+      (SELECT COUNT(*) FROM quiz_questions qq JOIN quizzes q ON q.id=qq.quiz_id JOIN lessons l ON l.id=q.lesson_id WHERE l.course_id='stefan-bitcoin-genesis-next-era') AS questions,
+      (SELECT MIN(duration_minutes) FROM lessons WHERE course_id='stefan-bitcoin-genesis-next-era') AS shortest,
+      (SELECT MAX(duration_minutes) FROM lessons WHERE course_id='stefan-bitcoin-genesis-next-era') AS longest,
+      (SELECT COUNT(*) FROM lessons WHERE course_id='stefan-bitcoin-genesis-next-era' AND lesson_type='video' AND LENGTH(transcript)>1600) AS scriptedVideos
+  `).get();
+  assert.deepEqual({ ...curriculum }, {
+    sections: 7,
+    lessons: 35,
+    videos: 21,
+    quizzes: 7,
+    questions: 42,
+    shortest: 6,
+    longest: 6,
+    scriptedVideos: 21,
+  });
+
+  const sourceCoverage = db.prepare(`
+    SELECT
+      SUM(CASE WHEN content LIKE '%bitcoin.org/bitcoin.pdf%' THEN 1 ELSE 0 END) AS whitepaper,
+      SUM(CASE WHEN content LIKE '%developer.bitcoin.org%' THEN 1 ELSE 0 END) AS developerDocs,
+      SUM(CASE WHEN content LIKE '%github.com/bitcoin/bips%' THEN 1 ELSE 0 END) AS bips,
+      SUM(CASE WHEN content LIKE '%lightning/bolts%' THEN 1 ELSE 0 END) AS lightning,
+      SUM(CASE WHEN content LIKE '%ccaf.io/cbnsi/cbeci%' THEN 1 ELSE 0 END) AS energy
+    FROM lessons
+    WHERE course_id='stefan-bitcoin-genesis-next-era'
+  `).get();
+  assert.ok(sourceCoverage.whitepaper >= 1);
+  assert.ok(sourceCoverage.developerDocs >= 3);
+  assert.ok(sourceCoverage.bips >= 3);
+  assert.ok(sourceCoverage.lightning >= 1);
+  assert.ok(sourceCoverage.energy >= 1);
+});
+
 test("completes an isolated creator-to-learner production journey", async () => {
   const db = await migratedDatabase();
   const now = Date.UTC(2026, 6, 19);

@@ -119,6 +119,28 @@ test("ships Stefan's source-grounded Web3 course production draft", async () => 
   assert.doesNotMatch(migration, /buy this token|guaranteed profit|risk-free return/i);
 });
 
+test("ships Stefan's evidence-led Bitcoin history and futures course", async () => {
+  const migration = await readFile(
+    new URL("../drizzle/0019_stefan_bitcoin_deep_dive.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migration, /Bitcoin: From Genesis to the Next Era/);
+  assert.match(migration, /WHERE s\.slug='stefan-roodt-s-academy'/);
+  assert.match(migration, /'draft'/);
+  assert.match(migration, /The cypherpunk lineage/);
+  assert.match(migration, /Transactions are UTXOs/);
+  assert.match(migration, /The 21 million schedule/);
+  assert.match(migration, /From SegWit to Taproot/);
+  assert.match(migration, /Four credible Bitcoin futures/);
+  assert.match(migration, /Bitcoin 2036 board briefing/);
+  assert.match(migration, /https:\/\/bitcoin\.org\/bitcoin\.pdf/);
+  assert.match(migration, /https:\/\/bitcoincore\.org\/en\/releases\/31\.0\//);
+  assert.match(migration, /https:\/\/github\.com\/lightning\/bolts/);
+  assert.match(migration, /https:\/\/ccaf\.io\/cbnsi\/cbeci\/methodology/);
+  assert.match(migration, /not investment, legal, or tax advice/i);
+  assert.doesNotMatch(migration, /guaranteed profit|risk-free return|price will reach/i);
+});
+
 test("guides new members into creating or learning with a low-friction join flow", async () => {
   const [home, login, welcome, course] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
