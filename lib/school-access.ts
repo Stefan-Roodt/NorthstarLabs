@@ -25,6 +25,9 @@ type ProfileRow = {
   email: string;
   displayName: string;
   role: string;
+  onboardingPath: string | null;
+  onboardingCompleted: boolean;
+  onboardedAt: number | null;
   activeSchoolId: string | null;
   createdAt: number;
 };
@@ -58,18 +61,26 @@ export function requestedSchoolId(request: Request) {
 
 export async function ensureProfile(user: ApiUser) {
   if (!user.email) throw new Error("An email address is required.");
+  const metadataPath = user.user_metadata?.onboarding_path;
+  const onboardingPath = metadataPath === "creator" || metadataPath === "learner"
+    ? metadataPath
+    : null;
   await env.DB.prepare(
-    `INSERT INTO profiles (id,email,display_name,role,created_at)
-     VALUES (?,?,?,'learner',?)
+    `INSERT INTO profiles
+      (id,email,display_name,role,onboarding_path,onboarding_completed,created_at)
+     VALUES (?,?,?,'learner',?,0,?)
      ON CONFLICT(id) DO UPDATE SET
        email=excluded.email,
+       onboarding_path=COALESCE(profiles.onboarding_path,excluded.onboarding_path),
        display_name=CASE
          WHEN profiles.display_name='' THEN excluded.display_name
          ELSE profiles.display_name
        END`,
-  ).bind(user.id, user.email, userDisplayName(user), Date.now()).run();
+  ).bind(user.id, user.email, userDisplayName(user), onboardingPath, Date.now()).run();
   return env.DB.prepare(
     `SELECT id,email,display_name AS displayName,role,
+      onboarding_path AS onboardingPath,
+      onboarding_completed AS onboardingCompleted,onboarded_at AS onboardedAt,
       active_school_id AS activeSchoolId,created_at AS createdAt
      FROM profiles WHERE id=?`,
   ).bind(user.id).first<ProfileRow>();
@@ -168,8 +179,10 @@ export async function createCreatorSchool(user: ApiUser, rawName?: string) {
   const current = await getActiveSchool(user.id, CREATOR_ROLES);
   if (current) {
     await env.DB.prepare(
-      "UPDATE profiles SET role='creator',active_school_id=? WHERE id=?",
-    ).bind(current.id, user.id).run();
+      `UPDATE profiles SET role='creator',active_school_id=?,
+       onboarding_path='creator',onboarding_completed=1,
+       onboarded_at=COALESCE(onboarded_at,?) WHERE id=?`,
+    ).bind(current.id, Date.now(), user.id).run();
     return current;
   }
 
@@ -208,8 +221,10 @@ export async function createCreatorSchool(user: ApiUser, rawName?: string) {
        VALUES (?,?,?,?,?,?)`,
     ).bind(crypto.randomUUID(), communityId, user.id, "owner", "active", now),
     env.DB.prepare(
-      "UPDATE profiles SET role='creator',active_school_id=? WHERE id=?",
-    ).bind(schoolId, user.id),
+      `UPDATE profiles SET role='creator',active_school_id=?,
+       onboarding_path='creator',onboarding_completed=1,
+       onboarded_at=COALESCE(onboarded_at,?) WHERE id=?`,
+    ).bind(schoolId, now, user.id),
   ]);
   const created = await membershipBySchool(user.id, schoolId);
   if (!created) throw new Error("School could not be initialized.");

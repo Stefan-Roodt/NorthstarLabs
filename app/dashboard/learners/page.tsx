@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 
 type Course = { id: string; title: string; status: string };
@@ -17,7 +17,21 @@ type Enrollment = {
   displayName: string;
   email: string;
 };
-type LearnerData = { courses: Course[]; enrollments: Enrollment[] };
+type LearnerData = {
+  school: { id: string; name: string; memberRole: string };
+  courses: Course[];
+  enrollments: Enrollment[];
+};
+type Invitation = {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  courseId: string | null;
+  courseTitle: string | null;
+  expiresAt: number;
+  createdAt: number;
+};
 
 function csvCell(value: unknown) {
   return `"${String(value ?? "").replace(/"/g, "\"\"")}"`;
@@ -27,15 +41,18 @@ export default function LearnerManagement() {
   const [data, setData] = useState<LearnerData | null>(null);
   const [email, setEmail] = useState("");
   const [courseId, setCourseId] = useState("");
+  const [inviteRole, setInviteRole] = useState("learner");
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [inviteUrl, setInviteUrl] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [message, setMessage] = useState("Loading learners...");
   const [busy, setBusy] = useState("");
   const supabase = getSupabaseBrowser();
 
-  async function token() {
+  const token = useCallback(async () => {
     return (await supabase?.auth.getSession())?.data.session?.access_token || "";
-  }
+  }, [supabase]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -45,19 +62,23 @@ export default function LearnerManagement() {
         location.href = "/login?next=/dashboard/learners";
         return;
       }
-      const response = await fetch("/api/admin/learners", {
-        headers: { authorization: `Bearer ${accessToken}` },
-      });
-      if (!response.ok) {
+      const headers = { authorization: `Bearer ${accessToken}` };
+      const [learnerResponse, invitationResponse] = await Promise.all([
+        fetch("/api/admin/learners", { headers }),
+        fetch("/api/invitations", { headers }),
+      ]);
+      if (!learnerResponse.ok || !invitationResponse.ok) {
         setMessage("Learner records could not be loaded.");
         return;
       }
-      const result = await response.json() as LearnerData;
+      const result = await learnerResponse.json() as LearnerData;
+      const invitationResult = await invitationResponse.json() as { invitations: Invitation[] };
       setData(result);
+      setInvitations(invitationResult.invitations);
       setCourseId(result.courses[0]?.id || "");
       setMessage("");
     })();
-  }, [supabase]);
+  }, [supabase, token]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -67,31 +88,93 @@ export default function LearnerManagement() {
     );
   }, [data, search, status]);
 
-  async function grantAccess(event: FormEvent) {
+  async function createInvitation(event: FormEvent) {
     event.preventDefault();
-    if (!data || !courseId || !email.trim()) return;
-    setBusy("add");
+    if (!data || !email.trim()) return;
+    await issueInvitation({
+      email,
+      role: inviteRole,
+      courseId: inviteRole === "learner" ? courseId || null : null,
+    }, "add");
+  }
+
+  async function issueInvitation(
+    invitation: { email: string; role: string; courseId: string | null },
+    busyKey: string,
+  ) {
+    setBusy(busyKey);
     setMessage("");
-    const response = await fetch("/api/admin/learners", {
+    setInviteUrl("");
+    const response = await fetch("/api/invitations", {
       method: "POST",
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${await token()}`,
       },
-      body: JSON.stringify({ email, courseId }),
+      body: JSON.stringify(invitation),
     });
-    const result = await response.json();
+    const result = await response.json() as {
+      invitation?: Invitation;
+      inviteUrl?: string;
+      error?: string;
+    };
     setBusy("");
-    if (!response.ok) {
-      setMessage(result.error || "Learner access could not be granted.");
+    if (!response.ok || !result.invitation || !result.inviteUrl) {
+      setMessage(result.error || "The invitation could not be created.");
       return;
     }
-    setData({
-      ...data,
-      enrollments: [result, ...data.enrollments.filter((item) => item.id !== result.id)],
-    });
+    setInvitations((current) => [
+      result.invitation!,
+      ...current.filter((item) =>
+        item.id !== result.invitation?.id &&
+        !(
+          item.status === "pending" &&
+          item.email === result.invitation?.email &&
+          item.role === result.invitation?.role &&
+          item.courseId === result.invitation?.courseId
+        )
+      ),
+    ]);
+    setInviteUrl(result.inviteUrl);
     setEmail("");
-    setMessage("Course access granted.");
+    setMessage("Secure invitation created. Copy and send the link below.");
+  }
+
+  async function renewInvitation(invitation: Invitation) {
+    await issueInvitation({
+      email: invitation.email,
+      role: invitation.role,
+      courseId: invitation.courseId,
+    }, `renew-${invitation.id}`);
+  }
+
+  async function copyInvitation() {
+    if (!inviteUrl) return;
+    await navigator.clipboard.writeText(inviteUrl);
+    setMessage("Invitation link copied.");
+  }
+
+  async function revokeInvitation(invitation: Invitation) {
+    if (!confirm(`Revoke the invitation for ${invitation.email}?`)) return;
+    setBusy(`revoke-${invitation.id}`);
+    const response = await fetch("/api/invitations", {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${await token()}`,
+      },
+      body: JSON.stringify({ invitationId: invitation.id }),
+    });
+    const result = await response.json() as { error?: string };
+    setBusy("");
+    if (!response.ok) {
+      setMessage(result.error || "The invitation could not be revoked.");
+      return;
+    }
+    setInvitations(invitations.map((item) =>
+      item.id === invitation.id ? { ...item, status: "revoked" } : item
+    ));
+    setMessage("Invitation revoked.");
   }
 
   function editLocal(id: string, patch: Partial<Enrollment>) {
@@ -165,18 +248,53 @@ export default function LearnerManagement() {
       <div><a href="/dashboard/analytics">View analytics</a><button className="sys-primary" onClick={downloadLearners}>Export learners</button></div>
     </header>
     <section className="admin-body">
-      <article className="panel manual-enrollment">
-        <div><p className="sys-kicker">MANUAL ENROLMENT</p><h2>Grant course access</h2><p>The learner must already have a NorthStarLabs account.</p></div>
-        <form onSubmit={grantAccess}>
-          <input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Learner email" />
-          <select required value={courseId} onChange={(event) => setCourseId(event.target.value)}>
-            {data.courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+      <article className="panel manual-enrollment invitation-builder">
+        <div><p className="sys-kicker">SECURE INVITATIONS</p><h2>Invite people to {data.school.name}</h2><p>They can create an account or sign in from the same link—no pre-existing account required.</p></div>
+        <form onSubmit={createInvitation}>
+          <input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email address" />
+          <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value)}>
+            <option value="learner">Learner</option>
+            {data.school.memberRole !== "instructor" && <option value="instructor">Instructor</option>}
+            {data.school.memberRole === "owner" && <option value="admin">Academy admin</option>}
           </select>
-          <button className="sys-primary" disabled={busy === "add" || !data.courses.length}>
-            {busy === "add" ? "Granting..." : "Grant access"}
+          {inviteRole === "learner" && <select value={courseId} onChange={(event) => setCourseId(event.target.value)}>
+            <option value="">Academy only (no course yet)</option>
+            {data.courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+          </select>}
+          <button className="sys-primary" disabled={busy !== ""}>
+            {busy === "add" ? "Creating..." : "Create invite"}
           </button>
         </form>
+        {inviteUrl && <div className="invite-link-result">
+          <label>Share this one-time link<input readOnly value={inviteUrl} onFocus={(event) => event.currentTarget.select()} /></label>
+          <button type="button" onClick={copyInvitation}>Copy link</button>
+        </div>}
       </article>
+
+      <section className="pending-invitations">
+        <div className="learner-tools">
+          <div><h2>Pending invitations</h2><p>Secure links expire after seven days and can be revoked at any time.</p></div>
+        </div>
+        <div className="invitation-list">
+          {invitations.filter((item) => item.status === "pending").map((item) => (
+            <article className="panel invitation-row" key={item.id}>
+              <div><b>{item.email}</b><small>{item.role === "learner" ? "Learner" : item.role === "admin" ? "Academy admin" : "Instructor"}{item.courseTitle ? ` · ${item.courseTitle}` : ""}</small></div>
+              <span>Expires {new Date(item.expiresAt).toLocaleDateString("en-ZA")}</span>
+              <div className="invitation-row-actions">
+                <button disabled={busy !== ""} onClick={() => renewInvitation(item)}>
+                  {busy === `renew-${item.id}` ? "Creating…" : "New link"}
+                </button>
+                <button disabled={busy !== ""} onClick={() => revokeInvitation(item)}>
+                  {busy === `revoke-${item.id}` ? "Revoking…" : "Revoke"}
+                </button>
+              </div>
+            </article>
+          ))}
+          {!invitations.some((item) => item.status === "pending") && (
+            <article className="panel invitation-empty">No pending invitations.</article>
+          )}
+        </div>
+      </section>
 
       <div className="learner-tools">
         <div><h2>Learner records</h2><p>{filtered.length} enrolments shown</p></div>
@@ -218,7 +336,7 @@ export default function LearnerManagement() {
             </div>
           </div>
         </article>)}
-        {!filtered.length && <article className="panel empty-dashboard"><h2>No learner records match</h2><p>Change the filters or grant a registered learner access to a course.</p></article>}
+        {!filtered.length && <article className="panel empty-dashboard"><h2>No learner records match</h2><p>Change the filters or create an invitation above.</p></article>}
       </div>
     </section>
   </main>;

@@ -20,7 +20,7 @@ export default function WelcomePage() {
       location.href = "/login?next=/welcome";
       return;
     }
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) {
         location.href = "/login?next=/welcome";
         return;
@@ -29,9 +29,41 @@ export default function WelcomePage() {
       const displayName = String(data.session.user.user_metadata?.full_name || email.split("@")[0] || "there");
       setName(displayName.split(" ")[0]);
       setSchoolName(`${displayName}'s Academy`);
+      const response = await fetch("/api/profile", {
+        headers: { authorization: `Bearer ${data.session.access_token}` },
+      });
+      if (response.ok) {
+        const profile = await response.json() as {
+          displayName?: string;
+          onboardingCompleted?: boolean;
+          onboardingPath?: string | null;
+          hasCreatorSchool?: boolean;
+        };
+        if (profile.displayName) {
+          setName(profile.displayName.split(" ")[0]);
+          setSchoolName(`${profile.displayName}'s Academy`);
+        }
+        if (profile.onboardingCompleted) {
+          location.href = profile.hasCreatorSchool ? "/dashboard" : "/courses";
+          return;
+        }
+        if (
+          (preferredPath === "creator" || preferredPath === "learner") &&
+          profile.onboardingPath !== preferredPath
+        ) {
+          await fetch("/api/profile", {
+            method: "PATCH",
+            headers: {
+              "content-type": "application/json",
+              authorization: `Bearer ${data.session.access_token}`,
+            },
+            body: JSON.stringify({ onboardingPath: preferredPath }),
+          });
+        }
+      }
       setReady(true);
     });
-  }, [supabase]);
+  }, [preferredPath, supabase]);
 
   async function choosePath(role: "creator" | "learner") {
     if (!supabase || busy) return;

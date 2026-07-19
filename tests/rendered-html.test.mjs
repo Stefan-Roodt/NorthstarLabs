@@ -104,3 +104,34 @@ test("guides new members into creating or learning with a low-friction join flow
   assert.match(course, /enrol=1/);
   assert.match(course, /Joining your course/);
 });
+
+test("persists onboarding and supports secure invitations for new or existing accounts", async () => {
+  const [schema, migration, helper, invitationApi, acceptApi, invitePage, learners, profile, login] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0007_nappy_tyrannus.sql", import.meta.url), "utf8"),
+    readFile(new URL("../lib/invitations.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/invitations/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/invitations/[token]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/invite/[token]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/learners/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/profile/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(schema, /onboardingPath: text\("onboarding_path"\)/);
+  assert.match(schema, /export const invitations/);
+  assert.match(migration, /CREATE TABLE `invitations`/);
+  assert.match(migration, /`token_hash` text NOT NULL/);
+  assert.doesNotMatch(migration, /`token` text/);
+  assert.match(helper, /crypto\.subtle\.digest\("SHA-256"/);
+  assert.match(invitationApi, /INVITATION_LIFETIME_MS/);
+  assert.match(invitationApi, /status='revoked'/);
+  assert.match(acceptApi, /user\.email\.toLowerCase\(\) !== invitation\.email\.toLowerCase\(\)/);
+  assert.match(acceptApi, /ON CONFLICT\(user_id,course_id\)/);
+  assert.match(invitePage, /Create account and accept/);
+  assert.match(invitePage, /Your invitation is kept while you join/);
+  assert.match(learners, /Pending invitations/);
+  assert.match(learners, /Copy link/);
+  assert.match(profile, /onboarding_completed=1/);
+  assert.match(login, /onboarding_path/);
+  assert.match(login, /searchParams\.get\("mode"\)/);
+});

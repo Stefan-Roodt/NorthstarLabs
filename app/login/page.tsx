@@ -1,10 +1,15 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { getSupabaseBrowser } from "../../lib/supabase-client";
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<"login" | "signup">("signup");
+  const searchParams = useSearchParams();
+  const [mode, setMode] = useState<"login" | "signup">(
+    () => searchParams.get("mode") === "login" ? "login" : "signup",
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -14,6 +19,7 @@ export default function LoginPage() {
     ? "/welcome"
     : safeDestination(new URLSearchParams(location.search).get("next"));
   const joiningCourse = destination.startsWith("/courses/");
+  const onboardingPath = onboardingPathFrom(destination);
 
   useEffect(() => {
     if (!supabase) return;
@@ -39,6 +45,7 @@ export default function LoginPage() {
           password,
           options: {
             emailRedirectTo: new URL(destination, location.origin).toString(),
+            data: onboardingPath ? { onboarding_path: onboardingPath } : undefined,
           },
         });
 
@@ -87,7 +94,7 @@ export default function LoginPage() {
 
   return (
     <main className="auth-page auth-page-expanded">
-      <a className="system-brand" href="/">✦ NORTHSTARLABS</a>
+      <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
       <div className="auth-layout">
         <aside className="auth-promise">
           <p className="sys-kicker">{joiningCourse ? "YOUR COURSE IS READY" : "START WITH A CLEAR NEXT STEP"}</p>
@@ -104,7 +111,7 @@ export default function LoginPage() {
         </aside>
 
         <section className="auth-card">
-          <a className="auth-back" href="/">← Back to NorthstarLabs</a>
+          <Link className="auth-back" href="/">← Back to NorthstarLabs</Link>
           <p className="sys-kicker">{mode === "signup" ? "FREE ACCOUNT" : "WELCOME BACK"}</p>
           <h2>{mode === "signup" ? "Create your account." : "Sign in and continue."}</h2>
           <p>{mode === "signup"
@@ -144,6 +151,16 @@ export default function LoginPage() {
       </div>
     </main>
   );
+}
+
+function onboardingPathFrom(destination: string): "creator" | "learner" | null {
+  try {
+    const url = new URL(destination, "https://northstarlabs.local");
+    const path = url.searchParams.get("path");
+    return path === "creator" || path === "learner" ? path : null;
+  } catch {
+    return null;
+  }
 }
 
 function safeDestination(value: string | null): string {

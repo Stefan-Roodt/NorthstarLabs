@@ -34,10 +34,20 @@ export async function PATCH(request: Request) {
   const body = await request.json() as {
     displayName?: string;
     role?: string;
+    onboardingPath?: string;
     schoolName?: string;
     activeSchoolId?: string;
   };
   await ensureProfile(user);
+
+  if (body.onboardingPath !== undefined) {
+    if (!["creator", "learner"].includes(body.onboardingPath)) {
+      return Response.json({ error: "Choose a valid starting path." }, { status: 400 });
+    }
+    await env.DB.prepare(
+      "UPDATE profiles SET onboarding_path=? WHERE id=?",
+    ).bind(body.onboardingPath, user.id).run();
+  }
 
   if (body.displayName !== undefined) {
     const cleanName = body.displayName.trim();
@@ -63,8 +73,9 @@ export async function PATCH(request: Request) {
     await createCreatorSchool(user, schoolName);
   } else if (body.role === "learner") {
     await env.DB.prepare(
-      "UPDATE profiles SET role='learner' WHERE id=?",
-    ).bind(user.id).run();
+      `UPDATE profiles SET role='learner',onboarding_path='learner',
+       onboarding_completed=1,onboarded_at=COALESCE(onboarded_at,?) WHERE id=?`,
+    ).bind(Date.now(), user.id).run();
   }
 
   if (body.activeSchoolId) {

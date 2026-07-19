@@ -56,6 +56,23 @@ if (!tables.some((table) => table.name === "schools")) {
 if (!tables.some((table) => table.name === "school_members")) {
   throw new Error("The school_members table was not created.");
 }
+if (!tables.some((table) => table.name === "invitations")) {
+  throw new Error("The invitations table was not created.");
+}
+const profileColumns = database.prepare(
+  "PRAGMA table_info(profiles)",
+).all();
+for (const column of ["onboarding_path", "onboarding_completed", "onboarded_at"]) {
+  if (!profileColumns.some((item) => item.name === column)) {
+    throw new Error(`The profiles.${column} onboarding column was not created.`);
+  }
+}
+const invitationIndexes = database.prepare(
+  "PRAGMA index_list(invitations)",
+).all();
+if (!invitationIndexes.some((item) => item.name === "invitations_token_hash_unique" && item.unique === 1)) {
+  throw new Error("Invitation tokens are not protected by a unique hash index.");
+}
 if (!schools.some((school) => school.id === "northstarlabs")) {
   throw new Error("The existing NorthstarLabs school was not migrated.");
 }
@@ -95,6 +112,7 @@ if (
 console.log(JSON.stringify({
   migrations: files.length,
   tables: tables.length,
+  invitationIndexes: invitationIndexes.map((item) => item.name),
   schools,
   courseScopes,
 }, null, 2));

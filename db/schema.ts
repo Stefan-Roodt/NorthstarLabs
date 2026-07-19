@@ -5,6 +5,9 @@ export const profiles = sqliteTable("profiles", {
   email: text("email").notNull(),
   displayName: text("display_name").notNull(),
   role: text("role").notNull().default("learner"),
+  onboardingPath: text("onboarding_path"),
+  onboardingCompleted: integer("onboarding_completed", { mode: "boolean" }).notNull().default(false),
+  onboardedAt: integer("onboarded_at"),
   activeSchoolId: text("active_school_id"),
   stripeCustomerId: text("stripe_customer_id"),
   createdAt: integer("created_at").notNull(),
@@ -37,6 +40,25 @@ export const schoolMembers = sqliteTable("school_members", {
   uniqueIndex("school_members_school_user_unique").on(table.schoolId, table.userId),
   index("school_members_user_status_idx").on(table.userId, table.status),
   index("school_members_school_role_idx").on(table.schoolId, table.role, table.status),
+]);
+
+export const invitations = sqliteTable("invitations", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull(),
+  courseId: text("course_id"),
+  email: text("email").notNull(),
+  role: text("role").notNull().default("learner"),
+  tokenHash: text("token_hash").notNull(),
+  status: text("status").notNull().default("pending"),
+  invitedBy: text("invited_by").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+  acceptedBy: text("accepted_by"),
+  acceptedAt: integer("accepted_at"),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  uniqueIndex("invitations_token_hash_unique").on(table.tokenHash),
+  index("invitations_school_status_created_idx").on(table.schoolId, table.status, table.createdAt),
+  index("invitations_email_status_idx").on(table.email, table.status),
 ]);
 
 export const courses = sqliteTable("courses", {
