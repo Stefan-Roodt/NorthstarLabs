@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../lib/server-auth";
+import { requireCreatorSchool, requestedSchoolId } from "../../../lib/school-access";
 
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
 const VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/ogg"]);
@@ -7,6 +8,9 @@ const VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/ogg"]);
 export async function POST(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!await requireCreatorSchool(user, requestedSchoolId(request))) {
+    return Response.json({ error: "Creator access required" }, { status: 403 });
+  }
 
   const contentType = request.headers.get("content-type")?.split(";")[0] || "";
   const contentLength = Number(request.headers.get("content-length") || 0);
@@ -39,16 +43,21 @@ export async function GET(request: Request) {
   if (!key) return Response.json({ error: "Video key required" }, { status: 400 });
 
   const lesson = await env.DB.prepare(
-    `SELECT l.id,c.owner_id AS ownerId,c.id AS courseId
+    `SELECT l.id,c.owner_id AS ownerId,c.id AS courseId,c.school_id AS schoolId
      FROM lessons l JOIN courses c ON c.id=l.course_id
      WHERE l.video_key=?`,
-  ).bind(`r2:${key}`).first<{ id: string; ownerId: string; courseId: string }>();
+  ).bind(`r2:${key}`).first<{ id: string; ownerId: string; courseId: string; schoolId: string }>();
   if (!lesson) return Response.json({ error: "Video not found" }, { status: 404 });
 
   const enrollment = await env.DB.prepare(
     "SELECT id FROM enrollments WHERE user_id=? AND course_id=? AND status='active'",
   ).bind(user.id, lesson.courseId).first();
-  if (lesson.ownerId !== user.id && !enrollment) {
+  const staff = await env.DB.prepare(
+    `SELECT id FROM school_members
+     WHERE school_id=? AND user_id=? AND status='active'
+       AND role IN ('owner','admin','instructor')`,
+  ).bind(lesson.schoolId, user.id).first();
+  if (!staff && !enrollment) {
     return Response.json({ error: "Not enrolled" }, { status: 403 });
   }
 

@@ -1,12 +1,19 @@
 import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../../lib/server-auth";
+import {
+  ensureLearnerSchoolMembership,
+  requestedSchoolId,
+  requireCreatorSchool,
+} from "../../../../lib/school-access";
 
 export async function GET(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const school = await requireCreatorSchool(user, requestedSchoolId(request));
+  if (!school) return Response.json({ error: "Creator access required" }, { status: 403 });
   const courses = await env.DB.prepare(
-    "SELECT id,title,status FROM courses WHERE owner_id=? ORDER BY title",
-  ).bind(user.id).all();
+    "SELECT id,title,status FROM courses WHERE school_id=? ORDER BY title",
+  ).bind(school.id).all();
   const enrollments = await env.DB.prepare(
     `SELECT e.id,e.user_id AS userId,e.course_id AS courseId,e.progress,e.status,
       e.support_note AS supportNote,e.last_activity_at AS lastActivityAt,e.created_at AS createdAt,
@@ -16,22 +23,24 @@ export async function GET(request: Request) {
      FROM enrollments e
      JOIN courses c ON c.id=e.course_id
      LEFT JOIN profiles p ON p.id=e.user_id
-     WHERE c.owner_id=?
+     WHERE c.school_id=?
      ORDER BY COALESCE(e.last_activity_at,e.created_at) DESC`,
-  ).bind(user.id).all();
-  return Response.json({ courses: courses.results, enrollments: enrollments.results });
+  ).bind(school.id).all();
+  return Response.json({ school, courses: courses.results, enrollments: enrollments.results });
 }
 
 export async function POST(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const school = await requireCreatorSchool(user, requestedSchoolId(request));
+  if (!school) return Response.json({ error: "Creator access required" }, { status: 403 });
   const { email, courseId } = await request.json() as { email?: string; courseId?: string };
   if (!email?.trim() || !courseId) {
     return Response.json({ error: "Learner email and course are required." }, { status: 400 });
   }
   const course = await env.DB.prepare(
-    "SELECT id,title FROM courses WHERE id=? AND owner_id=?",
-  ).bind(courseId, user.id).first<{ id: string; title: string }>();
+    "SELECT id,title FROM courses WHERE id=? AND school_id=?",
+  ).bind(courseId, school.id).first<{ id: string; title: string }>();
   if (!course) return Response.json({ error: "Course not found." }, { status: 404 });
   const learner = await env.DB.prepare(
     "SELECT id,email,display_name AS displayName FROM profiles WHERE lower(email)=lower(?)",
@@ -56,6 +65,7 @@ export async function POST(request: Request) {
        VALUES (?,?,?,?,?,?,?,?)`,
     ).bind(enrollmentId, learner.id, courseId, 0, "active", "", now, now).run();
   }
+  await ensureLearnerSchoolMembership(learner.id, school.id, false);
   const saved = await env.DB.prepare(
     `SELECT e.id,e.user_id AS userId,e.course_id AS courseId,e.progress,e.status,
       e.support_note AS supportNote,e.last_activity_at AS lastActivityAt,e.created_at AS createdAt,
@@ -69,6 +79,8 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const school = await requireCreatorSchool(user, requestedSchoolId(request));
+  if (!school) return Response.json({ error: "Creator access required" }, { status: 403 });
   const body = await request.json() as {
     enrollmentId?: string;
     action?: string;
@@ -81,8 +93,8 @@ export async function PATCH(request: Request) {
   const enrollment = await env.DB.prepare(
     `SELECT e.id,e.user_id AS userId,e.course_id AS courseId
      FROM enrollments e JOIN courses c ON c.id=e.course_id
-     WHERE e.id=? AND c.owner_id=?`,
-  ).bind(body.enrollmentId, user.id).first<{ id: string; userId: string; courseId: string }>();
+     WHERE e.id=? AND c.school_id=?`,
+  ).bind(body.enrollmentId, school.id).first<{ id: string; userId: string; courseId: string }>();
   if (!enrollment) return Response.json({ error: "Enrollment not found." }, { status: 404 });
 
   if (body.action === "status") {

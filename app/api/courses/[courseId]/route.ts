@@ -1,13 +1,16 @@
 import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../../lib/server-auth";
+import { requireCourseStaffAccess } from "../../../../lib/school-access";
 
 export async function GET(request: Request, context: { params: Promise<{ courseId: string }> }) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
   const { courseId } = await context.params;
+  const access = await requireCourseStaffAccess(user.id, courseId);
+  if (!access) return Response.json({ error: "Course not found" }, { status: 404 });
   const course = await env.DB.prepare(
-    "SELECT id,title,description,status,price_cents AS priceCents FROM courses WHERE id=? AND owner_id=?"
-  ).bind(courseId, user.id).first();
+    "SELECT id,school_id AS schoolId,title,description,status,price_cents AS priceCents FROM courses WHERE id=?"
+  ).bind(courseId).first();
   if (!course) return Response.json({ error: "Course not found" }, { status: 404 });
   const lessons = await env.DB.prepare(
     "SELECT id,title,content,video_key AS videoKey,position FROM lessons WHERE course_id=? ORDER BY position,id"
@@ -49,7 +52,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ cours
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
   const { courseId } = await context.params;
   const body = await request.json() as { title?: string; description?: string; status?: string; priceCents?: number };
-  const existing = await env.DB.prepare("SELECT id FROM courses WHERE id=? AND owner_id=?").bind(courseId, user.id).first();
+  const existing = await requireCourseStaffAccess(user.id, courseId);
   if (!existing) return Response.json({ error: "Course not found" }, { status: 404 });
   const status = body.status === "published" ? "published" : "draft";
   await env.DB.prepare(

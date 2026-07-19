@@ -32,16 +32,41 @@ test("adds browser security headers to every response", async () => {
   assert.match(worker, /private, no-store/);
 });
 
-test("prevents cross-account lesson edits and external sign-in redirects", async () => {
-  const [lessons, login] = await Promise.all([
+test("prevents cross-school lesson edits and external sign-in redirects", async () => {
+  const [lessons, schoolAccess, login] = await Promise.all([
     readFile(new URL("../app/api/lessons/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/school-access.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
   ]);
-  assert.match(lessons, /l\.id=\? AND l\.course_id=\? AND c\.owner_id=\?/);
+  assert.match(lessons, /requireCourseStaffAccess\(user\.id,body\.courseId\)/);
+  assert.match(schoolAccess, /sm\.role IN \('owner','admin','instructor'\)/);
+  assert.match(schoolAccess, /JOIN school_members sm ON sm\.school_id=c\.school_id/);
   assert.doesNotMatch(lessons, /ON CONFLICT\(id\) DO UPDATE/);
   assert.match(login, /safeDestination/);
   assert.match(login, /value\?\.startsWith\("\/"\)/);
   assert.match(login, /value\.startsWith\("\/\/"\)/);
+});
+
+test("isolates creator schools, memberships, courses, and communities", async () => {
+  const [schema, migration, profile, welcome, community] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0006_conscious_talisman.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/profile/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/welcome/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/community-access.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(schema, /export const schools/);
+  assert.match(schema, /export const schoolMembers/);
+  assert.match(schema, /schoolId: text\("school_id"\)/);
+  assert.match(migration, /CREATE TABLE `schools`/);
+  assert.match(migration, /CREATE TABLE `school_members`/);
+  assert.match(migration, /ALTER TABLE `courses` ADD `school_id`/);
+  assert.match(migration, /ALTER TABLE `communities` ADD `school_id`/);
+  assert.match(profile, /createCreatorSchool/);
+  assert.match(welcome, /Name your academy/);
+  assert.match(welcome, /role: "creator"/);
+  assert.match(community, /FROM communities WHERE school_id=\?/);
+  assert.doesNotMatch(community, /northstar-circle/);
 });
 
 test("ships a real starter catalogue without placeholder proof", async () => {

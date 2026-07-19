@@ -1,12 +1,13 @@
 import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../../lib/server-auth";
-import { COMMUNITY_ID, ensureCommunityAccess } from "../../../../lib/community-access";
+import { ensureCommunityAccess } from "../../../../lib/community-access";
+import { ensureLearnerSchoolMembership, requestedSchoolId } from "../../../../lib/school-access";
 
 export async function GET(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const access = await ensureCommunityAccess(user);
-  if (!access.canModerate) return Response.json({ error: "Moderator access required" }, { status: 403 });
+  const access = await ensureCommunityAccess(user, requestedSchoolId(request));
+  if (!access.community || !access.canModerate) return Response.json({ error: "Moderator access required" }, { status: 403 });
   const members = await env.DB.prepare(
     `SELECT cm.id,cm.user_id AS userId,cm.role,cm.status,cm.joined_at AS joinedAt,
       COALESCE(p.display_name,'NorthStarLabs member') AS displayName,p.email
@@ -14,8 +15,9 @@ export async function GET(request: Request) {
      WHERE cm.community_id=?
      ORDER BY CASE cm.role WHEN 'owner' THEN 0 WHEN 'moderator' THEN 1 ELSE 2 END,
       cm.joined_at DESC`,
-  ).bind(COMMUNITY_ID).all();
+  ).bind(access.community.id).all();
   return Response.json({
+    school: access.school,
     community: access.community,
     currentMember: access.member,
     isOwner: access.isOwner,
@@ -26,8 +28,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const access = await ensureCommunityAccess(user);
-  if (!access.canModerate) return Response.json({ error: "Moderator access required" }, { status: 403 });
+  const access = await ensureCommunityAccess(user, requestedSchoolId(request));
+  if (!access.school || !access.community || !access.canModerate) return Response.json({ error: "Moderator access required" }, { status: 403 });
   const { email } = await request.json() as { email?: string };
   if (!email?.trim()) return Response.json({ error: "Email required" }, { status: 400 });
   const profile = await env.DB.prepare(
@@ -41,21 +43,22 @@ export async function POST(request: Request) {
     `INSERT INTO community_members (id,community_id,user_id,role,status,joined_at)
      VALUES (?,?,?,?,?,?)
      ON CONFLICT(community_id,user_id) DO UPDATE SET status='active'`,
-  ).bind(id, COMMUNITY_ID, profile.id, "member", "active", Date.now()).run();
+  ).bind(id, access.community.id, profile.id, "member", "active", Date.now()).run();
+  await ensureLearnerSchoolMembership(profile.id, access.school.id, false);
   const member = await env.DB.prepare(
     `SELECT cm.id,cm.user_id AS userId,cm.role,cm.status,cm.joined_at AS joinedAt,
       p.display_name AS displayName,p.email
      FROM community_members cm JOIN profiles p ON p.id=cm.user_id
      WHERE cm.community_id=? AND cm.user_id=?`,
-  ).bind(COMMUNITY_ID, profile.id).first();
+  ).bind(access.community.id, profile.id).first();
   return Response.json(member, { status: 201 });
 }
 
 export async function PATCH(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const access = await ensureCommunityAccess(user);
-  if (!access.canModerate) return Response.json({ error: "Moderator access required" }, { status: 403 });
+  const access = await ensureCommunityAccess(user, requestedSchoolId(request));
+  if (!access.community || !access.canModerate) return Response.json({ error: "Moderator access required" }, { status: 403 });
   const body = await request.json() as {
     type?: string;
     accessType?: string;
@@ -72,14 +75,14 @@ export async function PATCH(request: Request) {
       : access.community.accessType;
     await env.DB.prepare(
       "UPDATE communities SET access_type=?,allow_posting=? WHERE id=?",
-    ).bind(accessType, body.allowPosting === false ? 0 : 1, COMMUNITY_ID).run();
+    ).bind(accessType, body.allowPosting === false ? 0 : 1, access.community.id).run();
     return Response.json({ saved: true, accessType, allowPosting: body.allowPosting !== false });
   }
 
   if (body.type === "member" && body.memberId) {
     const target = await env.DB.prepare(
       "SELECT id,user_id AS userId,role FROM community_members WHERE id=? AND community_id=?",
-    ).bind(body.memberId, COMMUNITY_ID).first<{ id: string; userId: string; role: string }>();
+    ).bind(body.memberId, access.community.id).first<{ id: string; userId: string; role: string }>();
     if (!target) return Response.json({ error: "Member not found" }, { status: 404 });
     if (target.role === "owner") return Response.json({ error: "The community owner cannot be changed here." }, { status: 400 });
     if (!access.isOwner && (body.role || target.role) !== "member") {

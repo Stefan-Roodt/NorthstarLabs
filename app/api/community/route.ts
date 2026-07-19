@@ -1,17 +1,20 @@
 import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../lib/server-auth";
-import { COMMUNITY_ID, ensureCommunityAccess } from "../../../lib/community-access";
+import { ensureCommunityAccess } from "../../../lib/community-access";
+import { requestedSchoolId } from "../../../lib/school-access";
 
 export async function GET(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const access = await ensureCommunityAccess(user);
-  if (!access.canAccess) {
+  const access = await ensureCommunityAccess(user, requestedSchoolId(request));
+  if (!access.community || !access.canAccess) {
     return Response.json({
-      error: access.member?.status === "blocked"
+      error: !access.community
+        ? "Join or create a school before opening its community."
+        : access.member?.status === "blocked"
         ? "Your community access has been paused."
         : "This community is currently limited to invited or enrolled members.",
-      accessType: access.community.accessType,
+      accessType: access.community?.accessType,
     }, { status: 403 });
   }
 
@@ -23,14 +26,15 @@ export async function GET(request: Request) {
      FROM posts LEFT JOIN profiles ON profiles.id=posts.author_id
      WHERE posts.community_id=? AND (posts.status='visible' OR ?=1)
      ORDER BY posts.created_at DESC LIMIT 100`,
-  ).bind(COMMUNITY_ID, access.canModerate ? 1 : 0).all();
+  ).bind(access.community.id, access.canModerate ? 1 : 0).all();
   const stats = await env.DB.prepare(
     `SELECT
       (SELECT COUNT(*) FROM community_members WHERE community_id=? AND status='active') AS members,
       (SELECT COUNT(*) FROM posts WHERE community_id=? AND status='visible') AS posts`,
-  ).bind(COMMUNITY_ID, COMMUNITY_ID).first();
+  ).bind(access.community.id, access.community.id).first();
 
   return Response.json({
+    school: access.school,
     community: access.community,
     membership: access.member,
     canModerate: access.canModerate,
@@ -43,8 +47,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const access = await ensureCommunityAccess(user);
-  if (!access.canAccess) return Response.json({ error: "Community access required" }, { status: 403 });
+  const access = await ensureCommunityAccess(user, requestedSchoolId(request));
+  if (!access.community || !access.canAccess) return Response.json({ error: "Community access required" }, { status: 403 });
   if (!access.community.allowPosting && !access.canModerate) {
     return Response.json({ error: "Only moderators can post right now." }, { status: 403 });
   }
@@ -56,7 +60,7 @@ export async function POST(request: Request) {
   const createdAt = Date.now();
   await env.DB.prepare(
     "INSERT INTO posts (id,community_id,author_id,body,status,created_at) VALUES (?,?,?,?,?,?)",
-  ).bind(id, COMMUNITY_ID, user.id, body.trim(), "visible", createdAt).run();
+  ).bind(id, access.community.id, user.id, body.trim(), "visible", createdAt).run();
   const profile = await env.DB.prepare(
     "SELECT display_name AS displayName,email FROM profiles WHERE id=?",
   ).bind(user.id).first();
@@ -74,8 +78,8 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const access = await ensureCommunityAccess(user);
-  if (!access.canModerate) return Response.json({ error: "Moderator access required" }, { status: 403 });
+  const access = await ensureCommunityAccess(user, requestedSchoolId(request));
+  if (!access.community || !access.canModerate) return Response.json({ error: "Moderator access required" }, { status: 403 });
   const { postId, action } = await request.json() as { postId?: string; action?: string };
   if (!postId || !["hide", "restore"].includes(action || "")) {
     return Response.json({ error: "Invalid moderation action" }, { status: 400 });
@@ -83,20 +87,20 @@ export async function PATCH(request: Request) {
   const status = action === "hide" ? "hidden" : "visible";
   await env.DB.prepare(
     "UPDATE posts SET status=?,moderated_by=?,moderated_at=? WHERE id=? AND community_id=?",
-  ).bind(status, user.id, Date.now(), postId, COMMUNITY_ID).run();
+  ).bind(status, user.id, Date.now(), postId, access.community.id).run();
   return Response.json({ saved: true, status });
 }
 
 export async function DELETE(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const access = await ensureCommunityAccess(user);
-  if (!access.canAccess) return Response.json({ error: "Community access required" }, { status: 403 });
+  const access = await ensureCommunityAccess(user, requestedSchoolId(request));
+  if (!access.community || !access.canAccess) return Response.json({ error: "Community access required" }, { status: 403 });
   const postId = new URL(request.url).searchParams.get("postId");
   if (!postId) return Response.json({ error: "Post required" }, { status: 400 });
   const post = await env.DB.prepare(
     "SELECT author_id AS authorId FROM posts WHERE id=? AND community_id=?",
-  ).bind(postId, COMMUNITY_ID).first<{ authorId: string }>();
+  ).bind(postId, access.community.id).first<{ authorId: string }>();
   if (!post) return Response.json({ error: "Post not found" }, { status: 404 });
   if (post.authorId !== user.id && !access.canModerate) {
     return Response.json({ error: "You cannot delete this post." }, { status: 403 });

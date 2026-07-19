@@ -1,9 +1,16 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { getSupabaseBrowser } from "../../lib/supabase-client";
 
-type Profile = { email: string; displayName: string; role: string };
+type Profile = {
+  email: string;
+  displayName: string;
+  role: string;
+  hasCreatorSchool: boolean;
+  activeSchool: { id: string; slug: string; name: string; memberRole: string } | null;
+};
 type Course = { id: string; title: string; students: number; status: string; priceCents: number };
 
 export default function Dashboard() {
@@ -23,12 +30,23 @@ export default function Dashboard() {
       const token = data.session?.access_token;
       if (!token) { location.href = "/login"; return; }
       const headers = { authorization: `Bearer ${token}` };
-      const [profileResponse, coursesResponse] = await Promise.all([
-        fetch("/api/profile", { headers }),
-        fetch("/api/courses", { headers }),
-      ]);
+      let profileResponse = await fetch("/api/profile", { headers });
       if (profileResponse.status === 401) { await supabase.auth.signOut(); location.href = "/login"; return; }
-      if (profileResponse.ok) setProfile(await profileResponse.json());
+      let profileResult = profileResponse.ok ? await profileResponse.json() as Profile : null;
+      if (!profileResult?.hasCreatorSchool) {
+        location.href = "/welcome?path=creator";
+        return;
+      }
+      if (profileResult.role !== "creator") {
+        profileResponse = await fetch("/api/profile", {
+          method: "PATCH",
+          headers: { ...headers, "content-type": "application/json" },
+          body: JSON.stringify({ role: "creator" }),
+        });
+        if (profileResponse.ok) profileResult = await profileResponse.json() as Profile;
+      }
+      const coursesResponse = await fetch("/api/courses", { headers });
+      if (profileResult) setProfile(profileResult);
       if (coursesResponse.ok) setCourses(await coursesResponse.json());
       setLoading(false);
     }
@@ -64,7 +82,7 @@ export default function Dashboard() {
 
   const email = profile?.email ?? "";
   const name = profile?.displayName ?? email.split("@")[0];
-  return <main className="system-shell"><aside className="system-side"><a className="system-brand" href="/">✦ NORTHSTARLABS</a><nav>{["Overview","Courses","Learners","Community","Memberships","Analytics"].map(item=><button key={item} className={tab===item?"active":""} onClick={()=>setTab(item)}><span>{item==="Overview"?"⌂":item==="Courses"?"▣":item==="Learners"?"♙":item==="Community"?"◎":item==="Memberships"?"◇":"↗"}</span>{item}</button>)}</nav><div className="side-bottom"><a href="/courses">View course marketplace</a><a href="/account">Account settings</a><button onClick={signOut}>Sign out</button></div></aside><section className="system-main"><header className="system-top"><div><p className="sys-kicker">CREATOR WORKSPACE</p><h1>{tab}</h1></div><div className="user-chip"><span>{name.slice(0,2).toUpperCase()}</span><div><b>{name}</b><small>{email}</small></div></div></header>
+  return <main className="system-shell"><aside className="system-side"><Link className="system-brand" href="/">✦ NORTHSTARLABS</Link><nav>{["Overview","Courses","Learners","Community","Memberships","Analytics"].map(item=><button key={item} className={tab===item?"active":""} onClick={()=>setTab(item)}><span>{item==="Overview"?"⌂":item==="Courses"?"▣":item==="Learners"?"♙":item==="Community"?"◎":item==="Memberships"?"◇":"↗"}</span>{item}</button>)}</nav><div className="side-bottom"><Link href={profile?.activeSchool ? `/schools/${profile.activeSchool.slug}` : "/courses"}>{profile?.activeSchool ? "View my academy" : "View course marketplace"}</Link><a href="/account">Account settings</a><button onClick={signOut}>Sign out</button></div></aside><section className="system-main"><header className="system-top"><div><p className="sys-kicker">{profile?.activeSchool?.name || "YOUR ACADEMY"} · CREATOR WORKSPACE</p><h1>{tab}</h1></div><div className="user-chip"><span>{name.slice(0,2).toUpperCase()}</span><div><b>{name}</b><small>{profile?.activeSchool?.memberRole || "creator"} · {email}</small></div></div></header>
   {tab==="Overview"&&<><div className="metric-row"><article><span>Courses</span><strong>{courses.length}</strong><small>{published} published</small></article><article><span>Active learners</span><strong>{learners}</strong><small>Across all your courses</small></article><article><span>Net revenue</span><strong>$0</strong><small>Payments connect in the next phase</small></article></div><div className="system-grid"><article className="panel chart-panel empty-dashboard"><p className="sys-kicker">YOUR NEXT MOVE</p><h2>{courses.length ? "Keep building your school" : "Create your first course"}</h2><p>{courses.length ? "Add lessons, publish your course, then invite your first learners." : "Start with a title. You can add video, text, quizzes and pricing next."}</p><button className="sys-primary" onClick={()=>setTab("Courses")}>{courses.length ? "Open courses →" : "Create a course →"}</button></article><article className="panel activity-panel"><div className="panel-title"><b>Recent activity</b></div><div className="empty-activity"><strong>No learner activity yet</strong><p>Enrollments, completions and community posts will appear here.</p></div></article></div></>}
   {tab==="Courses"&&<><div className="action-bar"><div><h2>Your courses</h2><p>Build, publish, and improve every learning experience.</p></div><form onSubmit={createCourse}><input required value={title} onChange={event=>setTitle(event.target.value)} placeholder="New course title"/><button disabled={creating} className="sys-primary">{creating?"Creating…":"+ Create course"}</button></form></div>{notice&&<div className="notice">{notice}</div>}{courses.length===0?<div className="panel empty-courses"><h3>No courses yet</h3><p>Enter a course title above to create your first draft.</p></div>:<div className="course-table"><div className="table-head"><span>Course</span><span>Students</span><span>Price</span><span>Status</span></div>{courses.map(course=><div className="table-row" key={course.id}><div><i>{course.title.slice(0,2).toUpperCase()}</i><a href={`/dashboard/courses/${course.id}`}><b>{course.title}</b><small className="edit-label">Edit curriculum →</small></a></div><span>{course.students}</span><span>{course.priceCents ? `$${(course.priceCents/100).toFixed(2)}` : "Free"}</span><span className={`status ${course.status}`}>{course.status}</span></div>)}</div>}</>}
   {tab==="Learners"&&<article className="panel empty-dashboard"><p className="sys-kicker">LEARNER ADMINISTRATION</p><h2>Support every learner</h2><p>Grant course access, monitor progress, pause enrolments, reset progress, and keep private support notes.</p><a className="sys-primary" href="/dashboard/learners">Manage learners →</a></article>}{tab==="Community"&&<article className="panel empty-dashboard"><p className="sys-kicker">COMMUNITY IS LIVE</p><h2>Bring your learners together</h2><p>Control membership access, appoint moderators, manage members, and keep conversations healthy.</p><div className="dashboard-community-actions"><a className="sys-primary" href="/dashboard/community">Manage members</a><a className="builder-preview" href="/community">Open community</a></div></article>}{tab==="Memberships"&&<SubscriptionPanel/>}{tab==="Analytics"&&<article className="panel empty-dashboard"><p className="sys-kicker">LIVE REPORTING</p><h2>See what learners are doing</h2><p>Track enrolments, average progress, completions, course performance, and recent activity.</p><a className="sys-primary" href="/dashboard/analytics">Open analytics →</a></article>}</section></main>;

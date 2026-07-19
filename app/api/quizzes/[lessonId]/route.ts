@@ -15,8 +15,10 @@ export async function POST(
     `SELECT l.course_id AS courseId,c.owner_id AS ownerId
      FROM lessons l JOIN courses c ON c.id=l.course_id
      LEFT JOIN enrollments e ON e.course_id=c.id AND e.user_id=? AND e.status='active'
-     WHERE l.id=? AND (c.owner_id=? OR e.id IS NOT NULL)`,
-  ).bind(user.id, lessonId, user.id).first<{ courseId: string; ownerId: string }>();
+     LEFT JOIN school_members sm ON sm.school_id=c.school_id AND sm.user_id=?
+       AND sm.status='active' AND sm.role IN ('owner','admin','instructor')
+     WHERE l.id=? AND (sm.id IS NOT NULL OR e.id IS NOT NULL)`,
+  ).bind(user.id, user.id, lessonId).first<{ courseId: string; ownerId: string }>();
   if (!access) return Response.json({ error: "Not enrolled" }, { status: 403 });
 
   const quiz = await env.DB.prepare(

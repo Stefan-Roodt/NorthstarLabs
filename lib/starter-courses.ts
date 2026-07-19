@@ -5,6 +5,9 @@ export type CatalogCourse = {
   priceCents: number;
   lessonCount: number;
   creator: string;
+  schoolId?: string;
+  schoolName?: string;
+  schoolSlug?: string;
 };
 
 export type StarterCourse = CatalogCourse & {
@@ -27,6 +30,9 @@ export const starterCourses: StarterCourse[] = [
     priceCents: 0,
     lessonCount: 6,
     creator: "NorthstarLabs Studio",
+    schoolId: "northstarlabs",
+    schoolName: "NorthstarLabs",
+    schoolSlug: "northstarlabs",
     category: "Course creation",
     duration: "90 minutes",
     level: "Beginner",
@@ -60,6 +66,9 @@ export const starterCourses: StarterCourse[] = [
     priceCents: 0,
     lessonCount: 5,
     creator: "NorthstarLabs Studio",
+    schoolId: "northstarlabs",
+    schoolName: "NorthstarLabs",
+    schoolSlug: "northstarlabs",
     category: "Creator business",
     duration: "75 minutes",
     level: "Beginner",
@@ -92,6 +101,9 @@ export const starterCourses: StarterCourse[] = [
     priceCents: 0,
     lessonCount: 6,
     creator: "NorthstarLabs Studio",
+    schoolId: "northstarlabs",
+    schoolName: "NorthstarLabs",
+    schoolSlug: "northstarlabs",
     category: "Community",
     duration: "2 hours",
     level: "Intermediate",

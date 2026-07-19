@@ -1,6 +1,10 @@
 import { env } from "cloudflare:workers";
-
-export const COMMUNITY_ID = "northstar-circle";
+import {
+  CREATOR_ROLES,
+  ensureProfile,
+  getActiveSchool,
+  type SchoolContext,
+} from "./school-access";
 
 type ApiUser = {
   id: string;
@@ -10,6 +14,7 @@ type ApiUser = {
 
 type CommunityRow = {
   id: string;
+  schoolId: string;
   ownerId: string;
   name: string;
   description: string;
@@ -23,98 +28,107 @@ type MemberRow = {
   status: string;
 };
 
-function displayName(user: ApiUser) {
-  const fullName = user.user_metadata?.full_name;
-  const name = user.user_metadata?.name;
-  return (
-    (typeof fullName === "string" && fullName.trim()) ||
-    (typeof name === "string" && name.trim()) ||
-    user.email?.split("@")[0] ||
-    "NorthStarLabs member"
-  );
+async function ensureSchoolCommunity(school: SchoolContext) {
+  let community = await env.DB.prepare(
+    `SELECT id,school_id AS schoolId,owner_id AS ownerId,name,description,
+      access_type AS accessType,allow_posting AS allowPosting
+     FROM communities WHERE school_id=?`,
+  ).bind(school.id).first<CommunityRow>();
+  if (community) return community;
+
+  await env.DB.prepare(
+    `INSERT INTO communities
+     (id,school_id,owner_id,name,description,access_type,allow_posting,created_at)
+     VALUES (?,?,?,?,?,?,?,?)
+     ON CONFLICT(school_id) DO NOTHING`,
+  ).bind(
+    crypto.randomUUID(),
+    school.id,
+    school.ownerId,
+    `${school.name} Community`,
+    "A private space for learners to ask questions, share progress, and support one another.",
+    "enrolled",
+    1,
+    Date.now(),
+  ).run();
+  community = await env.DB.prepare(
+    `SELECT id,school_id AS schoolId,owner_id AS ownerId,name,description,
+      access_type AS accessType,allow_posting AS allowPosting
+     FROM communities WHERE school_id=?`,
+  ).bind(school.id).first<CommunityRow>();
+  if (!community) throw new Error("Community could not be initialized.");
+  return community;
 }
 
-export async function ensureCommunityAccess(user: ApiUser) {
-  if (user.email) {
-    await env.DB.prepare(
-      `INSERT INTO profiles (id,email,display_name,role,created_at)
-       VALUES (?,?,?,'creator',?)
-       ON CONFLICT(id) DO UPDATE SET email=excluded.email,display_name=excluded.display_name`,
-    ).bind(user.id, user.email, displayName(user), Date.now()).run();
+export async function ensureCommunityAccess(user: ApiUser, preferredSchoolId?: string) {
+  await ensureProfile(user);
+  const school = await getActiveSchool(user.id, undefined, preferredSchoolId);
+  if (!school) {
+    return {
+      school: null,
+      community: null,
+      member: null,
+      canAccess: false,
+      canModerate: false,
+      isOwner: false,
+      eligible: false,
+    };
   }
 
-  let community = await env.DB.prepare(
-    `SELECT id,owner_id AS ownerId,name,description,access_type AS accessType,
-      allow_posting AS allowPosting FROM communities WHERE id=?`,
-  ).bind(COMMUNITY_ID).first<CommunityRow>();
-
-  if (!community) {
-    const earliestCreator = await env.DB.prepare(
-      "SELECT owner_id AS ownerId FROM courses ORDER BY created_at ASC LIMIT 1",
-    ).first<{ ownerId: string }>();
-    const ownerId = earliestCreator?.ownerId || user.id;
-    await env.DB.prepare(
-      `INSERT INTO communities (id,owner_id,name,description,access_type,allow_posting,created_at)
-       VALUES (?,?,?,?,?,?,?)
-       ON CONFLICT(id) DO NOTHING`,
-    ).bind(
-      COMMUNITY_ID,
-      ownerId,
-      "Northstar Circle",
-      "A member space for questions, progress, and peer support.",
-      "open",
-      1,
-      Date.now(),
-    ).run();
-    community = await env.DB.prepare(
-      `SELECT id,owner_id AS ownerId,name,description,access_type AS accessType,
-        allow_posting AS allowPosting FROM communities WHERE id=?`,
-    ).bind(COMMUNITY_ID).first<CommunityRow>();
-  }
-
-  if (!community) throw new Error("Community could not be initialized.");
-
+  const community = await ensureSchoolCommunity(school);
   let member = await env.DB.prepare(
-    `SELECT id,role,status FROM community_members WHERE community_id=? AND user_id=?`,
-  ).bind(COMMUNITY_ID, user.id).first<MemberRow>();
+    "SELECT id,role,status FROM community_members WHERE community_id=? AND user_id=?",
+  ).bind(community.id, user.id).first<MemberRow>();
 
-  const isOwner = community.ownerId === user.id;
+  const isSchoolOwner = school.ownerId === user.id;
+  const isSchoolStaff = CREATOR_ROLES.includes(
+    school.memberRole as (typeof CREATOR_ROLES)[number],
+  );
   const hasEnrollment = await env.DB.prepare(
-    "SELECT id FROM enrollments WHERE user_id=? AND status='active' LIMIT 1",
-  ).bind(user.id).first();
-  const ownsCourse = await env.DB.prepare(
-    "SELECT id FROM courses WHERE owner_id=? LIMIT 1",
-  ).bind(user.id).first();
-  const eligible = isOwner ||
+    `SELECT e.id FROM enrollments e
+     JOIN courses c ON c.id=e.course_id
+     WHERE e.user_id=? AND e.status='active' AND c.school_id=?
+     LIMIT 1`,
+  ).bind(user.id, school.id).first();
+  const eligible = isSchoolStaff ||
     community.accessType === "open" ||
-    (community.accessType === "enrolled" && Boolean(hasEnrollment || ownsCourse));
+    (community.accessType === "enrolled" && Boolean(hasEnrollment)) ||
+    (community.accessType === "invite" && Boolean(member));
 
   if (!member && eligible) {
+    const communityRole = isSchoolOwner
+      ? "owner"
+      : isSchoolStaff
+        ? "moderator"
+        : "member";
     await env.DB.prepare(
       `INSERT INTO community_members (id,community_id,user_id,role,status,joined_at)
        VALUES (?,?,?,?,?,?)
        ON CONFLICT(community_id,user_id) DO NOTHING`,
     ).bind(
       crypto.randomUUID(),
-      COMMUNITY_ID,
+      community.id,
       user.id,
-      isOwner ? "owner" : "member",
+      communityRole,
       "active",
       Date.now(),
     ).run();
     member = await env.DB.prepare(
       "SELECT id,role,status FROM community_members WHERE community_id=? AND user_id=?",
-    ).bind(COMMUNITY_ID, user.id).first<MemberRow>();
+    ).bind(community.id, user.id).first<MemberRow>();
   }
 
   const active = member?.status === "active";
-  const canModerate = active && (member?.role === "owner" || member?.role === "moderator");
+  const canModerate = Boolean(
+    active && (member?.role === "owner" || member?.role === "moderator"),
+  );
   return {
+    school,
     community,
     member: member || null,
-    canAccess: Boolean(active && (eligible || member)),
+    canAccess: Boolean(active && eligible),
     canModerate,
-    isOwner: active && member?.role === "owner",
+    isOwner: Boolean(active && member?.role === "owner"),
     eligible,
   };
 }

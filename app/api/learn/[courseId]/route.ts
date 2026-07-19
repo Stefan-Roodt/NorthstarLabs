@@ -8,8 +8,10 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
   const access = await env.DB.prepare(
     `SELECT c.id,c.title,c.description,c.owner_id AS ownerId
      FROM courses c LEFT JOIN enrollments e ON e.course_id=c.id AND e.user_id=? AND e.status='active'
-     WHERE c.id=? AND (c.owner_id=? OR e.id IS NOT NULL)`
-  ).bind(user.id,courseId,user.id).first();
+     LEFT JOIN school_members sm ON sm.school_id=c.school_id AND sm.user_id=?
+       AND sm.status='active' AND sm.role IN ('owner','admin','instructor')
+     WHERE c.id=? AND (sm.id IS NOT NULL OR e.id IS NOT NULL)`
+  ).bind(user.id,user.id,courseId).first();
   if (!access) return Response.json({ error: "You are not enrolled in this course." }, { status: 403 });
   const lessons = await env.DB.prepare(
     `SELECT l.id,l.title,l.content,l.video_key AS videoKey,l.position,

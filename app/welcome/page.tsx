@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getSupabaseBrowser } from "../../lib/supabase-client";
 
 export default function WelcomePage() {
   const [name, setName] = useState("");
+  const [schoolName, setSchoolName] = useState("");
   const [ready, setReady] = useState(false);
+  const [busy, setBusy] = useState("");
+  const [message, setMessage] = useState("");
   const supabase = getSupabaseBrowser();
   const preferredPath = typeof window === "undefined"
     ? ""
@@ -24,9 +28,40 @@ export default function WelcomePage() {
       const email = data.session.user.email || "";
       const displayName = String(data.session.user.user_metadata?.full_name || email.split("@")[0] || "there");
       setName(displayName.split(" ")[0]);
+      setSchoolName(`${displayName}'s Academy`);
       setReady(true);
     });
   }, [supabase]);
+
+  async function choosePath(role: "creator" | "learner") {
+    if (!supabase || busy) return;
+    setBusy(role);
+    setMessage("");
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) {
+      location.href = `/login?next=/welcome?path=${role}`;
+      return;
+    }
+    const response = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        role,
+        schoolName: role === "creator" ? schoolName : undefined,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      setMessage(result.error || "We could not finish setting up your account.");
+      setBusy("");
+      return;
+    }
+    location.href = role === "creator" ? "/dashboard" : "/courses";
+  }
 
   if (!ready) return (
     <main className="system-loading">
@@ -37,7 +72,7 @@ export default function WelcomePage() {
   return (
     <main className="welcome-page">
       <header>
-        <a className="system-brand" href="/">✦ NORTHSTARLABS</a>
+        <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
         <a href="/account">Account settings</a>
       </header>
 
@@ -54,12 +89,28 @@ export default function WelcomePage() {
           <h2>Build my first course.</h2>
           <p>Open your creator workspace, name your course, and start shaping the curriculum. Your first draft can begin with a single idea.</p>
           <ul>
-            <li>Create a course draft</li>
+            <li>Create your own separate academy</li>
             <li>Add text, video, and quizzes</li>
-            <li>Publish when you are ready</li>
+            <li>Keep your courses and learners together</li>
           </ul>
-          <a className="sys-primary" href="/dashboard">Open my creator workspace →</a>
-          <a className="welcome-secondary" href="/courses/launch-your-first-online-course">See how a strong course is structured</a>
+          <label className="welcome-school-field">
+            Name your academy
+            <input
+              required
+              minLength={2}
+              maxLength={80}
+              value={schoolName}
+              onChange={(event) => setSchoolName(event.target.value)}
+            />
+          </label>
+          <button
+            className="sys-primary"
+            disabled={busy !== "" || schoolName.trim().length < 2}
+            onClick={() => choosePath("creator")}
+          >
+            {busy === "creator" ? "Creating your academy…" : "Create my academy →"}
+          </button>
+          <Link className="welcome-secondary" href="/courses/launch-your-first-online-course">See how a strong course is structured</Link>
         </article>
 
         <article className={preferredPath === "learner" ? "welcome-path preferred" : "welcome-path"}>
@@ -72,14 +123,22 @@ export default function WelcomePage() {
             <li>Short, action-focused lessons</li>
             <li>Progress saved automatically</li>
           </ul>
-          <a className="sys-primary" href="/courses">Choose my first course →</a>
-          <a className="welcome-secondary" href="/learn">Open my learning space</a>
+          <button
+            className="sys-primary"
+            disabled={busy !== ""}
+            onClick={() => choosePath("learner")}
+          >
+            {busy === "learner" ? "Preparing your learning space…" : "Choose my first course →"}
+          </button>
+          <Link className="welcome-secondary" href="/learn">Open my learning space</Link>
         </article>
       </section>
 
+      {message && <div className="welcome-message" role="status">{message}</div>}
+
       <section className="welcome-help">
         <p><b>Not sure yet?</b> Start with the free “Launch Your First Online Course” learning experience. It shows you the learner view while helping you plan something of your own.</p>
-        <a href="/courses/launch-your-first-online-course">Explore the recommended first course →</a>
+        <Link href="/courses/launch-your-first-online-course">Explore the recommended first course →</Link>
       </section>
     </main>
   );

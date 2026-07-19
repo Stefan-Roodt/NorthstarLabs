@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../lib/server-auth";
+import { requireCourseStaffAccess } from "../../../lib/school-access";
 
 type QuizQuestionInput = {
   prompt?: string;
@@ -20,10 +21,11 @@ export async function POST(request: Request) {
   if (!body.lessonId) return Response.json({ error: "Lesson required" }, { status: 400 });
 
   const lesson = await env.DB.prepare(
-    `SELECT l.id FROM lessons l JOIN courses c ON c.id=l.course_id
-     WHERE l.id=? AND c.owner_id=?`,
-  ).bind(body.lessonId, user.id).first();
+    "SELECT id,course_id AS courseId FROM lessons WHERE id=?",
+  ).bind(body.lessonId).first<{ id: string; courseId: string }>();
   if (!lesson) return Response.json({ error: "Lesson not found" }, { status: 404 });
+  const access = await requireCourseStaffAccess(user.id, lesson.courseId);
+  if (!access) return Response.json({ error: "Lesson not found" }, { status: 404 });
 
   const existing = await env.DB.prepare(
     "SELECT id FROM quizzes WHERE lesson_id=?",
