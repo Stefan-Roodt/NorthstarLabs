@@ -1,8 +1,10 @@
-# vinext-starter
+# NorthstarLabs Learning Platform
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+NorthstarLabs is a multi-academy learning platform built with vinext, Cloudflare
+D1 and R2, and Supabase authentication. It includes creator onboarding, course
+authoring, protected media, learner progress, assessments, certificates,
+communities, reporting, email operations, platform administration, and
+production reliability controls.
 
 ## Prerequisites
 
@@ -18,14 +20,36 @@ npm run build
 
 This starter does not use `wrangler.jsonc`.
 
-## Included Shape
+## Production shape
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+- `.openai/hosting.json` declares the Sites D1 and R2 bindings.
+- `db/schema.ts` and `drizzle/` hold the versioned data model.
+- `worker/index.ts` applies request IDs, security headers, body limits, rate
+  limits, and operational error capture.
+- `/api/health` provides a minimal public health signal.
+- `/admin` contains platform health, moderation, storage, backup, and audit
+  controls for allowlisted platform administrators.
+
+## Required production configuration
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` for complete account deletion and privileged
+  identity administration
+- `PLATFORM_ADMIN_EMAILS`, a comma-separated allowlist
+- `RESEND_API_KEY`, `EMAIL_FROM`, and optionally `EMAIL_REPLY_TO`
+- `MAINTENANCE_SECRET`, at least 24 characters, for the scheduled maintenance
+  endpoint
+
+Optional quota overrides:
+
+- `SCHOOL_STORAGE_QUOTA_BYTES` defaults to 5 GB per academy.
+- `SCHOOL_MEDIA_ASSET_LIMIT` defaults to 2,000 files per academy.
+
+Call `POST /api/platform/maintenance` from a trusted daily scheduler with the
+secret in `x-maintenance-secret`. It creates a daily backup when due and removes
+expired rate-limit buckets, playback grants, and old resolved events. Backup
+integrity can be verified from the platform reliability console.
 
 ## Workspace Auth Headers
 
@@ -89,8 +113,12 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 
 - `npm run dev`: start local development
 - `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
+- `npm test`: build the platform and run all release checks
+- `npm run test:journeys`: run creator-to-learner, isolation, deletion, and
+  security journey checks
 - `npm run db:generate`: generate Drizzle migrations after schema changes
+- `npm run db:validate`: apply every migration to a fresh database and validate
+  the resulting model
 
 ## Learn More
 

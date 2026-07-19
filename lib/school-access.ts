@@ -281,6 +281,7 @@ export async function requireCourseStaffAccess(userId: string, courseId: string)
     `SELECT c.id AS courseId,c.school_id AS schoolId,c.owner_id AS ownerId,
       sm.role AS memberRole
      FROM courses c
+     JOIN schools s ON s.id=c.school_id AND s.status='active'
      JOIN school_members sm ON sm.school_id=c.school_id
      WHERE c.id=? AND sm.user_id=? AND sm.status='active'
        AND sm.role IN ('owner','admin','instructor')`,

@@ -175,6 +175,7 @@ export async function DELETE(request: Request) {
     ).bind(lessonId),
     env.DB.prepare("DELETE FROM quizzes WHERE lesson_id=?").bind(lessonId),
     env.DB.prepare("DELETE FROM lesson_progress WHERE lesson_id=?").bind(lessonId),
+    env.DB.prepare("DELETE FROM media_playback_grants WHERE lesson_id=?").bind(lessonId),
     env.DB.prepare("DELETE FROM lesson_resources WHERE lesson_id=?").bind(lessonId),
     env.DB.prepare("DELETE FROM lessons WHERE id=? AND course_id=?").bind(lessonId, courseId),
     env.DB.prepare("UPDATE courses SET updated_at=? WHERE id=?").bind(Date.now(), courseId),

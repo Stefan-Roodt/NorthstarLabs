@@ -8,8 +8,17 @@ export async function requireApiUser(request: Request) {
   if (!token || !url || !key) return null;
   const { data, error } = await createClient(url, key, { auth: { persistSession: false } }).auth.getUser(token);
   if (error || !data.user) return null;
-  const profile = await env.DB.prepare(
-    "SELECT status FROM profiles WHERE id=?",
-  ).bind(data.user.id).first<{ status: string }>();
-  return profile?.status === "suspended" ? null : data.user;
+  const access = await env.DB.prepare(
+    `SELECT
+      (SELECT status FROM profiles WHERE id=?) AS status,
+      EXISTS(
+        SELECT 1 FROM data_requests
+        WHERE user_id=? AND request_type='delete'
+          AND status IN ('pending','processing','failed','completed')
+      ) AS deletionPending`,
+  ).bind(data.user.id, data.user.id).first<{
+    status: string | null;
+    deletionPending: number;
+  }>();
+  return access?.status === "suspended" || access?.deletionPending ? null : data.user;
 }

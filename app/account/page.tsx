@@ -166,6 +166,61 @@ export default function AccountPage() {
     location.href = "/";
   }
 
+  async function exportMyData() {
+    setBusy("export");
+    setMessage("Preparing your personal-data export...");
+    const response = await fetch("/api/account/data", {
+      headers: { authorization: `Bearer ${await sessionToken()}` },
+    });
+    if (!response.ok) {
+      const result = await response.json();
+      setMessage(result.error || "Your data export could not be created.");
+      setBusy("");
+      return;
+    }
+    const blob = await response.blob();
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = `northstarlabs-data-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(href);
+    setBusy("");
+    setMessage("Your personal-data export has been downloaded.");
+  }
+
+  async function requestDeletion() {
+    const confirmation = prompt(
+      "Account deletion is permanent. Type DELETE to continue. Academy owners must transfer or close their academy first.",
+    );
+    if (confirmation !== "DELETE") {
+      if (confirmation !== null) setMessage("Deletion was not confirmed.");
+      return;
+    }
+    setBusy("delete");
+    setMessage("Securing your deletion request...");
+    const response = await fetch("/api/account/data", {
+      method: "DELETE",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${await sessionToken()}`,
+      },
+      body: JSON.stringify({ confirmation }),
+    });
+    const result = await response.json();
+    setBusy("");
+    if (!response.ok) {
+      setMessage(result.error || "The deletion request could not be accepted.");
+      return;
+    }
+    if (response.status === 202) {
+      setMessage(result.message || "Your deletion request has been recorded.");
+      return;
+    }
+    await supabase?.auth.signOut({ scope: "global" });
+    location.href = "/";
+  }
+
   if (!profile) return <main className="system-loading"><div><b>NorthStarLabs</b><p>{message}</p></div></main>;
 
   return <main className="account-page">
@@ -261,6 +316,19 @@ export default function AccountPage() {
           </label>)}
         </div>
       </article>}
+
+      <article className="panel account-card account-data-card">
+        <div><p className="sys-kicker">PRIVACY & YOUR DATA</p><h2>Export or remove your account</h2></div>
+        <p>Download the profile, learning activity, quiz attempts, certificates, community posts, and preferences NorthStarLabs stores for you.</p>
+        <button className="sys-primary" disabled={Boolean(busy)} onClick={exportMyData}>
+          {busy === "export" ? "Preparing export..." : "Download my data"}
+        </button>
+        <hr />
+        <p>Deleting an account removes personal learning records and anonymises retained community and audit history. Academy owners must transfer or close their academy first.</p>
+        <button className="danger-button" disabled={Boolean(busy)} onClick={requestDeletion}>
+          {busy === "delete" ? "Submitting request..." : "Delete my account"}
+        </button>
+      </article>
     </section>
   </main>;
 }

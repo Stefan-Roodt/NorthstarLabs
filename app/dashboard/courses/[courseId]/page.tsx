@@ -537,6 +537,31 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     setMessage(status === "published" ? "Course published — learners can enrol" : status === "draft" && course.status === "published" ? "Course unpublished" : "Course saved");
   }
 
+  async function deleteCourse() {
+    if (!course) return;
+    const confirmation = prompt(
+      `This permanently removes the course, learner progress, assessments, certificates, and media used only by this course.\n\nType the course title to continue:\n${course.title}`,
+    );
+    if (confirmation !== course.title) {
+      if (confirmation !== null) setMessage("Course title did not match. Nothing was deleted.");
+      return;
+    }
+    setMessage("Deleting course and cleaning up its data...");
+    const response = await fetch(`/api/courses/${encodeURIComponent(course.id)}`, {
+      method: "DELETE",
+      headers: {
+        authorization: `Bearer ${await token()}`,
+        "x-delete-confirmation": course.id,
+      },
+    });
+    const result = await response.json() as { error?: string };
+    if (!response.ok) {
+      setMessage(result.error || "Course could not be deleted.");
+      return;
+    }
+    location.href = "/dashboard";
+  }
+
   async function uploadFile(file: File) {
     if (!course) return;
     setUploading(true);
@@ -818,6 +843,10 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
             <button className="builder-tool" onClick={() => setWorkspaceTab("lesson")}>Back to lessons</button>
             <button className="sys-primary" onClick={() => saveCourse(course.status)}>Save course settings</button>
           </div>
+          <section className="course-danger-zone">
+            <div><p className="sys-kicker">DANGER ZONE</p><h2>Delete this course permanently</h2><p>NorthStarLabs removes course content, enrolments, progress, assessments, certificates, playback grants, and media that is not used anywhere else.</p></div>
+            <button className="danger-button" onClick={deleteCourse}>Delete course</button>
+          </section>
         </div>}
 
         {workspaceTab === "media" && <div className="media-library">

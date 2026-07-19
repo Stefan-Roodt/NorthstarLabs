@@ -324,8 +324,58 @@ test("queues transactional email and ships reporting plus secured administration
   assert.match(platform, /requirePlatformAdmin/);
   assert.match(platform, /You cannot suspend your own administrator account/);
   assert.match(admin, /PLATFORM ADMIN/);
-  assert.match(auth, /profile\?\.status === "suspended"/);
+  assert.match(auth, /access\?\.status === "suspended"/);
+  assert.match(auth, /access\?\.deletionPending/);
   assert.match(preferences, /notification_preferences/);
+});
+
+test("hardens production with rate limits, monitoring, backups, safe deletion, and journey tests", async () => {
+  const [schema, migration, worker, security, uploads, backup, reliability, health, account, courseDelete, reports, admin, journeys] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0013_crazy_reaper.sql", import.meta.url), "utf8"),
+    readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/security.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/uploads/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/platform-backup.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/platform/reliability/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/health/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/account/data/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/course-deletion.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/community/reports/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./journey-e2e.test.mjs", import.meta.url), "utf8"),
+  ]);
+  assert.match(schema, /export const rateLimitBuckets/);
+  assert.match(schema, /export const systemEvents/);
+  assert.match(schema, /export const backupRuns/);
+  assert.match(schema, /export const contentReports/);
+  assert.match(schema, /export const dataRequests/);
+  assert.match(migration, /CREATE TABLE `rate_limit_buckets`/);
+  assert.match(migration, /CREATE TABLE `system_events`/);
+  assert.match(migration, /CREATE TABLE `backup_runs`/);
+  assert.match(migration, /CREATE UNIQUE INDEX `profiles_email_unique`/);
+  assert.match(worker, /consumeRateLimit/);
+  assert.match(worker, /http\.unhandled_exception/);
+  assert.match(worker, /x-request-id/);
+  assert.match(worker, /cross-origin-opener-policy/);
+  assert.match(security, /Too many requests/);
+  assert.match(security, /uploads.*limit: 20/s);
+  assert.match(uploads, /SCHOOL_STORAGE_QUOTA_BYTES/);
+  assert.match(uploads, /academy storage quota/);
+  assert.match(backup, /northstarlabs-d1-backup/);
+  assert.match(backup, /checksum verification failed/);
+  assert.match(reliability, /createPlatformBackup/);
+  assert.match(reliability, /hide_reported_post/);
+  assert.match(health, /recentBackup/);
+  assert.match(account, /northstarlabs-personal-data-export/);
+  assert.match(account, /auth\.admin\.deleteUser/);
+  assert.match(courseDelete, /DELETE FROM quiz_attempts/);
+  assert.match(courseDelete, /media\.cleanup_failed/);
+  assert.match(reports, /already reported this post/);
+  assert.match(admin, /Production reliability/);
+  assert.match(admin, /Moderation queue/);
+  assert.match(journeys, /creator-to-learner production journey/);
+  assert.match(journeys, /safe course deletion/);
 });
 
 test("parses browser byte ranges safely", async () => {

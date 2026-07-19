@@ -72,3 +72,24 @@
 @media(max-width:620px){.certificate-toolbar>div{align-items:stretch;flex-direction:column}.certificate-status{position:static;display:inline-block;margin:0 auto 15px}.certificate h1{font-size:44px}}
 .learner-certificate-admin{display:flex;align-items:center;justify-content:space-between;gap:14px;background:#eef0ff;border:1px solid #ccd2ff;padding:12px 14px;margin:12px 0}.learner-certificate-admin>div{display:flex;align-items:center;gap:8px}.learner-certificate-admin a,.learner-certificate-admin button{border:1px solid var(--rule);background:white;color:var(--ink);padding:7px 9px;font-size:10px;font-weight:800;cursor:pointer}.learner-certificate-admin button:last-child{color:#963a35}
 @media(max-width:620px){.learner-certificate-admin{align-items:flex-start;flex-direction:column}.learner-certificate-admin>div{flex-wrap:wrap}}
+
+/* Production reliability, privacy, and safe deletion */
+.course-danger-zone,.reliability-heading,.reliability-section,.account-data-card{border:1px solid #ead8d8;border-radius:18px;background:#fffafa}
+.course-danger-zone{margin-top:24px;padding:22px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+.course-danger-zone h2,.account-data-card h2{margin:3px 0 7px}.course-danger-zone p{margin:0;max-width:760px;color:#655}
+.account-data-card{grid-column:1/-1}.account-data-card hr{width:100%;border:0;border-top:1px solid #ead8d8;margin:10px 0}
+.reliability-panel{display:grid;gap:22px}.reliability-heading{padding:22px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
+.reliability-heading h2,.reliability-section h2{margin:3px 0 6px}.reliability-heading p{margin:0;color:var(--muted)}
+.reliability-heading>div:last-child{display:flex;gap:10px;flex-wrap:wrap}
+.reliability-heading button,.reliability-section button{border:1px solid #cad0e5;border-radius:10px;background:white;padding:9px 12px;cursor:pointer}
+.reliability-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.reliability-metrics>div{border:1px solid #e4e7f1;border-radius:15px;padding:17px;background:#fff;display:grid;gap:5px}
+.reliability-metrics span,.reliability-metrics small{color:var(--muted)}.reliability-metrics strong{font-size:1.7rem}
+.reliability-section{padding:20px}.reliability-section .audit-list>div{grid-template-columns:auto 1fr auto auto;align-items:center}
+.event-severity{border-radius:999px;padding:5px 9px;font-size:.72rem;text-transform:uppercase;font-weight:800;background:#eef1f8}
+.event-severity.error,.event-severity.critical{background:#ffe1df;color:#9b201b}.event-severity.warning{background:#fff0c8;color:#805d00}
+.storage-list{display:grid;gap:8px}.storage-list>div{display:grid;grid-template-columns:minmax(180px,1fr) 120px 140px;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid #eceef5}
+.storage-list>div:last-child{border-bottom:0}
+.content-report-list{display:grid;gap:10px}.content-report-list>div{display:grid;grid-template-columns:1fr auto auto;gap:16px;align-items:start;padding:15px 0;border-bottom:1px solid #eceef5}.content-report-list small,.content-report-list em{display:block;color:var(--muted);margin-top:5px}.content-report-list p{margin:10px 0;padding:12px;background:white;border:1px solid #e8e9ef;border-radius:9px}.content-report-list>div>div:last-child{display:flex;gap:7px}.delivery-status.actioned{background:#e4f5e6;color:#31733b}.delivery-status.dismissed{background:#eee;color:#666}
+@media(max-width:900px){.reliability-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.reliability-heading,.course-danger-zone{align-items:stretch;flex-direction:column}.reliability-section .audit-list>div{grid-template-columns:1fr}.storage-list>div{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.reliability-metrics{grid-template-columns:1fr}.content-report-list>div{grid-template-columns:1fr}}

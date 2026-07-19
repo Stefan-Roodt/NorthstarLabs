@@ -1,6 +1,10 @@
 import { env } from "cloudflare:workers";
+import { writeAuditLog } from "../../../lib/audit-log";
 import { requireApiUser } from "../../../lib/server-auth";
 import { requireCourseStaffAccess } from "../../../lib/school-access";
+
+const DEFAULT_SCHOOL_STORAGE_QUOTA = 5 * 1024 * 1024 * 1024;
+const DEFAULT_SCHOOL_ASSET_LIMIT = 2_000;
 
 const MEDIA_RULES: Record<string, { kind: string; maxBytes: number }> = {
   "video/mp4": { kind: "video", maxBytes: 200 * 1024 * 1024 },
@@ -57,6 +61,20 @@ function inferredContentType(filename: string) {
   } as Record<string, string>)[extension] || "";
 }
 
+function schoolStorageQuota() {
+  const configured = Number(process.env.SCHOOL_STORAGE_QUOTA_BYTES || 0);
+  return Number.isFinite(configured) && configured > 0
+    ? configured
+    : DEFAULT_SCHOOL_STORAGE_QUOTA;
+}
+
+function schoolAssetLimit() {
+  const configured = Number(process.env.SCHOOL_MEDIA_ASSET_LIMIT || 0);
+  return Number.isFinite(configured) && configured > 0
+    ? configured
+    : DEFAULT_SCHOOL_ASSET_LIMIT;
+}
+
 export async function POST(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -82,6 +100,25 @@ export async function POST(request: Request) {
     return Response.json({ error: `This ${rule.kind} file is too large.` }, { status: 413 });
   }
   if (!request.body) return Response.json({ error: "File content required." }, { status: 400 });
+  const usage = await env.DB.prepare(
+    `SELECT COUNT(*) AS assetCount,COALESCE(SUM(size_bytes),0) AS usedBytes
+     FROM media_assets WHERE school_id=?`,
+  ).bind(course.schoolId).first<{ assetCount: number; usedBytes: number }>();
+  const assetCount = Number(usage?.assetCount || 0);
+  const usedBytes = Number(usage?.usedBytes || 0);
+  const quotaBytes = schoolStorageQuota();
+  if (assetCount >= schoolAssetLimit()) {
+    return Response.json(
+      { error: "This academy has reached its media-library file limit." },
+      { status: 413 },
+    );
+  }
+  if (contentLength > 0 && usedBytes + contentLength > quotaBytes) {
+    return Response.json(
+      { error: "This upload would exceed the academy storage quota." },
+      { status: 413 },
+    );
+  }
 
   const objectKey = `schools/${course.schoolId}/${crypto.randomUUID()}-${filename}`;
   const key = `r2:${objectKey}`;
@@ -98,6 +135,13 @@ export async function POST(request: Request) {
   if (saved.size > rule.maxBytes) {
     await env.UPLOADS.delete(objectKey);
     return Response.json({ error: `This ${rule.kind} file is too large.` }, { status: 413 });
+  }
+  if (usedBytes + saved.size > quotaBytes) {
+    await env.UPLOADS.delete(objectKey);
+    return Response.json(
+      { error: "This upload would exceed the academy storage quota." },
+      { status: 413 },
+    );
   }
 
   try {
@@ -122,6 +166,14 @@ export async function POST(request: Request) {
     await env.UPLOADS.delete(objectKey);
     throw error;
   }
+  await writeAuditLog({
+    actorId: user.id,
+    schoolId: course.schoolId,
+    action: "media.upload",
+    targetType: "media_asset",
+    targetId: assetId,
+    detail: { kind: rule.kind, sizeBytes: saved.size, contentType },
+  });
 
   return Response.json({
     id: assetId,
@@ -258,5 +310,12 @@ export async function DELETE(request: Request) {
   await env.DB.prepare(
     "DELETE FROM media_assets WHERE id=? AND school_id=?",
   ).bind(asset.id, course.schoolId).run();
+  await writeAuditLog({
+    actorId: user.id,
+    schoolId: course.schoolId,
+    action: "media.delete",
+    targetType: "media_asset",
+    targetId: asset.id,
+  });
   return Response.json({ deleted: true });
 }

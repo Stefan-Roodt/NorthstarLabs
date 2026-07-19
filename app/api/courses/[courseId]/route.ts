@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../../lib/server-auth";
 import { requireCourseStaffAccess } from "../../../../lib/school-access";
 import { writeAuditLog } from "../../../../lib/audit-log";
+import { deleteCourseSafely } from "../../../../lib/course-deletion";
 
 type QuizRow = {
   id: string;
@@ -269,4 +270,33 @@ export async function PATCH(
     detail: { status, title: title || undefined },
   });
   return Response.json({ saved: true, status });
+}
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ courseId: string }> },
+) {
+  const user = await requireApiUser(request);
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const { courseId } = await context.params;
+  const access = await requireCourseStaffAccess(user.id, courseId);
+  if (!access) return Response.json({ error: "Course not found" }, { status: 404 });
+  if (!["owner", "admin"].includes(access.memberRole)) {
+    return Response.json(
+      { error: "Only an academy owner or administrator can delete a course." },
+      { status: 403 },
+    );
+  }
+  const confirmation = request.headers.get("x-delete-confirmation");
+  if (confirmation !== courseId) {
+    return Response.json(
+      { error: "Course deletion confirmation is required." },
+      { status: 400 },
+    );
+  }
+  return Response.json(await deleteCourseSafely({
+    courseId,
+    schoolId: access.schoolId,
+    actorId: user.id,
+  }));
 }

@@ -12,7 +12,10 @@ export const profiles = sqliteTable("profiles", {
   status: text("status").notNull().default("active"),
   stripeCustomerId: text("stripe_customer_id"),
   createdAt: integer("created_at").notNull(),
-});
+}, (table) => [
+  uniqueIndex("profiles_email_unique").on(table.email),
+  index("profiles_status_created_idx").on(table.status, table.createdAt),
+]);
 
 export const schools = sqliteTable("schools", {
   id: text("id").primaryKey(),
@@ -128,6 +131,7 @@ export const mediaPlaybackGrants = sqliteTable("media_playback_grants", {
 }, (table) => [
   index("media_playback_grants_user_expiry_idx").on(table.userId, table.expiresAt),
   index("media_playback_grants_course_expiry_idx").on(table.courseId, table.expiresAt),
+  index("media_playback_grants_asset_expiry_idx").on(table.assetKey, table.expiresAt),
 ]);
 export const lessons = sqliteTable("lessons", {
   id: text("id").primaryKey(), courseId: text("course_id").notNull(), title: text("title").notNull(),
@@ -178,17 +182,45 @@ export const posts = sqliteTable("posts", {
 }, (table) => [
   index("posts_community_status_created_idx").on(table.communityId, table.status, table.createdAt),
 ]);
+export const contentReports = sqliteTable("content_reports", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull(),
+  communityId: text("community_id").notNull(),
+  postId: text("post_id").notNull(),
+  reporterId: text("reporter_id").notNull(),
+  reason: text("reason").notNull(),
+  detail: text("detail").notNull().default(""),
+  status: text("status").notNull().default("open"),
+  reviewedBy: text("reviewed_by"),
+  createdAt: integer("created_at").notNull(),
+  reviewedAt: integer("reviewed_at"),
+}, (table) => [
+  uniqueIndex("content_reports_post_reporter_open_unique").on(
+    table.postId,
+    table.reporterId,
+    table.status,
+  ),
+  index("content_reports_school_status_created_idx").on(
+    table.schoolId,
+    table.status,
+    table.createdAt,
+  ),
+  index("content_reports_post_idx").on(table.postId),
+]);
 export const communityMembers = sqliteTable("community_members", {
   id: text("id").primaryKey(), communityId: text("community_id").notNull(), userId: text("user_id").notNull(),
   role: text("role").notNull().default("member"), status: text("status").notNull().default("active"), joinedAt: integer("joined_at").notNull(),
 }, (table) => [
   uniqueIndex("community_members_community_user_unique").on(table.communityId, table.userId),
+  index("community_members_user_status_idx").on(table.userId, table.status),
 ]);
 export const memberships = sqliteTable("memberships", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), stripeSubscriptionId: text("stripe_subscription_id"),
   payfastToken: text("payfast_token"), payfastPaymentId: text("payfast_payment_id"), provider: text("provider").notNull().default("payfast"),
   plan: text("plan").notNull(), status: text("status").notNull(), currentPeriodEnd: integer("current_period_end"), createdAt: integer("created_at").notNull(),
-});
+}, (table) => [
+  index("memberships_user_status_idx").on(table.userId, table.status),
+]);
 export const lessonProgress = sqliteTable("lesson_progress", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), lessonId: text("lesson_id").notNull(),
   completed: integer("completed", { mode: "boolean" }).notNull().default(false),
@@ -204,10 +236,14 @@ export const quizzes = sqliteTable("quizzes", {
   id: text("id").primaryKey(), lessonId: text("lesson_id").notNull(), title: text("title").notNull(),
   passingScore: integer("passing_score").notNull().default(80),
   maxAttempts: integer("max_attempts").notNull().default(0),
-});
+}, (table) => [
+  uniqueIndex("quizzes_lesson_unique").on(table.lessonId),
+]);
 export const quizQuestions = sqliteTable("quiz_questions", {
   id: text("id").primaryKey(), quizId: text("quiz_id").notNull(), prompt: text("prompt").notNull(), optionsJson: text("options_json").notNull(), correctIndex: integer("correct_index").notNull(), position: integer("position").notNull().default(0),
-});
+}, (table) => [
+  index("quiz_questions_quiz_position_idx").on(table.quizId, table.position),
+]);
 export const quizAttempts = sqliteTable("quiz_attempts", {
   id: text("id").primaryKey(),
   quizId: text("quiz_id").notNull(),
@@ -309,4 +345,72 @@ export const auditLogs = sqliteTable("audit_logs", {
 }, (table) => [
   index("audit_logs_school_created_idx").on(table.schoolId, table.createdAt),
   index("audit_logs_actor_created_idx").on(table.actorId, table.createdAt),
+]);
+
+export const rateLimitBuckets = sqliteTable("rate_limit_buckets", {
+  bucketKey: text("bucket_key").primaryKey(),
+  scope: text("scope").notNull(),
+  requestCount: integer("request_count").notNull().default(0),
+  windowStartedAt: integer("window_started_at").notNull(),
+  resetAt: integer("reset_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  index("rate_limit_buckets_reset_idx").on(table.resetAt),
+  index("rate_limit_buckets_scope_updated_idx").on(table.scope, table.updatedAt),
+]);
+
+export const systemEvents = sqliteTable("system_events", {
+  id: text("id").primaryKey(),
+  severity: text("severity").notNull().default("info"),
+  source: text("source").notNull(),
+  eventType: text("event_type").notNull(),
+  message: text("message").notNull(),
+  requestId: text("request_id"),
+  route: text("route"),
+  detailJson: text("detail_json").notNull().default("{}"),
+  status: text("status").notNull().default("open"),
+  createdAt: integer("created_at").notNull(),
+  resolvedAt: integer("resolved_at"),
+  resolvedBy: text("resolved_by"),
+}, (table) => [
+  index("system_events_status_severity_created_idx").on(
+    table.status,
+    table.severity,
+    table.createdAt,
+  ),
+  index("system_events_type_created_idx").on(table.eventType, table.createdAt),
+  index("system_events_request_idx").on(table.requestId),
+]);
+
+export const backupRuns = sqliteTable("backup_runs", {
+  id: text("id").primaryKey(),
+  requestedBy: text("requested_by").notNull(),
+  status: text("status").notNull().default("running"),
+  objectKey: text("object_key"),
+  tableCount: integer("table_count").notNull().default(0),
+  rowCount: integer("row_count").notNull().default(0),
+  sizeBytes: integer("size_bytes").notNull().default(0),
+  checksum: text("checksum"),
+  failureMessage: text("failure_message"),
+  createdAt: integer("created_at").notNull(),
+  completedAt: integer("completed_at"),
+  verifiedAt: integer("verified_at"),
+}, (table) => [
+  index("backup_runs_status_created_idx").on(table.status, table.createdAt),
+  index("backup_runs_created_idx").on(table.createdAt),
+]);
+
+export const dataRequests = sqliteTable("data_requests", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  requestType: text("request_type").notNull(),
+  status: text("status").notNull().default("pending"),
+  objectKey: text("object_key"),
+  failureMessage: text("failure_message"),
+  createdAt: integer("created_at").notNull(),
+  completedAt: integer("completed_at"),
+  expiresAt: integer("expires_at"),
+}, (table) => [
+  index("data_requests_user_created_idx").on(table.userId, table.createdAt),
+  index("data_requests_status_created_idx").on(table.status, table.createdAt),
 ]);

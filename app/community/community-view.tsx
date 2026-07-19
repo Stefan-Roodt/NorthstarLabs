@@ -145,6 +145,31 @@ export function CommunityView({ schoolSlug }: { schoolSlug?: string }) {
     }
   }
 
+  async function reportPost(post: Post) {
+    if (!data) return;
+    const detail = prompt(
+      "Briefly tell the moderation team why this post should be reviewed.",
+    );
+    if (detail === null) return;
+    const response = await fetch("/api/community/reports", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${await token()}`,
+      },
+      body: JSON.stringify({
+        schoolId: data.school.id,
+        postId: post.id,
+        reason: "other",
+        detail,
+      }),
+    });
+    const result = await response.json();
+    setMessage(response.ok
+      ? result.message || "Post reported for review."
+      : result.error || "The report could not be submitted.");
+  }
+
   if (loading) return <main className="system-loading"><p>Opening the community...</p></main>;
   if (accessError || !data) {
     return <main className="system-loading"><div>
@@ -212,12 +237,15 @@ export function CommunityView({ schoolSlug }: { schoolSlug?: string }) {
                 })}</small>
               </header>
               <p>{post.body}</p>
-              {(data.canModerate || post.authorId === data.currentUserId) && <footer>
+              <footer>
                 {data.canModerate && <button onClick={() => moderate(post, post.status === "hidden" ? "restore" : "hide")}>
                   {post.status === "hidden" ? "Restore post" : "Hide post"}
                 </button>}
-                <button onClick={() => remove(post)}>Delete</button>
-              </footer>}
+                {(data.canModerate || post.authorId === data.currentUserId) &&
+                  <button onClick={() => remove(post)}>Delete</button>}
+                {post.authorId !== data.currentUserId &&
+                  <button onClick={() => reportPost(post)}>Report</button>}
+              </footer>
             </div>
           </article>
         ) : <article className="panel empty-dashboard">

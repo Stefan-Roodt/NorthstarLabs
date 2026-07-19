@@ -64,6 +64,17 @@ for (const table of ["course_sections", "media_assets", "lesson_resources"]) {
     throw new Error(`The ${table} course-authoring table was not created.`);
   }
 }
+for (const table of [
+  "rate_limit_buckets",
+  "system_events",
+  "backup_runs",
+  "content_reports",
+  "data_requests",
+]) {
+  if (!tables.some((item) => item.name === table)) {
+    throw new Error(`The ${table} production-hardening table was not created.`);
+  }
+}
 if (!tables.some((item) => item.name === "quiz_attempts")) {
   throw new Error("The quiz_attempts assessment table was not created.");
 }
@@ -80,6 +91,12 @@ const invitationIndexes = database.prepare(
 ).all();
 if (!invitationIndexes.some((item) => item.name === "invitations_token_hash_unique" && item.unique === 1)) {
   throw new Error("Invitation tokens are not protected by a unique hash index.");
+}
+const profileIndexes = database.prepare(
+  "PRAGMA index_list(profiles)",
+).all();
+if (!profileIndexes.some((item) => item.name === "profiles_email_unique" && item.unique === 1)) {
+  throw new Error("Profile email addresses are not protected by a unique index.");
 }
 const lessonColumns = database.prepare(
   "PRAGMA table_info(lessons)",
@@ -201,6 +218,13 @@ console.log(JSON.stringify({
   invitationIndexes: invitationIndexes.map((item) => item.name),
   authoringTables: ["course_sections", "media_assets", "lesson_resources"],
   learnerControlTables: ["lesson_progress", "quiz_attempts", "certificates"],
+  reliabilityTables: [
+    "rate_limit_buckets",
+    "system_events",
+    "backup_runs",
+    "content_reports",
+    "data_requests",
+  ],
   schools,
   courseScopes,
 }, null, 2));
