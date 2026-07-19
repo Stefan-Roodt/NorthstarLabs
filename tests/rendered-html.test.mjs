@@ -454,6 +454,25 @@ test("ships bundles, memberships, live learning, mobile installation, and integr
   assert.match(storefront, /PROGRAMMES & MEMBERSHIPS/);
 });
 
+test("guides creators, learners, and academy visitors to their next useful action", async () => {
+  const [dashboard, learnerHome, storefront, styles] = await Promise.all([
+    readFile(new URL("../app/dashboard/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/schools/[slug]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/system.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(dashboard, /YOUR LAUNCH PATH/);
+  assert.match(dashboard, /launchProgress/);
+  assert.match(dashboard, /Invite learners/);
+  assert.match(learnerHome, /JUMP BACK IN/);
+  assert.match(learnerHome, /Welcome back/);
+  assert.match(learnerHome, /Progress worth keeping/);
+  assert.match(storefront, /How do you learn best/);
+  assert.match(storefront, /What happens after you join/);
+  assert.match(storefront, /BEST FOR/);
+  assert.match(styles, /\.school-mobile-join/);
+});
+
 test("parses browser byte ranges safely", async () => {
   const { parseByteRange } = await import("../lib/media-stream.ts");
   assert.deepEqual(parseByteRange("bytes=10-19", 100), { start: 10, end: 19, length: 10 });
