@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { type SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 import { LessonContent } from "../../../lib/lesson-content";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 
@@ -56,6 +56,15 @@ type Certificate = {
   issuedAt: number;
   status: string;
   expiresAt: number | null;
+};
+type CourseSchool = {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  primaryColor: string;
+  accentColor: string;
+  showCommunity: number;
 };
 
 function formatBytes(bytes: number) {
@@ -165,6 +174,7 @@ function MediaViewer({
 export default function Learn({ params }: { params: Promise<{ courseId: string }> }) {
   const [id, setId] = useState("");
   const [title, setTitle] = useState("");
+  const [school, setSchool] = useState<CourseSchool | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [current, setCurrent] = useState(0);
@@ -201,7 +211,16 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       });
       const data = await response.json() as {
         error?: string;
-        course?: { title: string };
+        course?: {
+          title: string;
+          schoolId: string;
+          schoolName: string;
+          schoolSlug: string;
+          schoolLogoUrl: string | null;
+          schoolPrimaryColor: string;
+          schoolAccentColor: string;
+          showCommunity: number;
+        };
         sections?: Section[];
         lessons?: Lesson[];
         certificate?: Certificate | null;
@@ -212,6 +231,15 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
         return;
       }
       setTitle(data.course.title);
+      setSchool({
+        id: data.course.schoolId,
+        name: data.course.schoolName,
+        slug: data.course.schoolSlug,
+        logoUrl: data.course.schoolLogoUrl,
+        primaryColor: data.course.schoolPrimaryColor,
+        accentColor: data.course.schoolAccentColor,
+        showCommunity: data.course.showCommunity,
+      });
       setSections(data.sections || []);
       const loadedLessons = data.lessons || [];
       setLessons(loadedLessons);
@@ -445,15 +473,29 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
   const normalizedSearch = search.trim().toLowerCase();
   const watchRequirementMet = lesson.requiredWatchPercent <= lesson.watchedPercent;
 
-  return <main className="learn-page">
+  const schoolStyle = school ? {
+    "--blue": school.primaryColor,
+    "--acid": school.accentColor,
+  } as CSSProperties : undefined;
+
+  return <main className="learn-page" style={schoolStyle}>
     <header>
-      <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+      <Link className="learner-school-brand" href={school ? `/schools/${school.slug}` : "/"}>
+        {school?.logoUrl ? <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={school.logoUrl} alt="" />
+        </> : <i>{(school?.name || "NorthStarLabs").slice(0, 2).toUpperCase()}</i>}
+        <b>{school?.name || "NorthStarLabs"}</b>
+      </Link>
       {preview
         ? <div className="preview-mode-label">Creator preview · progress is disabled</div>
         : <div><span>{progress}% complete</span><i><b style={{ width: `${progress}%` }} /></i></div>}
       {preview
         ? <Link href={`/dashboard/courses/${id}`}>Exit preview</Link>
-        : <Link href="/learn">My learning</Link>}
+        : <div className="learner-course-links">
+          {school?.showCommunity && <Link href={`/schools/${school.slug}/community`}>Community</Link>}
+          <Link href="/learn">My learning</Link>
+        </div>}
     </header>
     {!preview && certificate?.status === "active" && <div className="certificate-ready">
       <div><b>Course completed</b><span>Your verified NorthStarLabs certificate is ready.</span></div>
@@ -517,7 +559,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
               accessToken={token}
               onWatch={recordWatch}
             />
-          : <div className="lesson-banner">NORTHSTARLABS · {lesson.lessonType.toUpperCase()} LESSON</div>}
+          : <div className="lesson-banner">{(school?.name || "NorthStarLabs").toUpperCase()} · {lesson.lessonType.toUpperCase()} LESSON</div>}
         <p className="sys-kicker">LESSON {current + 1} OF {lessons.length}{lesson.durationMinutes ? ` · ${lesson.durationMinutes} MIN` : ""}</p>
         <h1>{lesson.title}</h1>
         {!preview && lesson.requiredWatchPercent > 0 && <div className={`watch-requirement ${watchRequirementMet ? "met" : ""}`}>

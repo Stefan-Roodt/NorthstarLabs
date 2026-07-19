@@ -1,18 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import type { CatalogCourse } from "../../../lib/starter-courses";
 
+type School = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  logoUrl: string | null;
+  coverImageUrl: string | null;
+  primaryColor: string;
+  accentColor: string;
+  heroTitle: string;
+  heroDescription: string;
+  fontTheme: string;
+  supportEmail: string;
+  websiteUrl: string | null;
+  seoTitle: string;
+  seoDescription: string;
+  showCommunity: number;
+  termsUrl: string | null;
+  privacyUrl: string | null;
+};
+
 type SchoolData = {
-  school: {
-    id: string;
-    slug: string;
-    name: string;
-    description: string;
-    logoUrl: string | null;
-    primaryColor: string;
-  };
+  school: School;
+  community: { name: string; description: string; accessType: string } | null;
   courses: CatalogCourse[];
 };
 
@@ -37,84 +52,126 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
   }, [slug]);
 
   if (error) {
-    return (
-      <main className="system-loading">
-        <div>
-          <b>NorthStarLabs</b>
-          <p>{error}</p>
-          <Link href="/courses">Browse all courses</Link>
-        </div>
-      </main>
-    );
+    return <main className="system-loading"><div>
+      <b>NorthStarLabs</b>
+      <p>{error}</p>
+      <Link href="/courses">Browse all courses</Link>
+    </div></main>;
   }
-  if (!data) {
-    return <main className="system-loading"><p>Opening the academy…</p></main>;
-  }
+  if (!data) return <main className="system-loading"><p>Opening the academy...</p></main>;
 
-  return (
-    <main className="catalog-page">
-      <header>
-        <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
-        <nav>
-          <Link href="/courses">All courses</Link>
-          <Link href="/login">Sign in</Link>
-        </nav>
-      </header>
+  const { school } = data;
+  const style = {
+    "--school-primary": school.primaryColor,
+    "--school-accent": school.accentColor,
+    "--blue": school.primaryColor,
+    "--acid": school.accentColor,
+  } as CSSProperties;
+  const heroTitle = school.heroTitle || `Learn with ${school.name}`;
+  const heroDescription = school.heroDescription || school.description ||
+    "Practical learning, gathered in one focused academy.";
+  const terms = school.termsUrl || "/legal/terms";
+  const privacy = school.privacyUrl || "/legal/privacy";
 
-      <section className="catalog-hero school-catalog-hero">
-        <p className="sys-kicker">INDEPENDENT NORTHSTARLABS ACADEMY</p>
-        <h1>{data.school.name}</h1>
-        <p>{data.school.description || "Practical learning, gathered in one focused academy."}</p>
-        <div className="catalog-promises" aria-label="Academy details">
-          <span>{data.courses.length} published {data.courses.length === 1 ? "course" : "courses"}</span>
-          <span>One learner account</span>
-          <span>Progress saved securely</span>
+  return <main className={`school-storefront font-${school.fontTheme}`} style={style}>
+    <header className="school-storefront-nav">
+      <Link className="school-brand" href={`/schools/${school.slug}`}>
+        <SchoolLogo school={school} />
+      </Link>
+      <nav>
+        <a href="#courses">Courses</a>
+        {school.showCommunity && data.community &&
+          <Link href={`/schools/${school.slug}/community`}>Community</Link>}
+        {school.websiteUrl && <a href={school.websiteUrl}>Website</a>}
+        <Link className="school-sign-in" href={`/login?next=${encodeURIComponent(`/schools/${school.slug}`)}`}>Sign in</Link>
+      </nav>
+    </header>
+
+    <section className={`school-storefront-hero ${school.coverImageUrl ? "with-cover" : ""}`}>
+      {school.coverImageUrl && <>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={school.coverImageUrl} alt="" />
+      </>}
+      <div>
+        <p className="sys-kicker">WELCOME TO {school.name.toUpperCase()}</p>
+        <h1>{heroTitle}</h1>
+        <p>{heroDescription}</p>
+        <div className="school-hero-actions">
+          <a className="school-primary-action" href="#courses">Explore courses</a>
+          {school.showCommunity && data.community &&
+            <Link href={`/schools/${school.slug}/community`}>Enter the community →</Link>}
         </div>
-      </section>
+      </div>
+      <aside>
+        <strong>{String(data.courses.length).padStart(2, "0")}</strong>
+        <span>published {data.courses.length === 1 ? "course" : "courses"}</span>
+      </aside>
+    </section>
 
-      <section className="catalog-intro">
-        <div>
-          <p className="sys-kicker">ACADEMY CATALOGUE</p>
-          <h2>Choose where to begin.</h2>
+    <section className="school-trust-strip">
+      <span>Learn at your pace</span>
+      <span>Track your progress</span>
+      <span>Earn certificates</span>
+      {school.showCommunity && data.community && <span>Learn with a community</span>}
+    </section>
+
+    <section className="school-catalog-heading" id="courses">
+      <div><p className="sys-kicker">COURSE CATALOGUE</p><h2>Choose where to begin.</h2></div>
+      <p>Every course is created and supported by {school.name}. Sign in once, learn anywhere, and return to your progress at any time.</p>
+    </section>
+
+    {data.courses.length ? <section className="school-course-grid">
+      {data.courses.map((course, index) => <article className="school-course-card" key={course.id}>
+        <div className="school-course-art">
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          <b>{course.title.slice(0, 2).toUpperCase()}</b>
+          <small>{course.lessonCount} lessons</small>
         </div>
-        <p>Every course below is published and managed by {data.school.name}.</p>
-      </section>
+        <div className="school-course-copy">
+          <p className="sys-kicker">{course.priceCents ? "PREMIUM COURSE" : "FREE COURSE"}</p>
+          <h3>{course.title}</h3>
+          <p>{course.description || "A focused learning experience designed to help you make practical progress."}</p>
+          <div><span>By {course.creator || school.name}</span><b>{course.priceCents ? `R${(course.priceCents / 100).toFixed(0)}` : "Free"}</b></div>
+          <Link href={`/courses/${course.id}`}>Explore course <span>→</span></Link>
+        </div>
+      </article>)}
+    </section> : <section className="school-empty-catalog">
+      <p className="sys-kicker">COMING SOON</p>
+      <h2>This academy is preparing its first course.</h2>
+      <p>Check back after the creator publishes their first learning experience.</p>
+    </section>}
 
-      {data.courses.length ? (
-        <section className="catalog-grid">
-          {data.courses.map((course) => (
-            <article className="panel catalog-card" key={course.id}>
-              <div className="course-art">
-                <span>{course.title.slice(0, 2).toUpperCase()}</span>
-                <small>{data.school.name}</small>
-              </div>
-              <p className="sys-kicker">{course.lessonCount} LESSONS</p>
-              <h2>{course.title}</h2>
-              <p>{course.description || "A focused learning experience designed to help you make practical progress."}</p>
-              <div className="catalog-card-meta">
-                <span>By {course.creator || data.school.name}</span>
-                <b>{course.priceCents ? `R${(course.priceCents / 100).toFixed(0)}` : "Free"}</b>
-              </div>
-              <Link className="sys-primary" href={`/courses/${course.id}`}>Explore course →</Link>
-            </article>
-          ))}
-        </section>
-      ) : (
-        <section className="panel school-empty-catalog">
-          <p className="sys-kicker">COMING SOON</p>
-          <h2>This academy is preparing its first course.</h2>
-          <p>Check back after the creator publishes their first learning experience.</p>
-        </section>
-      )}
+    {school.showCommunity && data.community && <section className="school-community-cta">
+      <div>
+        <p className="sys-kicker">PRIVATE LEARNING COMMUNITY</p>
+        <h2>{data.community.name}</h2>
+        <p>{data.community.description}</p>
+      </div>
+      <Link href={`/schools/${school.slug}/community`}>Join the conversation →</Link>
+    </section>}
 
-      <footer className="catalog-footer">
-        <strong>{data.school.name}</strong>
-        <nav>
-          <Link href="/courses">All courses</Link>
-          <Link href="/legal/terms">Terms</Link>
-          <Link href="/legal/privacy">Privacy</Link>
-        </nav>
-      </footer>
-    </main>
-  );
+    <footer className="school-storefront-footer">
+      <div>
+        <SchoolLogo school={school} />
+        <p>{school.description || "Learning that moves people forward."}</p>
+      </div>
+      <nav>
+        <a href="#courses">Courses</a>
+        {school.supportEmail && <a href={`mailto:${school.supportEmail}`}>Support</a>}
+        <a href={terms}>Terms</a>
+        <a href={privacy}>Privacy</a>
+      </nav>
+      <small>Powered by <Link href="/">NorthStarLabs</Link></small>
+    </footer>
+  </main>;
+}
+
+function SchoolLogo({ school }: { school: School }) {
+  return <>
+    {school.logoUrl ? <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={school.logoUrl} alt="" />
+    </> : <i>{school.name.slice(0, 2).toUpperCase()}</i>}
+    <b>{school.name}</b>
+  </>;
 }

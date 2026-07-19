@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 import { getStarterCourse, type CatalogCourse } from "../../../lib/starter-courses";
 
@@ -10,7 +11,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
   const [message, setMessage] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
-  const [autoEnrolAttempted, setAutoEnrolAttempted] = useState(false);
+  const autoEnrolAttempted = useRef(false);
 
   useEffect(() => {
     params.then((value) => setId(value.courseId));
@@ -25,15 +26,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
       .finally(() => setLoaded(true));
   }, [id]);
 
-  useEffect(() => {
-    if (!loaded || !course || autoEnrolAttempted) return;
-    const shouldEnrol = new URLSearchParams(location.search).get("enrol") === "1";
-    if (!shouldEnrol) return;
-    setAutoEnrolAttempted(true);
-    void enrol();
-  }, [autoEnrolAttempted, course, loaded]);
-
-  async function enrol() {
+  const enrol = useCallback(async () => {
     if (enrolling) return;
     setEnrolling(true);
     setMessage("Joining your course…");
@@ -59,7 +52,16 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
       setMessage(result.error || "We could not enrol you. Please try again.");
       setEnrolling(false);
     }
-  }
+  }, [enrolling, id]);
+
+  useEffect(() => {
+    if (!loaded || !course || autoEnrolAttempted.current) return;
+    const shouldEnrol = new URLSearchParams(location.search).get("enrol") === "1";
+    if (!shouldEnrol) return;
+    autoEnrolAttempted.current = true;
+    const timeout = window.setTimeout(() => void enrol(), 0);
+    return () => window.clearTimeout(timeout);
+  }, [course, enrol, loaded]);
 
   if (!loaded) return <main className="system-loading"><p>Preparing course details…</p></main>;
   if (!course) return (
@@ -67,7 +69,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
       <div>
         <b>Course not found</b>
         <p>This course may have been unpublished or moved.</p>
-        <a className="sys-primary" href="/courses">Browse all courses</a>
+        <Link className="sys-primary" href="/courses">Browse all courses</Link>
       </div>
     </main>
   );
@@ -84,9 +86,9 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
   return (
     <main className="course-sales course-sales-expanded">
       <header>
-        <a className="system-brand" href="/">✦ NORTHSTARLABS</a>
+        <Link className="system-brand" href={course.schoolSlug ? `/schools/${course.schoolSlug}` : "/"}>✦ {course.schoolName || "NORTHSTARLABS"}</Link>
         <nav>
-          <a href="/courses">All courses</a>
+          <a href={course.schoolSlug ? `/schools/${course.schoolSlug}` : "/courses"}>{course.schoolSlug ? "Academy" : "All courses"}</a>
           <a href={`/login?next=${encodeURIComponent(`/courses/${id}`)}`}>Sign in</a>
         </nav>
       </header>
@@ -181,8 +183,8 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
       </section>
 
       <footer className="catalog-footer">
-        <a className="system-brand" href="/">✦ NORTHSTARLABS</a>
-        <nav><a href="/courses">Courses</a><a href="/legal/terms">Terms</a><a href="/legal/privacy">Privacy</a></nav>
+        <Link className="system-brand" href={course.schoolSlug ? `/schools/${course.schoolSlug}` : "/"}>✦ {course.schoolName || "NORTHSTARLABS"}</Link>
+        <nav><a href={course.schoolSlug ? `/schools/${course.schoolSlug}` : "/courses"}>Courses</a><a href="/legal/terms">Terms</a><a href="/legal/privacy">Privacy</a></nav>
       </footer>
     </main>
   );

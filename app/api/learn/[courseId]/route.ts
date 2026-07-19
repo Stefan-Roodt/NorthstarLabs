@@ -11,10 +11,14 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
   const { courseId } = await context.params;
   const access = await env.DB.prepare(
     `SELECT c.id,c.title,c.description,c.status,c.owner_id AS ownerId,
+      c.school_id AS schoolId,s.name AS schoolName,s.slug AS schoolSlug,
+      s.logo_url AS schoolLogoUrl,s.primary_color AS schoolPrimaryColor,
+      s.accent_color AS schoolAccentColor,s.show_community AS showCommunity,
       c.enforce_lesson_order AS enforceLessonOrder,
       c.available_from AS availableFrom,e.id AS enrollmentId,
       e.created_at AS enrolledAt,sm.id AS staffId
-     FROM courses c LEFT JOIN enrollments e ON e.course_id=c.id AND e.user_id=? AND e.status='active'
+     FROM courses c JOIN schools s ON s.id=c.school_id
+     LEFT JOIN enrollments e ON e.course_id=c.id AND e.user_id=? AND e.status='active'
      LEFT JOIN school_members sm ON sm.school_id=c.school_id AND sm.user_id=?
        AND sm.status='active' AND sm.role IN ('owner','admin','instructor')
      WHERE c.id=? AND (sm.id IS NOT NULL OR e.id IS NOT NULL)`
@@ -24,6 +28,13 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
     description: string;
     status: string;
     ownerId: string;
+    schoolId: string;
+    schoolName: string;
+    schoolSlug: string;
+    schoolLogoUrl: string | null;
+    schoolPrimaryColor: string;
+    schoolAccentColor: string;
+    showCommunity: number;
     enforceLessonOrder: number;
     availableFrom: number | null;
     enrollmentId: string | null;

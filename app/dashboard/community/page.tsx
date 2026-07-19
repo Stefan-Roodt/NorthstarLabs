@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 
 type Member = {
@@ -13,6 +14,7 @@ type Member = {
   joinedAt: number;
 };
 type ManagementData = {
+  school: { id: string; slug: string; name: string };
   community: {
     name: string;
     description: string;
@@ -28,10 +30,15 @@ export default function CommunityManagement() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("Loading member access...");
   const supabase = getSupabaseBrowser();
+  const searchParams = useSearchParams();
+  const requestedSchoolId = searchParams.get("schoolId") || "";
+  const managementApi = `/api/community/manage${requestedSchoolId
+    ? `?schoolId=${encodeURIComponent(requestedSchoolId)}`
+    : ""}`;
 
-  async function token() {
+  const token = useCallback(async () => {
     return (await supabase?.auth.getSession())?.data.session?.access_token || "";
-  }
+  }, [supabase]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -41,7 +48,7 @@ export default function CommunityManagement() {
         location.href = "/login?next=/dashboard/community";
         return;
       }
-      const response = await fetch("/api/community/manage", {
+      const response = await fetch(managementApi, {
         headers: { authorization: `Bearer ${accessToken}` },
       });
       const result = await response.json();
@@ -52,14 +59,14 @@ export default function CommunityManagement() {
       setData(result);
       setMessage("");
     })();
-  }, [supabase]);
+  }, [managementApi, supabase, token]);
 
   async function saveSettings(patch: Partial<ManagementData["community"]>) {
     if (!data) return;
     const community = { ...data.community, ...patch };
     setData({ ...data, community });
     setMessage("Saving access rules...");
-    const response = await fetch("/api/community/manage", {
+    const response = await fetch(managementApi, {
       method: "PATCH",
       headers: {
         "content-type": "application/json",
@@ -78,7 +85,7 @@ export default function CommunityManagement() {
     event.preventDefault();
     if (!data || !email.trim()) return;
     setMessage("Adding member...");
-    const response = await fetch("/api/community/manage", {
+    const response = await fetch(managementApi, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -107,7 +114,7 @@ export default function CommunityManagement() {
       members: data.members.map((item) => item.id === member.id ? next : item),
     });
     setMessage(`Updating ${member.displayName}...`);
-    const response = await fetch("/api/community/manage", {
+    const response = await fetch(managementApi, {
       method: "PATCH",
       headers: {
         "content-type": "application/json",
@@ -139,7 +146,7 @@ export default function CommunityManagement() {
     <header className="community-admin-top">
       <a href="/dashboard">← Creator workspace</a>
       <div><p className="sys-kicker">COMMUNITY MANAGEMENT</p><h1>{data.community.name}</h1></div>
-      <a className="sys-primary" href="/community">Open community</a>
+      <a className="sys-primary" href={`/schools/${data.school.slug}/community`}>Open community</a>
     </header>
     <section className="community-admin-body">
       <div className="metric-row">

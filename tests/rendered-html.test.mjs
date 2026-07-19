@@ -260,6 +260,33 @@ test("enforces learner controls, saves assessment history, and issues verifiable
   assert.ok(pdf.byteLength > 1_000);
 });
 
+test("publishes branded school storefronts and routes communities by academy", async () => {
+  const [schema, migration, schoolApi, editor, storefront, community, learner, metadata] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0011_mean_clint_barton.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/schools/[slug]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/academy/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/schools/[slug]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/community/community-view.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/schools/[slug]/layout.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(schema, /coverImageUrl: text\("cover_image_url"\)/);
+  assert.match(schema, /showCommunity: integer\("show_community"/);
+  assert.match(migration, /ALTER TABLE `schools` ADD `accent_color`/);
+  assert.match(migration, /ALTER TABLE `schools` ADD `seo_description`/);
+  assert.match(schoolApi, /Owner or admin access required/);
+  assert.match(schoolApi, /UPDATE schools SET/);
+  assert.match(editor, /Save and publish storefront/);
+  assert.match(editor, /Storefront saved and live/);
+  assert.match(storefront, /PRIVATE LEARNING COMMUNITY/);
+  assert.match(storefront, /school\.termsUrl \|\| "\/legal\/terms"/);
+  assert.match(community, /schoolId=/);
+  assert.match(community, /\/schools\/\$\{data\.school\.slug\}/);
+  assert.match(learner, /school\?\.showCommunity/);
+  assert.match(metadata, /generateMetadata/);
+});
+
 test("parses browser byte ranges safely", async () => {
   const { parseByteRange } = await import("../lib/media-stream.ts");
   assert.deepEqual(parseByteRange("bytes=10-19", 100), { start: 10, end: 19, length: 10 });
