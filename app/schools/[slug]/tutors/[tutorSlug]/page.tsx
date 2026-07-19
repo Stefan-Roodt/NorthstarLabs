@@ -38,6 +38,16 @@ type TutorDetail = {
     accentColor: string;
   };
   tutors: PublicTutor[];
+  slots: AvailableSlot[];
+};
+
+type AvailableSlot = {
+  id: string;
+  tutorId: string;
+  startsAt: number;
+  endsAt: number;
+  timezone: string;
+  sessionMode: string;
 };
 
 function whatsappLink(number: string) {
@@ -55,6 +65,7 @@ export default function TutorDetailPage({ params }: {
   const [preferredTimes, setPreferredTimes] = useState("");
   const [contactPreference, setContactPreference] = useState("email");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [selectedSlotId, setSelectedSlotId] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -92,6 +103,7 @@ export default function TutorDetailPage({ params }: {
       },
       body: JSON.stringify({
         tutorId: data.tutors[0].id,
+        slotId: selectedSlotId || null,
         subject,
         message,
         preferredTimes,
@@ -101,13 +113,16 @@ export default function TutorDetailPage({ params }: {
     });
     const result = await response.json();
     setNotice(response.ok
-      ? `Your enquiry was sent to ${result.tutorName}. The tutor or academy will reply using your preferred method.`
+      ? selectedSlotId
+        ? `Your appointment request was sent to ${result.tutorName}. Track confirmation in My tutoring.`
+        : `Your enquiry was sent to ${result.tutorName}. The tutor or academy will reply using your preferred method.`
       : result.error || "Your enquiry could not be sent.");
     if (response.ok) {
       setSubject("");
       setMessage("");
       setPreferredTimes("");
       setPhoneNumber("");
+      setSelectedSlotId("");
     }
     setBusy(false);
   }
@@ -179,14 +194,29 @@ export default function TutorDetailPage({ params }: {
         <h2>Tell {tutor.displayName.split(/\s+/)[0]} what you need.</h2>
         <p>Your details are sent privately to the tutor and academy team.</p>
         {notice && <div className="notice" role="status">{notice}</div>}
+        <fieldset className="tutor-slot-picker">
+          <legend>Choose an available appointment</legend>
+          {data.slots.length ? <div>
+            {data.slots.slice(0, 12).map((slot) => <button
+              className={selectedSlotId === slot.id ? "active" : ""}
+              key={slot.id}
+              onClick={() => setSelectedSlotId(slot.id)}
+              type="button"
+            >
+              <b>{new Date(slot.startsAt).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" })}</b>
+              <span>{new Date(slot.startsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })} · {slot.sessionMode.replaceAll("_", " ")}</span>
+            </button>)}
+          </div> : <p>No published times right now. Send a general enquiry and suggest what works for you.</p>}
+          {selectedSlotId && <button className="tutor-slot-clear" type="button" onClick={() => setSelectedSlotId("")}>Choose timing later instead</button>}
+        </fieldset>
         <label>What do you need help with?<input required minLength={2} maxLength={160} value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="Grade 11 Mathematics exam preparation" /></label>
         <label>Tell the tutor a little more<textarea required minLength={10} maxLength={2000} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="The topics, level and outcome you are working towards." /></label>
-        <label>Preferred days or times<textarea maxLength={500} value={preferredTimes} onChange={(event) => setPreferredTimes(event.target.value)} placeholder="Weekdays after 16:00, ideally Tuesday or Thursday." /></label>
+        <label>{selectedSlotId ? "Alternative timing note (optional)" : "Preferred days or times"}<textarea maxLength={500} value={preferredTimes} onChange={(event) => setPreferredTimes(event.target.value)} placeholder="Weekdays after 16:00, ideally Tuesday or Thursday." /></label>
         <div className="tutor-enquiry-row">
           <label>How should the tutor reply?<select value={contactPreference} onChange={(event) => setContactPreference(event.target.value)}><option value="email">Email</option><option value="phone">Phone call</option><option value="whatsapp">WhatsApp</option></select></label>
           <label>Phone number{contactPreference === "email" && " (optional)"}<input required={contactPreference !== "email"} type="tel" value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} placeholder="+264 81 000 0000" /></label>
         </div>
-        <button className="tutor-primary-action" disabled={busy}>{busy ? "Sending enquiry…" : "Send enquiry →"}</button>
+        <button className="tutor-primary-action" disabled={busy}>{busy ? "Sending request…" : selectedSlotId ? "Request appointment →" : "Send enquiry →"}</button>
         <small>By sending this enquiry, you agree that the tutor and academy may contact you about this request.</small>
       </form>
     </section>

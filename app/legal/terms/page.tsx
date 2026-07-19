@@ -37,7 +37,7 @@ export default function TermsPage() {
         <section>
           <h2>4. Learner responsibilities</h2>
           <p>Learners must participate respectfully, submit their own work where required, and avoid copying, redistributing, recording, or reselling protected course materials without permission. Certificates reflect completion against the configured course requirements and are not academic accreditation unless expressly stated by the creator.</p>
-          <p>When contacting a tutor, learners must provide accurate enquiry information and use contact details responsibly. Session time, location, cancellation terms, suitability, and payment must be confirmed directly with the tutor unless NorthstarLabs expressly presents an integrated booking or checkout.</p>
+          <p>When contacting a tutor, learners must provide accurate enquiry information and use contact details responsibly. A requested appointment slot is temporarily reserved but is not confirmed until the tutor or academy accepts it. Learners may cancel a future request through their tutoring desk; the tutor&apos;s disclosed cancellation terms may still apply to late cancellations. Suitability and payment must be confirmed directly with the tutor unless NorthstarLabs expressly presents an integrated checkout.</p>
         </section>
 
         <section>
@@ -54,7 +54,7 @@ export default function TermsPage() {
         <section>
           <h2>7. Plans, payments, and refunds</h2>
           <p>Paid features, billing frequency, taxes, processing charges, renewal terms, and cancellation options will be shown before purchase. Unless a specific offer says otherwise, access continues through the paid period after cancellation. Refund rights are governed by the applicable offer, creator policy, and mandatory consumer law. Payment activation remains subject to the final checkout configuration.</p>
-          <p>The tutor directory currently facilitates introductions and enquiries. NorthstarLabs does not collect or hold payment for independently arranged tutoring sessions unless a future booking screen expressly states otherwise. Tutors are responsible for disclosing their own pricing, payment, cancellation, and refund terms before a session is confirmed.</p>
+          <p>The tutor directory facilitates introductions, appointment requests, confirmations, and cancellations. NorthstarLabs does not collect or hold payment for independently arranged tutoring sessions unless a future checkout expressly states otherwise. Tutors are responsible for disclosing their own pricing, payment, cancellation, and refund terms before a session is confirmed.</p>
         </section>
 
         <section>

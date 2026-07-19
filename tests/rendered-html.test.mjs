@@ -477,38 +477,59 @@ test("ships academy tutor discovery, direct contact, and protected enquiries", a
   const [
     schema,
     migration,
+    bookingMigration,
     tutorsApi,
     inquiriesApi,
+    slotsApi,
     tutorDirectory,
     tutorProfile,
     tutorAdmin,
+    tutoring,
+    learnerHome,
     storefront,
     email,
   ] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0015_special_kang.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0016_violet_bucky.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/api/tutors/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/tutor-inquiries/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/tutor-slots/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/schools/[slug]/tutors/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/schools/[slug]/tutors/[tutorSlug]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/dashboard/tutors/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/tutoring/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/schools/[slug]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/email-service.ts", import.meta.url), "utf8"),
   ]);
   assert.match(schema, /export const tutors/);
   assert.match(schema, /export const tutorInquiries/);
+  assert.match(schema, /export const tutorSlots/);
   assert.match(migration, /CREATE TABLE `tutors`/);
   assert.match(migration, /CREATE TABLE `tutor_inquiries`/);
+  assert.match(bookingMigration, /CREATE TABLE `tutor_slots`/);
+  assert.match(bookingMigration, /ALTER TABLE `tutor_inquiries` ADD `slot_id`/);
   assert.match(tutorsApi, /showDirectContact/);
   assert.match(tutorsApi, /Creator access required/);
   assert.match(inquiriesApi, /Sign in to contact a tutor/);
   assert.match(inquiriesApi, /tutor\.inquiry_created/);
+  assert.match(inquiriesApi, /learner_cancel/);
+  assert.match(slotsApi, /slot\.status !== "open"/);
+  assert.match(slotsApi, /overlaps an existing tutor slot/);
   assert.match(tutorDirectory, /Find a tutor who fits how you learn/);
   assert.match(tutorProfile, /Send a private enquiry/);
   assert.match(tutorProfile, /Call tutor/);
+  assert.match(tutorProfile, /Request appointment/);
   assert.match(tutorAdmin, /Learner enquiries/);
+  assert.match(tutorAdmin, /Bookable appointment times/);
+  assert.match(tutoring, /Personal help, without the admin chase/);
+  assert.match(tutoring, /Cancel request/);
+  assert.match(learnerHome, /My tutoring/);
   assert.match(storefront, /ONE-TO-ONE SUPPORT/);
   assert.match(email, /tutor_enquiry/);
+  assert.match(email, /tutor_booking_update/);
+  assert.match(email, /tutor_booking_cancelled/);
 });
 
 test("parses browser byte ranges safely", async () => {

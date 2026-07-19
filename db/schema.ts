@@ -346,9 +346,28 @@ export const tutors = sqliteTable("tutors", {
   index("tutors_school_status_updated_idx").on(table.schoolId, table.status, table.updatedAt),
   index("tutors_user_status_idx").on(table.userId, table.status),
 ]);
+export const tutorSlots = sqliteTable("tutor_slots", {
+  id: text("id").primaryKey(),
+  tutorId: text("tutor_id").notNull(),
+  schoolId: text("school_id").notNull(),
+  createdBy: text("created_by").notNull(),
+  startsAt: integer("starts_at").notNull(),
+  endsAt: integer("ends_at").notNull(),
+  timezone: text("timezone").notNull().default("Africa/Johannesburg"),
+  sessionMode: text("session_mode").notNull().default("online"),
+  meetingDetails: text("meeting_details").notNull().default(""),
+  status: text("status").notNull().default("open"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("tutor_slots_tutor_start_unique").on(table.tutorId, table.startsAt),
+  index("tutor_slots_tutor_status_start_idx").on(table.tutorId, table.status, table.startsAt),
+  index("tutor_slots_school_status_start_idx").on(table.schoolId, table.status, table.startsAt),
+]);
 export const tutorInquiries = sqliteTable("tutor_inquiries", {
   id: text("id").primaryKey(),
   tutorId: text("tutor_id").notNull(),
+  slotId: text("slot_id"),
   schoolId: text("school_id").notNull(),
   learnerId: text("learner_id").notNull(),
   learnerName: text("learner_name").notNull(),
@@ -366,6 +385,7 @@ export const tutorInquiries = sqliteTable("tutor_inquiries", {
   index("tutor_inquiries_tutor_status_created_idx").on(table.tutorId, table.status, table.createdAt),
   index("tutor_inquiries_school_status_created_idx").on(table.schoolId, table.status, table.createdAt),
   index("tutor_inquiries_learner_created_idx").on(table.learnerId, table.createdAt),
+  index("tutor_inquiries_slot_status_idx").on(table.slotId, table.status),
 ]);
 export const integrations = sqliteTable("integrations", {
   id: text("id").primaryKey(),

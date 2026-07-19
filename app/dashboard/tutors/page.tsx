@@ -35,6 +35,7 @@ type Tutor = {
 type Inquiry = {
   id: string;
   tutorId: string;
+  slotId: string | null;
   tutorName: string;
   learnerName: string;
   learnerEmail: string;
@@ -46,6 +47,27 @@ type Inquiry = {
   status: string;
   creatorNote: string;
   createdAt: number;
+  startsAt: number | null;
+  endsAt: number | null;
+  timezone: string | null;
+  sessionMode: string | null;
+  meetingDetails: string | null;
+  slotStatus: string | null;
+};
+
+type TutorSlot = {
+  id: string;
+  tutorId: string;
+  tutorName: string;
+  startsAt: number;
+  endsAt: number;
+  timezone: string;
+  sessionMode: string;
+  meetingDetails: string;
+  status: string;
+  inquiryId: string | null;
+  learnerName: string | null;
+  inquiryStatus: string | null;
 };
 
 type TutorData = {
@@ -105,11 +127,19 @@ export default function TutorAdminPage() {
   const supabase = getSupabaseBrowser();
   const [data, setData] = useState<TutorData | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [slots, setSlots] = useState<TutorSlot[]>([]);
   const [editingId, setEditingId] = useState("");
   const [draft, setDraft] = useState<TutorDraft>(emptyDraft);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("Opening your tutor desk…");
   const [busy, setBusy] = useState("");
+  const [slotTutorId, setSlotTutorId] = useState("");
+  const [slotStarts, setSlotStarts] = useState("");
+  const [durationMinutes, setDurationMinutes] = useState("60");
+  const [repeatWeeks, setRepeatWeeks] = useState("1");
+  const [slotMode, setSlotMode] = useState("online");
+  const [slotTimezone, setSlotTimezone] = useState("Africa/Johannesburg");
+  const [meetingDetails, setMeetingDetails] = useState("");
 
   const token = useCallback(async () => {
     return (await supabase?.auth.getSession())?.data.session?.access_token || "";
@@ -134,12 +164,15 @@ export default function TutorAdminPage() {
       location.href = "/login?next=/dashboard/tutors";
       return;
     }
-    const [tutorsResponse, inquiriesResponse] = await Promise.all([
+    const [tutorsResponse, inquiriesResponse, slotsResponse] = await Promise.all([
       authed("/api/tutors"),
       authed("/api/tutor-inquiries"),
+      authed("/api/tutor-slots"),
     ]);
     if (tutorsResponse.ok) {
-      setData(await tutorsResponse.json());
+      const tutorData = await tutorsResponse.json() as TutorData;
+      setData(tutorData);
+      setSlotTutorId((current) => current || tutorData.tutors[0]?.id || "");
       setMessage("");
     } else {
       setMessage("Your tutor desk could not be loaded.");
@@ -148,6 +181,10 @@ export default function TutorAdminPage() {
       const result = await inquiriesResponse.json() as { inquiries: Inquiry[] };
       setInquiries(result.inquiries);
       setNotes(Object.fromEntries(result.inquiries.map((inquiry) => [inquiry.id, inquiry.creatorNote || ""])));
+    }
+    if (slotsResponse.ok) {
+      const result = await slotsResponse.json() as { slots: TutorSlot[] };
+      setSlots(result.slots);
     }
   }, [authed, supabase]);
 
@@ -284,6 +321,47 @@ export default function TutorAdminPage() {
     setBusy("");
   }
 
+  async function createSlots(event: FormEvent) {
+    event.preventDefault();
+    setBusy("slots");
+    setMessage("");
+    const response = await authed("/api/tutor-slots", {
+      method: "POST",
+      body: JSON.stringify({
+        tutorId: slotTutorId,
+        startsAt: new Date(slotStarts).getTime(),
+        durationMinutes: Number(durationMinutes),
+        repeatWeeks: Number(repeatWeeks),
+        timezone: slotTimezone,
+        sessionMode: slotMode,
+        meetingDetails,
+      }),
+    });
+    const result = await response.json();
+    setMessage(response.ok
+      ? `${result.created} appointment ${result.created === 1 ? "time" : "times"} added.`
+      : result.error || "The appointment times could not be added.");
+    if (response.ok) {
+      setSlotStarts("");
+      setRepeatWeeks("1");
+      await load();
+    }
+    setBusy("");
+  }
+
+  async function cancelSlot(slot: TutorSlot) {
+    if (!confirm(`Remove ${new Date(slot.startsAt).toLocaleString("en-ZA")}?`)) return;
+    setBusy(slot.id);
+    const response = await authed("/api/tutor-slots", {
+      method: "PATCH",
+      body: JSON.stringify({ id: slot.id }),
+    });
+    const result = await response.json();
+    setMessage(response.ok ? "Appointment time removed." : result.error || "The time could not be removed.");
+    await load();
+    setBusy("");
+  }
+
   if (!data) return <main className="system-loading"><div><b>NorthStarLabs</b><p>{message}</p></div></main>;
 
   return <main className="tutor-admin-page">
@@ -368,6 +446,58 @@ export default function TutorAdminPage() {
         </div> : <article className="panel product-empty"><h3>No tutor profiles yet</h3><p>Add the first tutor above. Profiles stay private until you publish them.</p></article>}
       </section>
 
+      <section className="tutor-admin-section" id="availability">
+        <div className="product-section-heading">
+          <span>CALENDAR</span>
+          <div><h2>Bookable appointment times</h2><p>Offer exact times, prevent double-booking and keep joining details private until you confirm.</p></div>
+        </div>
+        <div className="tutor-slot-manager">
+          <form className="panel tutor-slot-form" onSubmit={createSlots}>
+            <label>Tutor
+              <select required value={slotTutorId} onChange={(event) => setSlotTutorId(event.target.value)}>
+                <option value="">Choose a tutor</option>
+                {data.tutors.map((tutor) => <option key={tutor.id} value={tutor.id}>{tutor.displayName}</option>)}
+              </select>
+            </label>
+            <label>First date and time<input required type="datetime-local" value={slotStarts} onChange={(event) => setSlotStarts(event.target.value)} /></label>
+            <label>Duration
+              <select value={durationMinutes} onChange={(event) => setDurationMinutes(event.target.value)}>
+                <option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">60 minutes</option><option value="90">90 minutes</option><option value="120">2 hours</option>
+              </select>
+            </label>
+            <label>Repeat weekly
+              <select value={repeatWeeks} onChange={(event) => setRepeatWeeks(event.target.value)}>
+                <option value="1">Only this time</option><option value="4">For 4 weeks</option><option value="8">For 8 weeks</option><option value="12">For 12 weeks</option>
+              </select>
+            </label>
+            <label>Session format
+              <select value={slotMode} onChange={(event) => setSlotMode(event.target.value)}>
+                <option value="online">Online</option><option value="in_person">In person</option>
+              </select>
+            </label>
+            <label>Timezone<input required value={slotTimezone} onChange={(event) => setSlotTimezone(event.target.value)} /></label>
+            <label className="product-span-two">Private joining or venue details<textarea value={meetingDetails} onChange={(event) => setMeetingDetails(event.target.value)} maxLength={1000} placeholder="Video link, venue address or instructions. Learners see this only after confirmation." /></label>
+            <button className="sys-primary product-span-two" disabled={busy === "slots" || !data.tutors.length}>
+              {busy === "slots" ? "Adding times…" : "Add appointment times"}
+            </button>
+          </form>
+          <div className="tutor-slot-list">
+            {slots.length ? slots.map((slot) => <article className={`panel tutor-slot-card status-${slot.status}`} key={slot.id}>
+              <div>
+                <p className="sys-kicker">{slot.status.toUpperCase()} · {slot.sessionMode.replaceAll("_", " ").toUpperCase()}</p>
+                <h3>{new Date(slot.startsAt).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" })}</h3>
+                <strong>{new Date(slot.startsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}–{new Date(slot.endsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}</strong>
+                <small>{slot.tutorName} · {slot.timezone}</small>
+                {slot.learnerName && <p>Requested by <b>{slot.learnerName}</b></p>}
+              </div>
+              {slot.status === "open"
+                ? <button disabled={busy === slot.id} onClick={() => cancelSlot(slot)}>Remove time</button>
+                : <span>{slot.status === "reserved" ? "Resolve the enquiry below" : "Appointment confirmed"}</span>}
+            </article>) : <article className="panel product-empty"><h3>No appointment times yet</h3><p>Add a time above. It will appear on the tutor&apos;s public profile.</p></article>}
+          </div>
+        </div>
+      </section>
+
       <section className="tutor-admin-section" id="inquiries">
         <div className="product-section-heading">
           <span>INBOX</span>
@@ -384,14 +514,18 @@ export default function TutorAdminPage() {
               <div><dt>Learner</dt><dd>{inquiry.learnerName}</dd></div>
               <div><dt>Email</dt><dd><a href={`mailto:${inquiry.learnerEmail}`}>{inquiry.learnerEmail}</a></dd></div>
               <div><dt>Preferred contact</dt><dd>{inquiry.contactPreference}{inquiry.phoneNumber ? ` · ${inquiry.phoneNumber}` : ""}</dd></div>
-              <div><dt>Preferred times</dt><dd>{inquiry.preferredTimes || "Not supplied"}</dd></div>
+              <div><dt>{inquiry.startsAt ? "Requested appointment" : "Preferred times"}</dt><dd>{inquiry.startsAt
+                ? `${new Date(inquiry.startsAt).toLocaleString("en-ZA")} · ${inquiry.sessionMode?.replaceAll("_", " ")}`
+                : inquiry.preferredTimes || "Not supplied"}</dd></div>
             </dl>
+            {inquiry.startsAt && <p className="tutor-booking-note"><b>{inquiry.slotStatus === "booked" ? "Confirmed" : "Reserved while you decide"}:</b> {inquiry.timezone}{inquiry.status === "booked" && inquiry.meetingDetails ? ` · ${inquiry.meetingDetails}` : ""}</p>}
             <label>Private team note<textarea value={notes[inquiry.id] || ""} onChange={(event) => setNotes((current) => ({ ...current, [inquiry.id]: event.target.value }))} maxLength={1000} placeholder="What was agreed, follow-up date, or booking details." /></label>
             <div className="tutor-inquiry-actions">
               <a href={`mailto:${inquiry.learnerEmail}?subject=${encodeURIComponent(`Tutoring: ${inquiry.subject}`)}`}>Reply by email</a>
               {inquiry.phoneNumber && <a href={`tel:${inquiry.phoneNumber}`}>Call learner</a>}
               {inquiry.status === "new" && <button disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "contacted")}>Mark contacted</button>}
-              {inquiry.status !== "booked" && <button className="sys-primary" disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "booked")}>Mark booked</button>}
+              {!["booked", "declined", "closed"].includes(inquiry.status) && <button className="sys-primary" disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "booked")}>{inquiry.slotId ? "Confirm booking" : "Mark booked"}</button>}
+              {inquiry.slotId && !["booked", "declined", "closed"].includes(inquiry.status) && <button disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "declined")}>Decline time</button>}
               {!["closed", "declined"].includes(inquiry.status) && <button disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "closed")}>Close</button>}
             </div>
           </article>)}

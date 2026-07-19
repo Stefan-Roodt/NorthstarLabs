@@ -38,7 +38,7 @@ export default function PrivacyPage() {
           <h2>3. Creators and learner data</h2>
           <p>Creators control the learning products they publish and may view information about learners enrolled in their courses, including progress and completion activity. Creators must use that information only for legitimate learning, administration, and support purposes and must comply with applicable privacy laws.</p>
           <p>Private support notes are visible only within the relevant creator administration area and should not contain unnecessary sensitive information.</p>
-          <p>When a learner sends a tutoring enquiry, the learner’s name, email address, optional phone number, requested subject, message, preferred times, and contact preference are shared with the selected tutor and the academy that published the profile. Public phone, WhatsApp, or external booking links appear only when the academy enables direct contact for that tutor.</p>
+          <p>When a learner sends a tutoring enquiry, the learner’s name, email address, optional phone number, requested subject, message, preferred times, selected appointment, and contact preference are shared with the selected tutor and the academy that published the profile. Private joining or venue details are shown to the learner only after the appointment is confirmed. Public phone, WhatsApp, or external booking links appear only when the academy enables direct contact for that tutor.</p>
         </section>
 
         <section>

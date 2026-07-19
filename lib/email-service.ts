@@ -6,6 +6,8 @@ export type EmailTemplateKey =
   | "product_access"
   | "certificate"
   | "tutor_enquiry"
+  | "tutor_booking_update"
+  | "tutor_booking_cancelled"
   | "creator_summary"
   | "test";
 
@@ -94,6 +96,33 @@ function templateContent(templateKey: EmailTemplateKey, values: EmailVariables) 
       detail: `Preferred contact: ${values.contactPreference || "email"}. Preferred times: ${values.preferredTimes || "Not supplied"}.`,
     };
   }
+  if (templateKey === "tutor_booking_update") {
+    const confirmed = values.status === "booked";
+    return {
+      subject: confirmed
+        ? `Tutoring appointment confirmed with ${values.tutor || "your tutor"}`
+        : `Tutoring appointment update from ${academy}`,
+      heading: confirmed ? "Your tutoring time is confirmed" : "Your requested time is available again",
+      intro: confirmed
+        ? `${values.tutor || "Your tutor"} confirmed your appointment for ${values.chosenTime || "the requested time"}.`
+        : `${values.tutor || "The tutor"} could not confirm ${values.chosenTime || "the requested time"}. You can choose another available slot or contact the academy.`,
+      actionLabel: confirmed ? "View appointment" : "Choose another time",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: confirmed
+        ? String(values.meetingDetails || "The tutor or academy will share any final joining details before the session.")
+        : "No payment has been taken. Your original enquiry remains in your tutoring history.",
+    };
+  }
+  if (templateKey === "tutor_booking_cancelled") {
+    return {
+      subject: `Tutoring appointment cancelled by ${values.learner || "a learner"}`,
+      heading: "A learner cancelled a tutoring appointment",
+      intro: `${values.learner || "A learner"} cancelled the appointment with ${values.tutor || "the tutor"} for ${values.chosenTime || "the scheduled time"}.`,
+      actionLabel: "Open tutor desk",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: "The appointment time has been released so another learner can request it.",
+    };
+  }
   if (templateKey === "creator_summary") {
     return {
       subject: `${academy} learning report`,
@@ -156,6 +185,8 @@ async function emailAllowed(userId: string | null | undefined, templateKey: Emai
   }
   if (templateKey === "certificate") return Boolean(preferences.completionEmails);
   if (templateKey === "tutor_enquiry") return true;
+  if (templateKey === "tutor_booking_update") return true;
+  if (templateKey === "tutor_booking_cancelled") return true;
   if (templateKey === "creator_summary") return Boolean(preferences.creatorSummaries);
   return true;
 }

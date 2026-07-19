@@ -76,9 +76,19 @@ async function publicTutors(schoolSlug: string, tutorSlug?: string | null) {
   if (tutorSlug && !rows.results[0]) {
     return Response.json({ error: "Tutor not found." }, { status: 404 });
   }
+  const slots = tutorSlug
+    ? await env.DB.prepare(
+      `SELECT id,tutor_id AS tutorId,starts_at AS startsAt,
+        ends_at AS endsAt,timezone,session_mode AS sessionMode
+       FROM tutor_slots
+       WHERE tutor_id=? AND status='open' AND starts_at>?
+       ORDER BY starts_at ASC LIMIT 30`,
+    ).bind(rows.results[0].id, Date.now()).all()
+    : { results: [] };
   return Response.json({
     school,
     tutors: rows.results.map((row) => serializeTutor(row)),
+    slots: slots.results,
   });
 }
 

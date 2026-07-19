@@ -404,11 +404,18 @@ test("publishes academy tutors and protects learner enquiry details", async () =
        'Lindiwe Mokoena','Mathematics tutor for Grades 10–12',
        '["Mathematics","Physical Science"]','lindiwe@example.com',
        '+264 81 000 0000',0,'published',${now},${now});
+    INSERT INTO tutor_slots
+      (id,tutor_id,school_id,created_by,starts_at,ends_at,timezone,
+       session_mode,meeting_details,status,created_at,updated_at)
+    VALUES
+      ('tutor-slot','tutor-profile','tutor-school','tutor-owner',
+       ${now + 86_400_000},${now + 90_000_000},'Africa/Johannesburg',
+       'online','https://meet.example/private','reserved',${now},${now});
     INSERT INTO tutor_inquiries
-      (id,tutor_id,school_id,learner_id,learner_name,learner_email,
+      (id,tutor_id,slot_id,school_id,learner_id,learner_name,learner_email,
        subject,message,status,created_at,updated_at)
     VALUES
-      ('tutor-inquiry','tutor-profile','tutor-school','tutor-learner',
+      ('tutor-inquiry','tutor-profile','tutor-slot','tutor-school','tutor-learner',
        'Tutor Learner','tutor-learner@example.com','Algebra support',
        'I need help preparing for my algebra exam.','new',${now},${now});
   `);
@@ -439,6 +446,30 @@ test("publishes academy tutors and protects learner enquiry details", async () =
       WHERE school_id='another-school'
     `).get().count,
     0,
+  );
+  assert.equal(
+    db.prepare("SELECT status FROM tutor_slots WHERE id='tutor-slot'").get().status,
+    "reserved",
+  );
+  db.exec(`
+    UPDATE tutor_slots SET status='booked' WHERE id='tutor-slot' AND status='reserved';
+    UPDATE tutor_inquiries SET status='booked' WHERE id='tutor-inquiry';
+  `);
+  const booked = db.prepare(`
+    SELECT ti.status,ts.status AS slotStatus,ts.meeting_details AS meetingDetails
+    FROM tutor_inquiries ti JOIN tutor_slots ts ON ts.id=ti.slot_id
+    WHERE ti.id='tutor-inquiry'
+  `).get();
+  assert.equal(booked.status, "booked");
+  assert.equal(booked.slotStatus, "booked");
+  assert.equal(booked.meetingDetails, "https://meet.example/private");
+  db.exec(`
+    UPDATE tutor_slots SET status='open' WHERE id='tutor-slot';
+    UPDATE tutor_inquiries SET status='closed' WHERE id='tutor-inquiry';
+  `);
+  assert.equal(
+    db.prepare("SELECT status FROM tutor_slots WHERE id='tutor-slot'").get().status,
+    "open",
   );
 });
 

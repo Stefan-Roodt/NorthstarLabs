@@ -77,6 +77,7 @@ export default function LearnerHome() {
       <nav>
         <Link href="/courses">Explore courses</Link>
         <Link href="/live">Live learning</Link>
+        <Link href="/tutoring">My tutoring</Link>
         <Link href="/community">Community</Link>
         <Link href="/account">Account</Link>
         <button onClick={signOut}>Sign out</button>
