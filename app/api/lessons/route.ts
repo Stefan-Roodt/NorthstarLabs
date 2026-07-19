@@ -16,6 +16,9 @@ type LessonInput = {
   resourceIds?: string[];
   durationMinutes?: number;
   isPreview?: boolean;
+  availableAfterDays?: number;
+  requiredWatchPercent?: number;
+  transcript?: string;
   position?: number;
 };
 
@@ -92,7 +95,8 @@ export async function POST(request: Request) {
     ? env.DB.prepare(
         `UPDATE lessons SET section_id=?,title=?,lesson_type=?,content=?,
           content_format='markdown',video_key=?,primary_asset_id=?,duration_minutes=?,
-          is_preview=?,position=?,updated_at=?
+          is_preview=?,available_after_days=?,required_watch_percent=?,transcript=?,
+          position=?,updated_at=?
          WHERE id=? AND course_id=?`,
       ).bind(
         lesson.sectionId,
@@ -103,6 +107,9 @@ export async function POST(request: Request) {
         primaryAssetId,
         Math.max(0, Math.min(1440, Number(lesson.durationMinutes || 0))),
         lesson.isPreview ? 1 : 0,
+        Math.max(0, Math.min(3650, Math.round(Number(lesson.availableAfterDays || 0)))),
+        Math.max(0, Math.min(100, Math.round(Number(lesson.requiredWatchPercent || 0)))),
+        (lesson.transcript || "").slice(0, 100_000),
         Math.max(0, Number(lesson.position || 0)),
         now,
         id,
@@ -111,8 +118,9 @@ export async function POST(request: Request) {
     : env.DB.prepare(
         `INSERT INTO lessons
          (id,course_id,section_id,title,lesson_type,content,content_format,video_key,
-          primary_asset_id,duration_minutes,is_preview,position,updated_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          primary_asset_id,duration_minutes,is_preview,available_after_days,
+          required_watch_percent,transcript,position,updated_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       ).bind(
         id,
         body.courseId,
@@ -125,6 +133,9 @@ export async function POST(request: Request) {
         primaryAssetId,
         Math.max(0, Math.min(1440, Number(lesson.durationMinutes || 0))),
         lesson.isPreview ? 1 : 0,
+        Math.max(0, Math.min(3650, Math.round(Number(lesson.availableAfterDays || 0)))),
+        Math.max(0, Math.min(100, Math.round(Number(lesson.requiredWatchPercent || 0)))),
+        (lesson.transcript || "").slice(0, 100_000),
         Math.max(0, Number(lesson.position || 0)),
         now,
       );
@@ -156,6 +167,9 @@ export async function DELETE(request: Request) {
   ).bind(lessonId, courseId).first();
   if (!lesson) return Response.json({ error: "Lesson not found." }, { status: 404 });
   await env.DB.batch([
+    env.DB.prepare(
+      "DELETE FROM quiz_attempts WHERE quiz_id IN (SELECT id FROM quizzes WHERE lesson_id=?)",
+    ).bind(lessonId),
     env.DB.prepare(
       "DELETE FROM quiz_questions WHERE quiz_id IN (SELECT id FROM quizzes WHERE lesson_id=?)",
     ).bind(lessonId),

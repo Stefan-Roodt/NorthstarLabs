@@ -64,6 +64,9 @@ for (const table of ["course_sections", "media_assets", "lesson_resources"]) {
     throw new Error(`The ${table} course-authoring table was not created.`);
   }
 }
+if (!tables.some((item) => item.name === "quiz_attempts")) {
+  throw new Error("The quiz_attempts assessment table was not created.");
+}
 const profileColumns = database.prepare(
   "PRAGMA table_info(profiles)",
 ).all();
@@ -92,6 +95,50 @@ for (const column of [
 ]) {
   if (!lessonColumns.some((item) => item.name === column)) {
     throw new Error(`The lessons.${column} authoring column was not created.`);
+  }
+}
+const courseColumns = database.prepare(
+  "PRAGMA table_info(courses)",
+).all();
+for (const column of [
+  "enforce_lesson_order",
+  "available_from",
+  "certificate_title",
+  "certificate_accent",
+  "certificate_valid_days",
+]) {
+  if (!courseColumns.some((item) => item.name === column)) {
+    throw new Error(`The courses.${column} learner-control column was not created.`);
+  }
+}
+for (const column of ["available_after_days", "required_watch_percent", "transcript"]) {
+  if (!lessonColumns.some((item) => item.name === column)) {
+    throw new Error(`The lessons.${column} learner-control column was not created.`);
+  }
+}
+const progressColumns = database.prepare(
+  "PRAGMA table_info(lesson_progress)",
+).all();
+for (const column of ["watched_percent", "notes", "bookmarked"]) {
+  if (!progressColumns.some((item) => item.name === column)) {
+    throw new Error(`The lesson_progress.${column} learning-state column was not created.`);
+  }
+}
+const certificateColumns = database.prepare(
+  "PRAGMA table_info(certificates)",
+).all();
+for (const column of [
+  "recipient_name",
+  "course_title",
+  "certificate_title",
+  "accent_color",
+  "status",
+  "expires_at",
+  "revoked_at",
+  "replaced_by_code",
+]) {
+  if (!certificateColumns.some((item) => item.name === column)) {
+    throw new Error(`The certificates.${column} verification column was not created.`);
   }
 }
 if (!schools.some((school) => school.id === "northstarlabs")) {
@@ -153,6 +200,7 @@ console.log(JSON.stringify({
   tables: tables.length,
   invitationIndexes: invitationIndexes.map((item) => item.name),
   authoringTables: ["course_sections", "media_assets", "lesson_resources"],
+  learnerControlTables: ["lesson_progress", "quiz_attempts", "certificates"],
   schools,
   courseScopes,
 }, null, 2));

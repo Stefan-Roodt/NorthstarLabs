@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { type SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 import { LessonContent } from "../../../lib/lesson-content";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 
@@ -10,6 +10,11 @@ type Quiz = {
   id: string;
   title: string;
   passingScore: number;
+  maxAttempts: number;
+  attemptCount: number;
+  bestScore: number | null;
+  passed: boolean;
+  attemptsRemaining: number | null;
   questions: Array<{ id: string; prompt: string; options: string[] }>;
 };
 type Asset = {
@@ -33,12 +38,25 @@ type Lesson = {
   content: string;
   durationMinutes: number;
   completed: number;
+  watchedPercent: number;
+  requiredWatchPercent: number;
+  notes: string;
+  bookmarked: number;
+  transcript: string;
+  availableAt: number | null;
+  locked: boolean;
+  lockReason: string | null;
   primaryAsset?: Asset | null;
   resources: Resource[];
   quiz?: Quiz | null;
 };
 type Section = { id: string; title: string; position: number };
-type Certificate = { code: string; issuedAt: number };
+type Certificate = {
+  code: string;
+  issuedAt: number;
+  status: string;
+  expiresAt: number | null;
+};
 
 function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -49,14 +67,17 @@ function MediaViewer({
   asset,
   lessonId,
   accessToken,
+  onWatch,
 }: {
   asset: Asset;
   lessonId: string;
   accessToken: () => Promise<string>;
+  onWatch: (percent: number) => void;
 }) {
   const [source, setSource] = useState(() => asset.key.startsWith("r2:") ? "" : asset.key);
   const [error, setError] = useState("");
   const [renewal, setRenewal] = useState(0);
+  const lastWatchReport = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +115,16 @@ function MediaViewer({
     setError("This media could not be played.");
   }
 
+  function reportVideoProgress(event: SyntheticEvent<HTMLVideoElement>) {
+    const video = event.currentTarget;
+    if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+    const percent = Math.max(0, Math.min(100, Math.round(video.currentTime / video.duration * 100)));
+    if (percent >= 100 || percent >= lastWatchReport.current + 5) {
+      lastWatchReport.current = percent;
+      onWatch(percent);
+    }
+  }
+
   if (error) return <div className="media-placeholder"><p>{error}</p></div>;
   if (!source) return <div className="media-placeholder"><p>Loading lesson media…</p></div>;
   if (asset.kind === "image") {
@@ -120,6 +151,8 @@ function MediaViewer({
         playsInline
         preload="metadata"
         src={source}
+        onTimeUpdate={reportVideoProgress}
+        onEnded={() => onWatch(100)}
         onError={playbackFailed}
       >
         Your browser does not support video playback.
@@ -140,6 +173,8 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
   const [answers, setAnswers] = useState<number[]>([]);
   const [quizResult, setQuizResult] = useState("");
   const [resourceMessage, setResourceMessage] = useState("");
+  const [learnerMessage, setLearnerMessage] = useState("");
+  const [search, setSearch] = useState("");
   const [certificate, setCertificate] = useState<Certificate | null>(null);
   const searchParams = useSearchParams();
   const preview = searchParams.get("preview") === "1";
@@ -178,7 +213,11 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       }
       setTitle(data.course.title);
       setSections(data.sections || []);
-      setLessons(data.lessons || []);
+      const loadedLessons = data.lessons || [];
+      setLessons(loadedLessons);
+      const startingLesson = loadedLessons.findIndex((lesson) => !lesson.locked && !lesson.completed);
+      const firstAvailable = loadedLessons.findIndex((lesson) => !lesson.locked);
+      setCurrent(startingLesson >= 0 ? startingLesson : Math.max(0, firstAvailable));
       setCertificate(data.certificate || null);
       setLoaded(true);
     })();
@@ -189,10 +228,59 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
   }
 
   function openLesson(index: number) {
+    if (!preview && lessons[index]?.locked) {
+      setLearnerMessage(lessons[index].lockReason || "This lesson is locked.");
+      return;
+    }
     setCurrent(index);
     setAnswers([]);
     setQuizResult("");
     setResourceMessage("");
+    setLearnerMessage("");
+  }
+
+  async function saveLearnerState(
+    lessonId: string,
+    patch: Partial<Pick<Lesson, "watchedPercent" | "notes" | "bookmarked">>,
+    quiet = false,
+  ) {
+    if (preview) return;
+    setLessons((currentLessons) => currentLessons.map((item) =>
+      item.id === lessonId ? { ...item, ...patch } : item
+    ));
+    if (!quiet) setLearnerMessage("Saving...");
+    const response = await fetch("/api/learner-state", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${await token()}`,
+      },
+      body: JSON.stringify({
+        lessonId,
+        watchedPercent: patch.watchedPercent,
+        notes: patch.notes,
+        bookmarked: patch.bookmarked === undefined ? undefined : Boolean(patch.bookmarked),
+      }),
+    });
+    const result = await response.json() as { error?: string; watchedPercent?: number };
+    if (!response.ok) {
+      setLearnerMessage(result.error || "Your learning notes could not be saved.");
+      return;
+    }
+    if (typeof result.watchedPercent === "number") {
+      setLessons((currentLessons) => currentLessons.map((item) =>
+        item.id === lessonId
+          ? { ...item, watchedPercent: Math.max(item.watchedPercent, result.watchedPercent!) }
+          : item
+      ));
+    }
+    if (!quiet) setLearnerMessage("Saved");
+  }
+
+  function recordWatch(percent: number) {
+    const lesson = lessons[current];
+    if (!lesson || preview || percent <= lesson.watchedPercent) return;
+    void saveLearnerState(lesson.id, { watchedPercent: percent }, true);
   }
 
   async function completeLesson() {
@@ -215,9 +303,32 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       setQuizResult(result.error || "Progress could not be saved.");
       return;
     }
-    setLessons(lessons.map((item) => item.id === lesson.id ? { ...item, completed: 1 } : item));
-    if (result.certificateCode) setCertificate({ code: result.certificateCode, issuedAt: Date.now() });
-    continueToNext();
+    const updatedLessons = lessons.map((item, index) => {
+      if (item.id === lesson.id) return { ...item, completed: 1 };
+      if (
+        index === current + 1 &&
+        item.locked &&
+        item.lockReason === "Complete the earlier lessons first"
+      ) {
+        return { ...item, locked: false, lockReason: null };
+      }
+      return item;
+    });
+    setLessons(updatedLessons);
+    if (result.certificateCode) {
+      setCertificate({
+        code: result.certificateCode,
+        issuedAt: Date.now(),
+        status: "active",
+        expiresAt: null,
+      });
+    }
+    if (current < updatedLessons.length - 1 && !updatedLessons[current + 1].locked) {
+      setCurrent(current + 1);
+      setAnswers([]);
+      setQuizResult("");
+      setLearnerMessage("");
+    }
   }
 
   async function submitQuiz() {
@@ -243,17 +354,56 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       passed?: boolean;
       passingScore?: number;
       certificateCode?: string;
+      attemptCount?: number;
+      bestScore?: number;
+      attemptsRemaining?: number | null;
     };
     if (!response.ok) {
       setQuizResult(result.error || "The quiz could not be submitted.");
       return;
     }
+    const updatedLessons = lessons.map((item, index) => {
+      if (item.id === lesson.id) {
+        return {
+          ...item,
+          completed: result.passed ? 1 : item.completed,
+          quiz: item.quiz ? {
+            ...item.quiz,
+            passed: Boolean(result.passed) || item.quiz.passed,
+            attemptCount: Number(result.attemptCount ?? item.quiz.attemptCount),
+            bestScore: Number(result.bestScore ?? item.quiz.bestScore ?? 0),
+            attemptsRemaining: result.attemptsRemaining ?? item.quiz.attemptsRemaining,
+          } : item.quiz,
+        };
+      }
+      if (
+        result.passed &&
+        index === current + 1 &&
+        item.locked &&
+        item.lockReason === "Complete the earlier lessons first"
+      ) {
+        return { ...item, locked: false, lockReason: null };
+      }
+      return item;
+    });
+    setLessons(updatedLessons);
     if (result.passed) {
-      setLessons(lessons.map((item) => item.id === lesson.id ? { ...item, completed: 1 } : item));
       setQuizResult(`Passed with ${result.score}%. This lesson is complete.`);
-      if (result.certificateCode) setCertificate({ code: result.certificateCode, issuedAt: Date.now() });
+      if (result.certificateCode) {
+        setCertificate({
+          code: result.certificateCode,
+          issuedAt: Date.now(),
+          status: "active",
+          expiresAt: null,
+        });
+      }
     } else {
-      setQuizResult(`You scored ${result.score}%. You need ${result.passingScore}% to pass. Try again.`);
+      const attempts = result.attemptsRemaining === null
+        ? ""
+        : result.attemptsRemaining === 0
+          ? " No attempts remain."
+          : ` ${result.attemptsRemaining} attempt${result.attemptsRemaining === 1 ? "" : "s"} remain.`;
+      setQuizResult(`You scored ${result.score}%. You need ${result.passingScore}% to pass.${attempts}`);
     }
   }
 
@@ -292,6 +442,8 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
   const done = lessons.filter((lesson) => lesson.completed).length;
   const progress = Math.round(done / lessons.length * 100);
   const lesson = lessons[current];
+  const normalizedSearch = search.trim().toLowerCase();
+  const watchRequirementMet = lesson.requiredWatchPercent <= lesson.watchedPercent;
 
   return <main className="learn-page">
     <header>
@@ -303,18 +455,29 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
         ? <Link href={`/dashboard/courses/${id}`}>Exit preview</Link>
         : <Link href="/learn">My learning</Link>}
     </header>
-    {!preview && certificate && <div className="certificate-ready">
+    {!preview && certificate?.status === "active" && <div className="certificate-ready">
       <div><b>Course completed</b><span>Your verified NorthStarLabs certificate is ready.</span></div>
-      <Link href={`/certificates/${certificate.code}`}>View certificate</Link>
+      <div><Link href={`/certificates/${certificate.code}`}>View certificate</Link><a href={`/api/certificates/${certificate.code}/pdf`}>Download PDF</a></div>
     </div>}
     <div className="learn-layout">
       <aside>
         <p className="sys-kicker">{title}</p>
         <h2>Your curriculum</h2>
+        <label className="course-search">
+          <span>Search this course</span>
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a lesson or topic" />
+        </label>
+        <div className="learner-saved-summary">
+          <span>★ {lessons.filter((item) => item.bookmarked).length} saved</span>
+          <span>{done}/{lessons.length} complete</span>
+        </div>
         {(sections.length ? sections : [{ id: "all", title: "Course content", position: 0 }]).map((section) => {
-          const sectionLessons = sections.length
+          const sectionLessons = (sections.length
             ? lessons.filter((item) => item.sectionId === section.id)
-            : lessons;
+            : lessons).filter((item) =>
+              !normalizedSearch ||
+              `${item.title} ${item.content} ${item.transcript}`.toLowerCase().includes(normalizedSearch)
+            );
           if (!sectionLessons.length) return null;
           return <div className="learner-section" key={section.id}>
             <h3>{section.title}</h3>
@@ -322,33 +485,53 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
               const index = lessons.findIndex((candidate) => candidate.id === item.id);
               return <button
                 key={item.id}
-                className={index === current ? "active" : item.completed ? "done" : ""}
+                className={`${index === current ? "active" : item.completed ? "done" : ""}${item.locked && !preview ? " locked" : ""}`}
+                disabled={item.locked && !preview}
+                title={item.lockReason || undefined}
                 onClick={() => openLesson(index)}
               >
-                <span>{item.completed && !preview ? "✓" : index + 1}</span>
+                <span>{item.locked && !preview ? "⌁" : item.completed && !preview ? "✓" : index + 1}</span>
                 <span className="lesson-nav-title">
                   {item.title}
-                  <small>{item.durationMinutes ? `${item.durationMinutes} min` : item.quiz ? "Quiz required" : item.lessonType}</small>
+                  <small>{item.lockReason || (item.durationMinutes ? `${item.durationMinutes} min` : item.quiz ? "Quiz required" : item.lessonType)}</small>
                 </span>
               </button>;
             })}
           </div>;
         })}
+        {learnerMessage && <p className="learner-state-message" role="status">{learnerMessage}</p>}
       </aside>
       <section>
+        {lesson.locked && !preview ? <div className="lesson-locked-panel">
+          <span>⌁</span>
+          <p className="sys-kicker">LESSON LOCKED</p>
+          <h1>{lesson.title}</h1>
+          <p>{lesson.lockReason}</p>
+          <button onClick={() => openLesson(Math.max(0, current - 1))}>Return to the previous lesson</button>
+        </div> : <>
         {lesson.primaryAsset
           ? <MediaViewer
               key={`${lesson.id}:${lesson.primaryAsset.key}`}
               asset={lesson.primaryAsset}
               lessonId={lesson.id}
               accessToken={token}
+              onWatch={recordWatch}
             />
           : <div className="lesson-banner">NORTHSTARLABS · {lesson.lessonType.toUpperCase()} LESSON</div>}
         <p className="sys-kicker">LESSON {current + 1} OF {lessons.length}{lesson.durationMinutes ? ` · ${lesson.durationMinutes} MIN` : ""}</p>
         <h1>{lesson.title}</h1>
+        {!preview && lesson.requiredWatchPercent > 0 && <div className={`watch-requirement ${watchRequirementMet ? "met" : ""}`}>
+          <div><b>{watchRequirementMet ? "Video requirement complete" : `Watch ${lesson.requiredWatchPercent}% to complete`}</b><span>{lesson.watchedPercent}% watched</span></div>
+          <i><b style={{ width: `${Math.min(100, lesson.watchedPercent)}%` }} /></i>
+        </div>}
         {lesson.content
           ? <LessonContent content={lesson.content} />
           : <p className="lesson-empty-copy">Your creator is still adding the written guidance for this lesson.</p>}
+
+        {lesson.transcript && <details className="lesson-transcript">
+          <summary>Read captions / transcript</summary>
+          <div>{lesson.transcript.split(/\n{2,}/).map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div>
+        </details>}
 
         {!!lesson.resources?.length && <section className="lesson-resources">
           <div><p className="sys-kicker">LESSON RESOURCES</p><h2>Files to keep and use</h2></div>
@@ -367,6 +550,10 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
             <p className="sys-kicker">KNOWLEDGE CHECK</p>
             <h2>{lesson.quiz.title}</h2>
             <span>{preview ? "Preview of the learner quiz." : `Score ${lesson.quiz.passingScore}% or higher to complete this lesson.`}</span>
+            {!preview && <div className="quiz-attempt-summary">
+              <span>Attempts: {lesson.quiz.attemptCount}{lesson.quiz.maxAttempts ? `/${lesson.quiz.maxAttempts}` : " · unlimited"}</span>
+              {lesson.quiz.bestScore !== null && <span>Best score: {lesson.quiz.bestScore}%</span>}
+            </div>}
           </div>
           {lesson.quiz.questions.map((question, questionIndex) =>
             <fieldset key={question.id}>
@@ -376,6 +563,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
                   <input
                     type="radio"
                     name={`question-${question.id}`}
+                    disabled={!preview && lesson.quiz?.attemptsRemaining === 0 && !lesson.completed}
                     checked={answers[questionIndex] === optionIndex}
                     onChange={() => {
                       const next = [...answers];
@@ -395,19 +583,50 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
               ? <button className="sys-primary" onClick={continueToNext}>
                   {current === lessons.length - 1 ? "Lesson complete" : "Continue to next lesson →"}
                 </button>
-              : <button className="sys-primary" onClick={submitQuiz}>Submit quiz</button>}
+              : <button
+                  className="sys-primary"
+                  disabled={lesson.quiz.attemptsRemaining === 0}
+                  onClick={submitQuiz}
+                >
+                  {lesson.quiz.attemptsRemaining === 0 ? "No attempts remaining" : "Submit quiz"}
+                </button>}
+        </section>}
+
+        {!preview && <section className="learner-tools">
+          <div>
+            <p className="sys-kicker">YOUR LEARNING SPACE</p>
+            <h2>Save this lesson and keep private notes.</h2>
+          </div>
+          <button
+            className={lesson.bookmarked ? "saved" : ""}
+            onClick={() => void saveLearnerState(lesson.id, { bookmarked: lesson.bookmarked ? 0 : 1 })}
+          >
+            {lesson.bookmarked ? "★ Saved" : "☆ Save lesson"}
+          </button>
+          <label>Private notes
+            <textarea
+              maxLength={10_000}
+              value={lesson.notes || ""}
+              onChange={(event) => setLessons((currentLessons) => currentLessons.map((item) =>
+                item.id === lesson.id ? { ...item, notes: event.target.value } : item
+              ))}
+              placeholder="Capture a takeaway, question, or action for later."
+            />
+          </label>
+          <div><span>{lesson.notes.length.toLocaleString()} / 10,000</span><button onClick={() => void saveLearnerState(lesson.id, { notes: lesson.notes })}>Save notes</button></div>
         </section>}
 
         {!lesson.quiz && <div className="lesson-actions">
           <button disabled={current === 0} onClick={() => openLesson(current - 1)}>← Previous</button>
           {preview
             ? <span className="preview-completion-note">Completion is disabled in preview.</span>
-            : <button className="sys-primary" onClick={completeLesson}>
+            : <button className="sys-primary" disabled={!watchRequirementMet} onClick={completeLesson}>
                 {lesson.completed
                   ? current === lessons.length - 1 ? "Lesson completed" : "Completed — continue →"
-                  : "Complete & continue →"}
+                  : watchRequirementMet ? "Complete & continue →" : `Watch ${lesson.requiredWatchPercent}% first`}
               </button>}
         </div>}
+        </>}
       </section>
     </div>
   </main>;

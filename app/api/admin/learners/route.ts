@@ -19,7 +19,13 @@ export async function GET(request: Request) {
       e.support_note AS supportNote,e.last_activity_at AS lastActivityAt,e.created_at AS createdAt,
       c.title AS courseTitle,
       COALESCE(p.display_name,p.email,'Learner') AS displayName,
-      COALESCE(p.email,'Account email unavailable') AS email
+      COALESCE(p.email,'Account email unavailable') AS email,
+      (SELECT cert.code FROM certificates cert
+       WHERE cert.user_id=e.user_id AND cert.course_id=e.course_id
+       ORDER BY cert.issued_at DESC LIMIT 1) AS certificateCode,
+      (SELECT cert.status FROM certificates cert
+       WHERE cert.user_id=e.user_id AND cert.course_id=e.course_id
+       ORDER BY cert.issued_at DESC LIMIT 1) AS certificateStatus
      FROM enrollments e
      JOIN courses c ON c.id=e.course_id
      LEFT JOIN profiles p ON p.id=e.user_id
@@ -117,6 +123,11 @@ export async function PATCH(request: Request) {
     await env.DB.batch([
       env.DB.prepare(
         "DELETE FROM lesson_progress WHERE user_id=? AND lesson_id IN (SELECT id FROM lessons WHERE course_id=?)",
+      ).bind(enrollment.userId, enrollment.courseId),
+      env.DB.prepare(
+        `DELETE FROM quiz_attempts WHERE user_id=? AND quiz_id IN (
+          SELECT q.id FROM quizzes q JOIN lessons l ON l.id=q.lesson_id WHERE l.course_id=?
+        )`,
       ).bind(enrollment.userId, enrollment.courseId),
       env.DB.prepare(
         "DELETE FROM certificates WHERE user_id=? AND course_id=?",

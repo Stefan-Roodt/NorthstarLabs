@@ -5,6 +5,7 @@ import {
   hashPlaybackToken,
   PLAYBACK_GRANT_TTL_MS,
 } from "../../../../lib/media-stream";
+import { getLessonGate } from "../../../../lib/learner-controls";
 
 type PlaybackAsset = {
   lessonId: string;
@@ -22,6 +23,13 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as { lessonId?: string } | null;
   const lessonId = body?.lessonId?.trim() || "";
   if (!lessonId) return Response.json({ error: "Lesson required." }, { status: 400 });
+  const gate = await getLessonGate(env.DB, user.id, lessonId);
+  if (!gate) {
+    return Response.json({ error: "You do not have access to this lesson." }, { status: 403 });
+  }
+  if (gate.locked && !gate.isStaff) {
+    return Response.json({ error: gate.lockReason || "This lesson is locked." }, { status: 409 });
+  }
 
   const asset = await env.DB.prepare(
     `SELECT l.id AS lessonId,l.course_id AS courseId,

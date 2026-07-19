@@ -207,6 +207,59 @@ test("streams protected lesson media with short-lived grants and byte ranges", a
   assert.doesNotMatch(learner, /\/api\/uploads\?key=\$\{encodeURIComponent\(asset\.key\)\}/);
 });
 
+test("enforces learner controls, saves assessment history, and issues verifiable PDFs", async () => {
+  const [schema, migration, controls, progress, quiz, state, learnApi, learner, builder, certificateApi, pdfRoute] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0010_numerous_lady_ursula.sql", import.meta.url), "utf8"),
+    readFile(new URL("../lib/learner-controls.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/progress/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/quizzes/[lessonId]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/learner-state/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/learn/[courseId]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/certificates/[code]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/certificates/[code]/pdf/route.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(schema, /export const quizAttempts/);
+  assert.match(schema, /requiredWatchPercent/);
+  assert.match(schema, /certificateValidDays/);
+  assert.match(migration, /CREATE TABLE `quiz_attempts`/);
+  assert.match(migration, /ALTER TABLE `lesson_progress` ADD `notes`/);
+  assert.match(migration, /CREATE UNIQUE INDEX `certificates_code_unique`/);
+  assert.match(controls, /Complete the earlier lessons first/);
+  assert.match(controls, /availableAfterDays/);
+  assert.match(progress, /Watch at least/);
+  assert.match(quiz, /INSERT INTO quiz_attempts/);
+  assert.match(quiz, /attemptsRemaining/);
+  assert.match(state, /watched_percent=MAX/);
+  assert.match(learnApi, /quiz_attempts/);
+  assert.match(learnApi, /lockReason/);
+  assert.match(learner, /Search this course/);
+  assert.match(learner, /Private notes/);
+  assert.match(learner, /Read captions \/ transcript/);
+  assert.match(builder, /Require lessons in order/);
+  assert.match(builder, /Maximum attempts/);
+  assert.match(builder, /PDF CERTIFICATE/);
+  assert.match(certificateApi, /status='replaced'/);
+  assert.match(pdfRoute, /application\/pdf/);
+
+  const { createCertificatePdf } = await import("../lib/certificate-pdf.ts");
+  const pdf = createCertificatePdf({
+    certificateTitle: "Certificate of Completion",
+    learnerName: "Ada Learner",
+    courseTitle: "Practical Course Design",
+    issuerName: "NorthStarLabs",
+    code: "NSL-TEST123",
+    issuedAt: Date.UTC(2026, 6, 19),
+    expiresAt: null,
+    accentColor: "#3556d8",
+    verificationUrl: "https://northstarlabs.co.za/certificates/NSL-TEST123",
+  });
+  assert.equal(new TextDecoder().decode(pdf.slice(0, 8)), "%PDF-1.4");
+  assert.ok(pdf.byteLength > 1_000);
+});
+
 test("parses browser byte ranges safely", async () => {
   const { parseByteRange } = await import("../lib/media-stream.ts");
   assert.deepEqual(parseByteRange("bytes=10-19", 100), { start: 10, end: 19, length: 10 });

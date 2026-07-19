@@ -16,6 +16,7 @@ export async function POST(request: Request) {
     lessonId?: string;
     title?: string;
     passingScore?: number;
+    maxAttempts?: number;
     questions?: QuizQuestionInput[];
   };
   if (!body.lessonId) return Response.json({ error: "Lesson required" }, { status: 400 });
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
   if (!questionInputs.length) {
     if (existing) {
       await env.DB.batch([
+        env.DB.prepare("DELETE FROM quiz_attempts WHERE quiz_id=?").bind(existing.id),
         env.DB.prepare("DELETE FROM quiz_questions WHERE quiz_id=?").bind(existing.id),
         env.DB.prepare("DELETE FROM quizzes WHERE id=?").bind(existing.id),
       ]);
@@ -61,11 +63,19 @@ export async function POST(request: Request) {
 
   const quizId = existing?.id || crypto.randomUUID();
   const passingScore = Math.max(1, Math.min(100, Number(body.passingScore || 80)));
+  const maxAttempts = Math.max(0, Math.min(100, Number(body.maxAttempts || 0)));
   const statements = [
     env.DB.prepare(
-      `INSERT INTO quizzes (id,lesson_id,title,passing_score) VALUES (?,?,?,?)
-       ON CONFLICT(id) DO UPDATE SET title=excluded.title,passing_score=excluded.passing_score`,
-    ).bind(quizId, body.lessonId, body.title?.trim() || "Lesson quiz", passingScore),
+      `INSERT INTO quizzes (id,lesson_id,title,passing_score,max_attempts) VALUES (?,?,?,?,?)
+       ON CONFLICT(id) DO UPDATE SET title=excluded.title,
+         passing_score=excluded.passing_score,max_attempts=excluded.max_attempts`,
+    ).bind(
+      quizId,
+      body.lessonId,
+      body.title?.trim() || "Lesson quiz",
+      passingScore,
+      maxAttempts,
+    ),
     env.DB.prepare("DELETE FROM quiz_questions WHERE quiz_id=?").bind(quizId),
     ...questions.map((question, index) =>
       env.DB.prepare(

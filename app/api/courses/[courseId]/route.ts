@@ -7,6 +7,7 @@ type QuizRow = {
   lessonId: string;
   title: string;
   passingScore: number;
+  maxAttempts: number;
   questionId: string | null;
   prompt: string | null;
   optionsJson: string | null;
@@ -37,7 +38,10 @@ export async function GET(
   if (!access) return Response.json({ error: "Course not found" }, { status: 404 });
   const course = await env.DB.prepare(
     `SELECT id,school_id AS schoolId,title,description,status,
-      price_cents AS priceCents,updated_at AS updatedAt
+      price_cents AS priceCents,enforce_lesson_order AS enforceLessonOrder,
+      available_from AS availableFrom,certificate_title AS certificateTitle,
+      certificate_accent AS certificateAccent,
+      certificate_valid_days AS certificateValidDays,updated_at AS updatedAt
      FROM courses WHERE id=?`,
   ).bind(courseId).first<{ schoolId: string }>();
   if (!course) return Response.json({ error: "Course not found" }, { status: 404 });
@@ -51,7 +55,9 @@ export async function GET(
       `SELECT l.id,l.section_id AS sectionId,l.title,l.lesson_type AS lessonType,
         l.content,l.content_format AS contentFormat,l.video_key AS videoKey,
         l.primary_asset_id AS primaryAssetId,l.duration_minutes AS durationMinutes,
-        l.is_preview AS isPreview,l.position,l.updated_at AS updatedAt,
+        l.is_preview AS isPreview,l.available_after_days AS availableAfterDays,
+        l.required_watch_percent AS requiredWatchPercent,l.transcript,
+        l.position,l.updated_at AS updatedAt,
         ma.filename AS primaryFilename,ma.content_type AS primaryContentType,
         ma.size_bytes AS primarySizeBytes,ma.kind AS primaryKind,
         ma.alt_text AS primaryAltText,ma.created_at AS primaryCreatedAt,
@@ -64,6 +70,7 @@ export async function GET(
     ).bind(courseId).all(),
     env.DB.prepare(
       `SELECT q.id,q.lesson_id AS lessonId,q.title,q.passing_score AS passingScore,
+        q.max_attempts AS maxAttempts,
         qq.id AS questionId,qq.prompt,qq.options_json AS optionsJson,
         qq.correct_index AS correctIndex,qq.position
        FROM quizzes q
@@ -93,6 +100,7 @@ export async function GET(
     id: string;
     title: string;
     passingScore: number;
+    maxAttempts: number;
     questions: Array<{
       id: string;
       prompt: string;
@@ -106,6 +114,7 @@ export async function GET(
         id: row.id,
         title: row.title,
         passingScore: row.passingScore,
+        maxAttempts: row.maxAttempts,
         questions: [],
       });
     }
@@ -164,12 +173,29 @@ export async function PATCH(
     description?: string;
     status?: string;
     priceCents?: number;
+    enforceLessonOrder?: boolean;
+    availableFrom?: number | null;
+    certificateTitle?: string;
+    certificateAccent?: string;
+    certificateValidDays?: number;
   };
   const existing = await requireCourseStaffAccess(user.id, courseId);
   if (!existing) return Response.json({ error: "Course not found" }, { status: 404 });
   const status = body.status === "published" ? "published" : "draft";
   const title = body.title?.trim();
   const description = body.description?.trim();
+  const certificateTitle = body.certificateTitle?.trim().slice(0, 100) || null;
+  const certificateAccent = /^#[0-9a-f]{6}$/i.test(body.certificateAccent || "")
+    ? body.certificateAccent!
+    : null;
+  const certificateValidDays = body.certificateValidDays === undefined
+    ? null
+    : Math.max(0, Math.min(3650, Math.round(Number(body.certificateValidDays || 0))));
+  const availableFromProvided = body.availableFrom !== undefined;
+  const availableFrom = typeof body.availableFrom === "number" &&
+    Number.isFinite(body.availableFrom) && body.availableFrom > 0
+    ? Math.round(body.availableFrom)
+    : null;
 
   if (status === "published") {
     const errors: string[] = [];
@@ -211,12 +237,25 @@ export async function PATCH(
 
   await env.DB.prepare(
     `UPDATE courses SET title=COALESCE(?,title),description=COALESCE(?,description),
-      status=?,price_cents=COALESCE(?,price_cents),updated_at=? WHERE id=?`,
+      status=?,price_cents=COALESCE(?,price_cents),
+      enforce_lesson_order=CASE WHEN ?=1 THEN ? ELSE enforce_lesson_order END,
+      available_from=CASE WHEN ?=1 THEN ? ELSE available_from END,
+      certificate_title=COALESCE(?,certificate_title),
+      certificate_accent=COALESCE(?,certificate_accent),
+      certificate_valid_days=COALESCE(?,certificate_valid_days),
+      updated_at=? WHERE id=?`,
   ).bind(
     title || null,
     body.description === undefined ? null : description || "",
     status,
     Number.isFinite(body.priceCents) ? body.priceCents : null,
+    body.enforceLessonOrder === undefined ? 0 : 1,
+    body.enforceLessonOrder ? 1 : 0,
+    availableFromProvided ? 1 : 0,
+    availableFrom,
+    certificateTitle,
+    certificateAccent,
+    certificateValidDays,
     Date.now(),
     courseId,
   ).run();

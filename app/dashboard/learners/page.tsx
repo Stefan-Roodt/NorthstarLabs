@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 
@@ -16,6 +17,8 @@ type Enrollment = {
   courseTitle: string;
   displayName: string;
   email: string;
+  certificateCode?: string | null;
+  certificateStatus?: string | null;
 };
 type LearnerData = {
   school: { id: string; name: string; memberRole: string };
@@ -215,6 +218,36 @@ export default function LearnerManagement() {
     setMessage(action === "note" ? "Private support note saved." : action === "reset" ? "Learner progress reset." : "Learner access updated.");
   }
 
+  async function manageCertificate(item: Enrollment, action: "revoke" | "replace") {
+    if (!item.certificateCode) return;
+    const verb = action === "revoke" ? "Revoke" : "Replace";
+    if (!confirm(`${verb} the certificate for ${item.displayName}?`)) return;
+    setBusy(`${action}-${item.id}`);
+    const response = await fetch(`/api/certificates/${encodeURIComponent(item.certificateCode)}`, {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${await token()}`,
+      },
+      body: JSON.stringify({ action }),
+    });
+    const result = await response.json() as {
+      error?: string;
+      status?: string;
+      replacementCode?: string;
+    };
+    setBusy("");
+    if (!response.ok) {
+      setMessage(result.error || "The certificate could not be updated.");
+      return;
+    }
+    editLocal(item.id, {
+      certificateCode: result.replacementCode || item.certificateCode,
+      certificateStatus: result.replacementCode ? "active" : result.status || item.certificateStatus,
+    });
+    setMessage(action === "replace" ? "Replacement certificate issued." : "Certificate revoked.");
+  }
+
   function downloadLearners() {
     if (!data) return;
     const rows = [
@@ -320,6 +353,14 @@ export default function LearnerManagement() {
           <div className="learner-progress">
             <span>Course progress</span><i><b style={{ width: `${item.progress}%` }} /></i><strong>{item.progress}%</strong>
           </div>
+          {item.certificateCode && <div className="learner-certificate-admin">
+            <div><b>Certificate {item.certificateCode}</b><span className={`status ${item.certificateStatus}`}>{item.certificateStatus}</span></div>
+            <div>
+              <Link href={`/certificates/${item.certificateCode}`} target="_blank">Verify</Link>
+              <button onClick={() => manageCertificate(item, "replace")} disabled={busy === `replace-${item.id}`}>Replace</button>
+              {item.certificateStatus === "active" && <button onClick={() => manageCertificate(item, "revoke")} disabled={busy === `revoke-${item.id}`}>Revoke</button>}
+            </div>
+          </div>}
           <div className="learner-support">
             <label>
               Private support note

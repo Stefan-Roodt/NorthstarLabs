@@ -65,7 +65,13 @@ export const courses = sqliteTable("courses", {
   id: text("id").primaryKey(), schoolId: text("school_id").notNull().default("northstarlabs"),
   ownerId: text("owner_id").notNull(), title: text("title").notNull(),
   description: text("description").notNull().default(""), status: text("status").notNull().default("draft"),
-  priceCents: integer("price_cents").notNull().default(0), createdAt: integer("created_at").notNull(), updatedAt: integer("updated_at").notNull(),
+  priceCents: integer("price_cents").notNull().default(0),
+  enforceLessonOrder: integer("enforce_lesson_order", { mode: "boolean" }).notNull().default(false),
+  availableFrom: integer("available_from"),
+  certificateTitle: text("certificate_title").notNull().default("Certificate of Completion"),
+  certificateAccent: text("certificate_accent").notNull().default("#3556d8"),
+  certificateValidDays: integer("certificate_valid_days").notNull().default(0),
+  createdAt: integer("created_at").notNull(), updatedAt: integer("updated_at").notNull(),
 }, (table) => [
   index("courses_school_status_idx").on(table.schoolId, table.status, table.updatedAt),
   index("courses_owner_idx").on(table.ownerId),
@@ -117,6 +123,9 @@ export const lessons = sqliteTable("lessons", {
   videoKey: text("video_key"), primaryAssetId: text("primary_asset_id"),
   durationMinutes: integer("duration_minutes").notNull().default(0),
   isPreview: integer("is_preview", { mode: "boolean" }).notNull().default(false),
+  availableAfterDays: integer("available_after_days").notNull().default(0),
+  requiredWatchPercent: integer("required_watch_percent").notNull().default(0),
+  transcript: text("transcript").notNull().default(""),
   position: integer("position").notNull().default(0), updatedAt: integer("updated_at").notNull().default(0),
 }, (table) => [
   index("lessons_course_position_idx").on(table.courseId, table.sectionId, table.position),
@@ -169,14 +178,53 @@ export const memberships = sqliteTable("memberships", {
 });
 export const lessonProgress = sqliteTable("lesson_progress", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), lessonId: text("lesson_id").notNull(),
-  completed: integer("completed", { mode: "boolean" }).notNull().default(false), updatedAt: integer("updated_at").notNull(),
-});
+  completed: integer("completed", { mode: "boolean" }).notNull().default(false),
+  watchedPercent: integer("watched_percent").notNull().default(0),
+  notes: text("notes").notNull().default(""),
+  bookmarked: integer("bookmarked", { mode: "boolean" }).notNull().default(false),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("lesson_progress_user_lesson_unique").on(table.userId, table.lessonId),
+  index("lesson_progress_user_bookmarked_idx").on(table.userId, table.bookmarked, table.updatedAt),
+]);
 export const quizzes = sqliteTable("quizzes", {
-  id: text("id").primaryKey(), lessonId: text("lesson_id").notNull(), title: text("title").notNull(), passingScore: integer("passing_score").notNull().default(80),
+  id: text("id").primaryKey(), lessonId: text("lesson_id").notNull(), title: text("title").notNull(),
+  passingScore: integer("passing_score").notNull().default(80),
+  maxAttempts: integer("max_attempts").notNull().default(0),
 });
 export const quizQuestions = sqliteTable("quiz_questions", {
   id: text("id").primaryKey(), quizId: text("quiz_id").notNull(), prompt: text("prompt").notNull(), optionsJson: text("options_json").notNull(), correctIndex: integer("correct_index").notNull(), position: integer("position").notNull().default(0),
 });
+export const quizAttempts = sqliteTable("quiz_attempts", {
+  id: text("id").primaryKey(),
+  quizId: text("quiz_id").notNull(),
+  userId: text("user_id").notNull(),
+  attemptNumber: integer("attempt_number").notNull(),
+  answersJson: text("answers_json").notNull(),
+  score: integer("score").notNull(),
+  passed: integer("passed", { mode: "boolean" }).notNull().default(false),
+  submittedAt: integer("submitted_at").notNull(),
+}, (table) => [
+  uniqueIndex("quiz_attempts_quiz_user_number_unique").on(
+    table.quizId,
+    table.userId,
+    table.attemptNumber,
+  ),
+  index("quiz_attempts_user_submitted_idx").on(table.userId, table.submittedAt),
+]);
 export const certificates = sqliteTable("certificates", {
-  id: text("id").primaryKey(), userId: text("user_id").notNull(), courseId: text("course_id").notNull(), code: text("code").notNull(), issuedAt: integer("issued_at").notNull(),
-});
+  id: text("id").primaryKey(), userId: text("user_id").notNull(), courseId: text("course_id").notNull(),
+  code: text("code").notNull(), issuedAt: integer("issued_at").notNull(),
+  recipientName: text("recipient_name").notNull().default("NorthStarLabs learner"),
+  courseTitle: text("course_title").notNull().default("NorthStarLabs course"),
+  certificateTitle: text("certificate_title").notNull().default("Certificate of Completion"),
+  accentColor: text("accent_color").notNull().default("#3556d8"),
+  status: text("status").notNull().default("active"),
+  expiresAt: integer("expires_at"),
+  revokedAt: integer("revoked_at"),
+  replacedByCode: text("replaced_by_code"),
+}, (table) => [
+  uniqueIndex("certificates_code_unique").on(table.code),
+  index("certificates_user_course_idx").on(table.userId, table.courseId, table.issuedAt),
+  index("certificates_course_status_idx").on(table.courseId, table.status, table.issuedAt),
+]);

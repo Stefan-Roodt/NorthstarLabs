@@ -15,6 +15,7 @@ type Quiz = {
   id?: string;
   title: string;
   passingScore: number;
+  maxAttempts: number;
   questions: QuizQuestion[];
 };
 type Asset = {
@@ -49,6 +50,9 @@ type Lesson = {
   primaryAsset?: Asset | null;
   durationMinutes: number;
   isPreview: number | boolean;
+  availableAfterDays: number;
+  requiredWatchPercent: number;
+  transcript: string;
   position: number;
   updatedAt: number;
   resources: Resource[];
@@ -67,6 +71,11 @@ type Course = {
   description: string;
   status: string;
   priceCents: number;
+  enforceLessonOrder: number | boolean;
+  availableFrom: number | null;
+  certificateTitle: string;
+  certificateAccent: string;
+  certificateValidDays: number;
   sections: Section[];
   lessons: Lesson[];
   media: Asset[];
@@ -90,6 +99,13 @@ function assetIcon(kind: string) {
   if (kind === "image") return "▧";
   if (kind === "archive") return "ZIP";
   return "DOC";
+}
+
+function dateTimeInputValue(timestamp: number | null) {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
 }
 
 export default function CourseBuilder({ params }: { params: Promise<{ courseId: string }> }) {
@@ -183,6 +199,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
         lessonId: lesson.id,
         title: lesson.quiz?.title,
         passingScore: lesson.quiz?.passingScore,
+        maxAttempts: lesson.quiz?.maxAttempts,
         questions: lesson.quiz?.questions || [],
       }),
     });
@@ -238,6 +255,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     const quiz = selected.quiz || {
       title: "Lesson quiz",
       passingScore: 80,
+      maxAttempts: 0,
       questions: [blankQuestion()],
     };
     editLesson({ quiz: { ...quiz, ...patch } });
@@ -285,12 +303,16 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       contentFormat: "markdown",
       durationMinutes: 0,
       isPreview: false,
+      availableAfterDays: 0,
+      requiredWatchPercent: 0,
+      transcript: "",
       position: sectionLessons.length,
       updatedAt: 0,
       resources: [],
       quiz: lessonType === "quiz" ? {
         title: "Knowledge check",
         passingScore: 80,
+        maxAttempts: 0,
         questions: [blankQuestion()],
       } : null,
     };
@@ -497,6 +519,11 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
         description: course.description,
         status,
         priceCents: course.priceCents,
+        enforceLessonOrder: Boolean(course.enforceLessonOrder),
+        availableFrom: course.availableFrom,
+        certificateTitle: course.certificateTitle,
+        certificateAccent: course.certificateAccent,
+        certificateValidDays: course.certificateValidDays,
       }),
     });
     const result = await response.json() as { error?: string; errors?: string[] };
@@ -743,6 +770,40 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
           <label>Course title<input value={course.title} onChange={(event) => setCourse({ ...course, title: event.target.value })} /></label>
           <label>Course description<textarea value={course.description} onChange={(event) => setCourse({ ...course, description: event.target.value })} placeholder="Explain the result learners can expect and who the course is for." /></label>
           <label>Price in South African rand<input type="number" min="0" step="1" value={course.priceCents / 100} onChange={(event) => setCourse({ ...course, priceCents: Math.max(0, Math.round(Number(event.target.value || 0) * 100)) })} /></label>
+          <section className="learning-controls-editor">
+            <div>
+              <p className="sys-kicker">LEARNER CONTROLS</p>
+              <h2>Set a clear path through the course.</h2>
+            </div>
+            <label className="builder-check">
+              <input
+                type="checkbox"
+                checked={Boolean(course.enforceLessonOrder)}
+                onChange={(event) => setCourse({ ...course, enforceLessonOrder: event.target.checked })}
+              />
+              <span><b>Require lessons in order</b><small>Learners unlock the next lesson only after completing everything before it.</small></span>
+            </label>
+            <label>Course opens on
+              <input
+                type="datetime-local"
+                value={dateTimeInputValue(course.availableFrom)}
+                onChange={(event) => setCourse({
+                  ...course,
+                  availableFrom: event.target.value ? new Date(event.target.value).getTime() : null,
+                })}
+              />
+              <small>Leave blank for immediate access. Individual lessons can still be released later.</small>
+            </label>
+          </section>
+          <section className="certificate-settings-editor">
+            <div>
+              <p className="sys-kicker">PDF CERTIFICATE</p>
+              <h2>Make completion feel official.</h2>
+            </div>
+            <label>Certificate heading<input maxLength={100} value={course.certificateTitle} onChange={(event) => setCourse({ ...course, certificateTitle: event.target.value })} /></label>
+            <label>Accent colour<input type="color" value={course.certificateAccent} onChange={(event) => setCourse({ ...course, certificateAccent: event.target.value })} /></label>
+            <label>Valid for days<input type="number" min="0" max="3650" value={course.certificateValidDays} onChange={(event) => setCourse({ ...course, certificateValidDays: Math.max(0, Number(event.target.value || 0)) })} /><small>Use 0 for a certificate that does not expire.</small></label>
+          </section>
           <div className="publishing-checklist">
             <p className="sys-kicker">PUBLISHING CHECKLIST</p>
             <ul>
@@ -817,6 +878,17 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                 ? <label>Existing secure upload<input readOnly value="Secure lesson video attached" /></label>
                 : <label>External media URL<input type="url" value={selected.videoKey || ""} onChange={(event) => editLesson({ videoKey: event.target.value, primaryAssetId: event.target.value ? null : selected.primaryAssetId, primaryAsset: event.target.value ? null : selected.primaryAsset })} placeholder="https://example.com/lesson.mp4" /></label>}
             </div>
+            <section className="lesson-compliance-editor">
+              <div><p className="sys-kicker">ACCESS & COMPLETION</p><h2>Control when this lesson unlocks.</h2></div>
+              <label>Release after enrolment
+                <span><input type="number" min="0" max="3650" value={selected.availableAfterDays || 0} onChange={(event) => editLesson({ availableAfterDays: Math.max(0, Number(event.target.value || 0)) })} /> days</span>
+                <small>Use 0 to make it available with the course.</small>
+              </label>
+              <label>Required video watch
+                <span><input type="number" min="0" max="100" value={selected.requiredWatchPercent || 0} onChange={(event) => editLesson({ requiredWatchPercent: Math.max(0, Math.min(100, Number(event.target.value || 0))) })} />%</span>
+                <small>Use 0 when this lesson has no required media.</small>
+              </label>
+            </section>
 
             <section className="primary-media-editor">
               <div><p className="sys-kicker">PRIMARY MEDIA</p><h2>{selected.primaryAsset ? selected.primaryAsset.filename : selected.videoKey?.startsWith("r2:") ? "Existing lesson video" : "Add video, audio, or an image"}</h2><p>{selected.primaryAsset ? `${selected.primaryAsset.kind} · ${formatBytes(selected.primaryAsset.sizeBytes)}` : selected.videoKey?.startsWith("r2:") ? "This earlier upload remains securely attached. Upload it again only if you want it in the reusable library." : "Choose from your academy library or upload something new."}</p></div>
@@ -843,6 +915,15 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               </> : <div className="builder-content-preview">{selected.content ? <LessonContent content={selected.content} /> : <p>Start writing to preview the learner experience.</p>}</div>}
             </section>
 
+            <label className="transcript-editor">Captions / transcript
+              <textarea
+                value={selected.transcript || ""}
+                onChange={(event) => editLesson({ transcript: event.target.value })}
+                placeholder="Paste a readable transcript for video or audio learners. It will appear beneath the lesson."
+              />
+              <small>Transcripts improve accessibility and make the lesson searchable.</small>
+            </label>
+
             <section className="resource-editor">
               <div><p className="sys-kicker">DOWNLOADS & RESOURCES</p><h2>Give learners something useful to keep.</h2></div>
               <button type="button" onClick={() => setWorkspaceTab("media")}>Add from media library</button>
@@ -861,6 +942,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                 <div className="quiz-settings">
                   <label>Quiz title<input value={selected.quiz.title} onChange={(event) => editQuiz({ title: event.target.value })} /></label>
                   <label>Passing score<input type="number" min="1" max="100" value={selected.quiz.passingScore} onChange={(event) => editQuiz({ passingScore: Number(event.target.value) })} /></label>
+                  <label>Maximum attempts<input type="number" min="0" max="100" value={selected.quiz.maxAttempts || 0} onChange={(event) => editQuiz({ maxAttempts: Math.max(0, Number(event.target.value || 0)) })} /><small>Use 0 for unlimited attempts.</small></label>
                 </div>
                 {selected.quiz.questions.map((question, questionIndex) =>
                   <article className="quiz-question-editor" key={question.id}>
