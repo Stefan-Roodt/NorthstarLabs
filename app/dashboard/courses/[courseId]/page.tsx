@@ -121,6 +121,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   const [contentMode, setContentMode] = useState<"write" | "preview">("write");
   const [draggedLessonId, setDraggedLessonId] = useState("");
   const [publishingErrors, setPublishingErrors] = useState<string[]>([]);
+  const [studioBusy, setStudioBusy] = useState(false);
   const revision = useRef(0);
   const contentEditor = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -603,6 +604,43 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     setMessage(`${result.asset.filename} added to the media library`);
   }
 
+  async function generateStudioNarration() {
+    if (!course || !selected?.transcript.trim() || studioBusy) return;
+    setStudioBusy(true);
+    setMessage("Creating AI-assisted narration…");
+    const accessToken = await token();
+    const studioResponse = await fetch("/api/creator-studio", {
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    const studioResult = await studioResponse.json() as {
+      error?: string;
+      projects?: Array<{ id: string; courseId: string | null }>;
+    };
+    const project = studioResult.projects?.find((item) => item.courseId === course.id);
+    if (!studioResponse.ok || !project) {
+      setMessage(studioResult.error || "Narration is available for courses exported from Creator Studio.");
+      setStudioBusy(false);
+      return;
+    }
+    if (dirty?.id === selected.id && !await persistLesson(selected, dirty.revision)) {
+      setStudioBusy(false);
+      return;
+    }
+    const response = await fetch("/api/creator-studio", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ action: "narrate", projectId: project.id, lessonId: selected.id }),
+    });
+    const result = await response.json() as { error?: string };
+    if (!response.ok) {
+      setMessage(result.error || "Narration could not be generated.");
+      setStudioBusy(false);
+      return;
+    }
+    setMessage("Narration created and attached. Review it before publishing.");
+    location.reload();
+  }
+
   function attachPrimary(asset: Asset) {
     if (!selected) return;
     editLesson({
@@ -952,6 +990,10 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               />
               <small>Transcripts improve accessibility and make the lesson searchable.</small>
             </label>
+            {selected.transcript.trim() && !selected.primaryAsset && <section className="studio-narration-callout">
+              <div><p className="sys-kicker">CREATOR STUDIO NARRATION</p><h2>Turn the reviewed script into protected audio.</h2><p>Google Gemini creates a draft narration, stores it in your private media library, and attaches it to this lesson. Listen and review before publishing.</p></div>
+              <button type="button" disabled={studioBusy} onClick={generateStudioNarration}>{studioBusy ? "Generating…" : "Generate narration"}</button>
+            </section>}
 
             <section className="resource-editor">
               <div><p className="sys-kicker">DOWNLOADS & RESOURCES</p><h2>Give learners something useful to keep.</h2></div>

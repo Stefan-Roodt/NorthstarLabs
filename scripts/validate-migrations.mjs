@@ -143,6 +143,15 @@ for (const table of ["course_sections", "media_assets", "lesson_resources"]) {
   }
 }
 for (const table of [
+  "creator_studio_projects",
+  "creator_studio_sources",
+  "creator_studio_generations",
+]) {
+  if (!tables.some((item) => item.name === table)) {
+    throw new Error(`The ${table} governed-creation table was not created.`);
+  }
+}
+for (const table of [
   "rate_limit_buckets",
   "system_events",
   "backup_runs",
@@ -325,6 +334,11 @@ console.log(JSON.stringify({
   tables: tables.length,
   invitationIndexes: invitationIndexes.map((item) => item.name),
   authoringTables: ["course_sections", "media_assets", "lesson_resources"],
+  creatorStudioTables: [
+    "creator_studio_projects",
+    "creator_studio_sources",
+    "creator_studio_generations",
+  ],
   learnerControlTables: ["lesson_progress", "quiz_attempts", "certificates"],
   reliabilityTables: [
     "rate_limit_buckets",

@@ -15,7 +15,7 @@ export default function PrivacyPage() {
         <p>This policy explains what information NorthstarLabs processes when you create, sell, manage, or take learning products on the platform.</p>
       </section>
       <article className="legal-document">
-        <p className="legal-updated">Effective and last updated: 19 July 2026</p>
+        <p className="legal-updated">Effective and last updated: 20 July 2026</p>
 
         <section>
           <h2>1. Information we collect</h2>
@@ -49,27 +49,33 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>5. International processing and retention</h2>
+          <h2>5. AI-assisted creation</h2>
+          <p>When a creator deliberately uses Creator Studio, the instructions and selected source material needed for that request may be sent to the AI or media provider shown in the feature. We record project ownership, the source declaration, the provider and model used, generation status, and review or export actions so that the creator can understand how a draft was produced.</p>
+          <p>Creators should minimise personal information in source packs and must not submit sensitive or confidential information unless it is necessary, lawful, and appropriately protected. Content involving children requires guardian authority and enhanced safeguarding. Provider processing may occur in another country under the transfer safeguards described below. Removing a Creator Studio project removes it from the active workspace, subject to security backups and legal retention requirements.</p>
+        </section>
+
+        <section>
+          <h2>6. International processing and retention</h2>
           <p>Information may be processed in countries other than where you live. Where required, we use appropriate safeguards for international transfers. We retain information for as long as needed to provide the service, meet legal or accounting requirements, resolve disputes, and enforce agreements. Retention periods vary by data type and account status.</p>
         </section>
 
         <section>
-          <h2>6. Security</h2>
+          <h2>7. Security</h2>
           <p>We use technical and organisational safeguards designed to protect information, including authenticated access, ownership checks, private file delivery, encryption in transit, and restricted administrative controls. No online service can guarantee absolute security, so users should choose strong passwords and protect their account access.</p>
         </section>
 
         <section>
-          <h2>7. Your choices and rights</h2>
+          <h2>8. Your choices and rights</h2>
           <p>You can review and update core account information from Account settings. Depending on your location, you may have rights to access, correct, delete, restrict, or receive a copy of personal information, or to object to certain processing. Requests can be submitted through the support channel available in your account. We may need to verify your identity before completing a request.</p>
         </section>
 
         <section>
-          <h2>8. Children</h2>
+          <h2>9. Children</h2>
           <p>NorthstarLabs is not directed to children under 13, and users must meet the minimum age required to consent to online services in their country. Creators and tutors offering learning to minors are responsible for obtaining required guardian permissions, applying appropriate safeguarding practices, and configuring communications and sessions appropriately.</p>
         </section>
 
         <section>
-          <h2>9. Changes to this policy</h2>
+          <h2>10. Changes to this policy</h2>
           <p>We may update this policy as the service or applicable law changes. We will revise the date above and provide additional notice when a change materially affects user rights.</p>
         </section>
       </article>

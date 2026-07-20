@@ -847,3 +847,37 @@ test("parses browser byte ranges safely", async () => {
   assert.equal(parseByteRange("bytes=0-1,4-5", 100), "invalid");
   assert.equal(parseByteRange(null, 100), null);
 });
+
+test("integrates a governed, source-grounded Creator Studio without auto-publishing", async () => {
+  const [page, route, provider, schema, migration, editor, terms, privacy, env] = await Promise.all([
+    readFile(new URL("../app/dashboard/studio/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/creator-studio/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/creator-studio.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0026_productive_triton.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/legal/terms/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/legal/privacy/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../.env.example", import.meta.url), "utf8"),
+  ]);
+  assert.match(page, /NORTHSTAR CREATOR STUDIO/);
+  assert.match(page, /URLs are recorded for citation; they are not silently scraped/);
+  assert.match(page, /Nothing is published automatically/);
+  assert.match(route, /rightsConfirmed/);
+  assert.match(route, /reviewConfirmed/);
+  assert.match(route, /'draft'/);
+  assert.doesNotMatch(route, /status='published'/);
+  assert.match(route, /requiresHumanReview: true/);
+  assert.match(provider, /must remain grounded in supplied sources/);
+  assert.match(provider, /GEMINI_API_KEY/);
+  assert.match(provider, /provider: gemini \? "Google Gemini" : "Not connected"/);
+  assert.match(schema, /export const creatorStudioProjects/);
+  assert.match(schema, /export const creatorStudioSources/);
+  assert.match(schema, /export const creatorStudioGenerations/);
+  assert.match(migration, /CREATE TABLE `creator_studio_projects`/);
+  assert.match(editor, /generateStudioNarration/);
+  assert.match(terms, /Creator Studio and AI-assisted content/);
+  assert.match(privacy, /AI-assisted creation/);
+  assert.match(env, /GEMINI_COURSE_MODEL/);
+  assert.match(env, /GEMINI_TTS_MODEL/);
+});
