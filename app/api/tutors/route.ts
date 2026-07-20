@@ -3,6 +3,7 @@ import { writeAuditLog } from "../../../lib/audit-log";
 import { emitIntegrationEvent } from "../../../lib/integrations";
 import { requestedSchoolId, requireCreatorSchool } from "../../../lib/school-access";
 import { requireApiUser } from "../../../lib/server-auth";
+import { coachListingPlan } from "../../../lib/coach-listing-plans";
 import {
   availableTutorSlug,
   cleanStringList,
@@ -14,6 +15,7 @@ import {
 const tutorStatuses = new Set(["draft", "published", "paused"]);
 const sessionModes = new Set(["online", "in_person", "both"]);
 const priceUnits = new Set(["hour", "session"]);
+const serviceTypes = new Set(["coaching", "tutoring", "both"]);
 
 function cleanText(value: unknown, fallback: string, maximum: number) {
   return typeof value === "string" ? value.trim().slice(0, maximum) : fallback;
@@ -69,7 +71,9 @@ async function publicTutors(schoolSlug: string, tutorSlug?: string | null) {
   const query = `SELECT ${tutorColumns}
     FROM tutors t WHERE t.school_id=? AND t.status='published'
     ${tutorSlug ? "AND t.slug=?" : ""}
-    ORDER BY t.verified DESC,t.updated_at DESC`;
+    ORDER BY CASE t.listing_tier
+      WHEN 'spotlight' THEN 0 WHEN 'featured' THEN 1 ELSE 2 END,
+      t.verified DESC,t.updated_at DESC`;
   const rows = await env.DB.prepare(query)
     .bind(...(tutorSlug ? [school.id, tutorSlug] : [school.id]))
     .all<TutorRow>();
@@ -105,7 +109,9 @@ async function publicTutorMarketplace() {
      LEFT JOIN tutor_slots ts ON ts.tutor_id=t.id
      WHERE t.status='published' AND s.status='active'
      GROUP BY t.id
-     ORDER BY t.verified DESC,
+     ORDER BY CASE t.listing_tier
+       WHEN 'spotlight' THEN 0 WHEN 'featured' THEN 1 ELSE 2 END,
+       t.verified DESC,
        CASE WHEN nextAvailableAt IS NULL THEN 1 ELSE 0 END,
        nextAvailableAt ASC,t.updated_at DESC
      LIMIT 250`,
@@ -191,17 +197,22 @@ export async function POST(request: Request) {
   const sessionMode = sessionModes.has(String(body.sessionMode))
     ? String(body.sessionMode)
     : "online";
+  const serviceType = serviceTypes.has(String(body.serviceType))
+    ? String(body.serviceType)
+    : "coaching";
   const priceUnit = priceUnits.has(String(body.priceUnit)) ? String(body.priceUnit) : "hour";
+  const listingPlan = coachListingPlan(body.listingTier);
   const subjects = cleanStringList(body.subjects);
   const languages = cleanStringList(body.languages, 8);
   await env.DB.prepare(
     `INSERT INTO tutors
       (id,school_id,user_id,created_by,slug,display_name,headline,bio,
-       subjects_json,languages_json,qualifications,experience_years,
-       price_cents,price_unit,session_mode,location,timezone,availability,
+       service_type,subjects_json,languages_json,qualifications,experience_years,
+       price_cents,price_unit,listing_tier,listing_monthly_cents,
+       session_mode,location,timezone,availability,
        photo_url,contact_email,phone_number,whatsapp_number,booking_url,
        show_direct_contact,verified,status,created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   ).bind(
     id,
     context.school.id,
@@ -211,12 +222,15 @@ export async function POST(request: Request) {
     displayName,
     headline,
     cleanText(body.bio, "", 3_000),
+    serviceType,
     JSON.stringify(subjects),
     JSON.stringify(languages),
     cleanText(body.qualifications, "", 1_200),
     positiveNumber(body.experienceYears, 0, 80),
     positiveNumber(body.priceCents, 0, 10_000_000),
     priceUnit,
+    listingPlan.id,
+    listingPlan.monthlyCents,
     sessionMode,
     cleanText(body.location, "", 160),
     cleanText(body.timezone, "Africa/Johannesburg", 80),
@@ -238,7 +252,7 @@ export async function POST(request: Request) {
     action: "tutor.create",
     targetType: "tutor",
     targetId: id,
-    detail: { displayName, subjects, sessionMode },
+    detail: { displayName, subjects, sessionMode, serviceType, listingTier: listingPlan.id },
   });
   const row = await env.DB.prepare(
     `SELECT ${tutorColumns},0 AS inquiryCount,0 AS newInquiryCount
@@ -274,6 +288,7 @@ export async function PATCH(request: Request) {
   const languages = body.languages === undefined
     ? cleanStringList(JSON.parse(current.languagesJson), 8)
     : cleanStringList(body.languages, 8);
+  const priceCents = positiveNumber(body.priceCents, current.priceCents, 10_000_000);
   if (
     displayName.length < 2 ||
     contactEmail === null ||
@@ -283,23 +298,30 @@ export async function PATCH(request: Request) {
   ) {
     return Response.json({ error: "Check the tutor name and contact details." }, { status: 400 });
   }
-  if (status === "published" && (!headline || !subjects.length)) {
+  if (status === "published" && (!headline || !subjects.length || priceCents <= 0)) {
     return Response.json(
-      { error: "Add a clear headline and at least one subject before publishing." },
+      { error: "Add a clear headline, at least one searchable topic, and an hourly rate before publishing." },
       { status: 409 },
     );
   }
   const sessionMode = sessionModes.has(String(body.sessionMode))
     ? String(body.sessionMode)
     : current.sessionMode;
+  const serviceType = serviceTypes.has(String(body.serviceType))
+    ? String(body.serviceType)
+    : current.serviceType;
   const priceUnit = priceUnits.has(String(body.priceUnit))
     ? String(body.priceUnit)
     : current.priceUnit;
+  const listingPlan = coachListingPlan(body.listingTier === undefined
+    ? current.listingTier
+    : body.listingTier);
   const now = Date.now();
   await env.DB.prepare(
-    `UPDATE tutors SET slug=?,display_name=?,headline=?,bio=?,subjects_json=?,
+    `UPDATE tutors SET slug=?,display_name=?,headline=?,bio=?,service_type=?,subjects_json=?,
       languages_json=?,qualifications=?,experience_years=?,price_cents=?,
-      price_unit=?,session_mode=?,location=?,timezone=?,availability=?,
+      price_unit=?,listing_tier=?,listing_monthly_cents=?,
+      session_mode=?,location=?,timezone=?,availability=?,
       photo_url=?,contact_email=?,phone_number=?,whatsapp_number=?,booking_url=?,
       show_direct_contact=?,status=?,updated_at=? WHERE id=?`,
   ).bind(
@@ -307,12 +329,15 @@ export async function PATCH(request: Request) {
     displayName,
     headline,
     cleanText(body.bio, current.bio, 3_000),
+    serviceType,
     JSON.stringify(subjects),
     JSON.stringify(languages),
     cleanText(body.qualifications, current.qualifications, 1_200),
     positiveNumber(body.experienceYears, current.experienceYears, 80),
-    positiveNumber(body.priceCents, current.priceCents, 10_000_000),
+    priceCents,
     priceUnit,
+    listingPlan.id,
+    listingPlan.monthlyCents,
     sessionMode,
     cleanText(body.location, current.location, 160),
     cleanText(body.timezone, current.timezone, 80),
@@ -333,7 +358,7 @@ export async function PATCH(request: Request) {
     action: "tutor.update",
     targetType: "tutor",
     targetId: id,
-    detail: { displayName, status, showDirectContact },
+    detail: { displayName, status, showDirectContact, serviceType, listingTier: listingPlan.id },
   });
   await emitIntegrationEvent(env.DB, context.school.id, `tutor.${status}`, {
     tutorId: id,

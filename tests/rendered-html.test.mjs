@@ -592,6 +592,33 @@ test("ships academy tutor discovery, direct contact, and protected enquiries", a
   assert.match(email, /tutor_booking_cancelled/);
 });
 
+test("ships coach advertising plans, direct onboarding, hourly rates, and topic discovery", async () => {
+  const [migration, plans, welcome, profile, admin, marketplace, home] = await Promise.all([
+    readFile(new URL("../drizzle/0020_clammy_sally_floyd.sql", import.meta.url), "utf8"),
+    readFile(new URL("../lib/coach-listing-plans.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/welcome/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/profile/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/tutors/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/tutors/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(migration, /ADD `service_type`/);
+  assert.match(migration, /ADD `listing_tier`/);
+  assert.match(migration, /ADD `listing_monthly_cents`/);
+  assert.match(plans, /monthlyCents: 14_900/);
+  assert.match(plans, /monthlyCents: 34_900/);
+  assert.match(plans, /monthlyCents: 69_900/);
+  assert.match(welcome, /I WANT TO COACH/);
+  assert.match(welcome, /dashboard\/tutors\?setup=1/);
+  assert.match(profile, /body\.role === "coach"/);
+  assert.match(admin, /Your hourly rate in rand/);
+  assert.match(admin, /Advertising billing is not active yet/);
+  assert.match(marketplace, /EXPLORE BY TOPIC/);
+  assert.match(marketplace, /SPONSORED SPOTLIGHT/);
+  assert.match(marketplace, /Verification is assessed separately/);
+  assert.match(home, /Advertise my services/);
+});
+
 test("parses browser byte ranges safely", async () => {
   const { parseByteRange } = await import("../lib/media-stream.ts");
   assert.deepEqual(parseByteRange("bytes=10-19", 100), { start: 10, end: 19, length: 10 });

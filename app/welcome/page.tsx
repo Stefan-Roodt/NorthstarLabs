@@ -44,11 +44,13 @@ export default function WelcomePage() {
           setSchoolName(`${profile.displayName}'s Academy`);
         }
         if (profile.onboardingCompleted) {
-          location.href = profile.hasCreatorSchool ? "/dashboard" : "/courses";
+          location.href = preferredPath === "coach" || profile.onboardingPath === "coach"
+            ? "/dashboard/tutors?setup=1"
+            : profile.hasCreatorSchool ? "/dashboard" : "/courses";
           return;
         }
         if (
-          (preferredPath === "creator" || preferredPath === "learner") &&
+          (preferredPath === "creator" || preferredPath === "learner" || preferredPath === "coach") &&
           profile.onboardingPath !== preferredPath
         ) {
           await fetch("/api/profile", {
@@ -65,7 +67,7 @@ export default function WelcomePage() {
     });
   }, [preferredPath, supabase]);
 
-  async function choosePath(role: "creator" | "learner") {
+  async function choosePath(role: "creator" | "learner" | "coach") {
     if (!supabase || busy) return;
     setBusy(role);
     setMessage("");
@@ -83,7 +85,7 @@ export default function WelcomePage() {
       },
       body: JSON.stringify({
         role,
-        schoolName: role === "creator" ? schoolName : undefined,
+        schoolName: role === "creator" || role === "coach" ? schoolName : undefined,
       }),
     });
     const result = await response.json();
@@ -92,7 +94,7 @@ export default function WelcomePage() {
       setBusy("");
       return;
     }
-    location.href = role === "creator" ? "/dashboard" : "/courses";
+    location.href = role === "coach" ? "/dashboard/tutors?setup=1" : role === "creator" ? "/dashboard" : "/courses";
   }
 
   if (!ready) return (
@@ -111,7 +113,7 @@ export default function WelcomePage() {
       <section className="welcome-hero">
         <p className="sys-kicker">YOUR ACCOUNT IS READY</p>
         <h1>Welcome, {name}. What do you want to do first?</h1>
-        <p>Choose one path now. Your account includes both, and you can switch whenever you like.</p>
+        <p>Choose one path now. Your account includes creating, coaching, and learning, so you can switch whenever you like.</p>
       </section>
 
       <section className="welcome-paths" aria-label="Choose how to start">
@@ -163,6 +165,36 @@ export default function WelcomePage() {
             {busy === "learner" ? "Preparing your learning space…" : "Choose my first course →"}
           </button>
           <Link className="welcome-secondary" href="/learn">Open my learning space</Link>
+        </article>
+
+        <article className={preferredPath === "coach" ? "welcome-path preferred" : "welcome-path"}>
+          <div className="welcome-path-number">03</div>
+          <p className="sys-kicker">I WANT TO COACH</p>
+          <h2>Advertise my coaching.</h2>
+          <p>Create a searchable professional profile, choose your visibility plan, set your own hourly rate, and offer times learners can request.</p>
+          <ul>
+            <li>Appear in topic-based learner searches</li>
+            <li>Set your own hourly rate and availability</li>
+            <li>Receive protected enquiries and booking requests</li>
+          </ul>
+          <label className="welcome-school-field">
+            Practice or academy name
+            <input
+              required
+              minLength={2}
+              maxLength={80}
+              value={schoolName}
+              onChange={(event) => setSchoolName(event.target.value)}
+            />
+          </label>
+          <button
+            className="sys-primary"
+            disabled={busy !== "" || schoolName.trim().length < 2}
+            onClick={() => choosePath("coach")}
+          >
+            {busy === "coach" ? "Preparing your coach profile…" : "Set up my coach profile →"}
+          </button>
+          <Link className="welcome-secondary" href="/tutors">See how learners find coaches</Link>
         </article>
       </section>
 

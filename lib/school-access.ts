@@ -84,7 +84,9 @@ export function requestedSchoolId(request: Request) {
 export async function ensureProfile(user: ApiUser) {
   if (!user.email) throw new Error("An email address is required.");
   const metadataPath = user.user_metadata?.onboarding_path;
-  const onboardingPath = metadataPath === "creator" || metadataPath === "learner"
+  const onboardingPath = metadataPath === "creator" ||
+    metadataPath === "learner" ||
+    metadataPath === "coach"
     ? metadataPath
     : null;
   await env.DB.prepare(
@@ -191,16 +193,20 @@ export async function getUserSchools(userId: string) {
   return rows.results;
 }
 
-export async function createCreatorSchool(user: ApiUser, rawName?: string) {
+export async function createCreatorSchool(
+  user: ApiUser,
+  rawName?: string,
+  onboardingPath: "creator" | "coach" = "creator",
+) {
   const profile = await ensureProfile(user);
   if (!profile) throw new Error("Profile could not be initialized.");
   const current = await getActiveSchool(user.id, CREATOR_ROLES);
   if (current) {
     await env.DB.prepare(
       `UPDATE profiles SET role='creator',active_school_id=?,
-       onboarding_path='creator',onboarding_completed=1,
+       onboarding_path=?,onboarding_completed=1,
        onboarded_at=COALESCE(onboarded_at,?) WHERE id=?`,
-    ).bind(current.id, Date.now(), user.id).run();
+    ).bind(current.id, onboardingPath, Date.now(), user.id).run();
     return current;
   }
 
@@ -240,9 +246,9 @@ export async function createCreatorSchool(user: ApiUser, rawName?: string) {
     ).bind(crypto.randomUUID(), communityId, user.id, "owner", "active", now),
     env.DB.prepare(
       `UPDATE profiles SET role='creator',active_school_id=?,
-       onboarding_path='creator',onboarding_completed=1,
+       onboarding_path=?,onboarding_completed=1,
        onboarded_at=COALESCE(onboarded_at,?) WHERE id=?`,
-    ).bind(schoolId, now, user.id),
+    ).bind(schoolId, onboardingPath, now, user.id),
   ]);
   const created = await membershipBySchool(user.id, schoolId);
   if (!created) throw new Error("School could not be initialized.");

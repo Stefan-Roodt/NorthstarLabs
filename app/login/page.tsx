@@ -101,10 +101,10 @@ export default function LoginPage() {
           <h1>{joiningCourse ? "Join once. Start learning next." : "Turn your knowledge into useful progress."}</h1>
           <p>{joiningCourse
             ? "Create your free account and we will enrol you in the course automatically."
-            : "One free account gives you a creator workspace and access to practical starter courses."}</p>
+            : "One free account lets you build a course, advertise coaching, or start learning."}</p>
           <ul>
             <li><span>01</span><div><b>Create one free account</b><small>Use Google or email. No payment details.</small></div></li>
-            <li><span>02</span><div><b>Choose your path</b><small>Build a course or start learning immediately.</small></div></li>
+            <li><span>02</span><div><b>Choose your path</b><small>Create, advertise your coaching, or start learning immediately.</small></div></li>
             <li><span>03</span><div><b>Keep everything together</b><small>Your courses, progress, and community stay in one place.</small></div></li>
           </ul>
           <p className="auth-reassurance">Free starter access · No credit card · Switch paths anytime</p>
@@ -153,11 +153,11 @@ export default function LoginPage() {
   );
 }
 
-function onboardingPathFrom(destination: string): "creator" | "learner" | null {
+function onboardingPathFrom(destination: string): "creator" | "learner" | "coach" | null {
   try {
     const url = new URL(destination, "https://northstarlabs.local");
     const path = url.searchParams.get("path");
-    return path === "creator" || path === "learner" ? path : null;
+    return path === "creator" || path === "learner" || path === "coach" ? path : null;
   } catch {
     return null;
   }

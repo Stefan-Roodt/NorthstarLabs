@@ -7,12 +7,15 @@ export type TutorRow = {
   displayName: string;
   headline: string;
   bio: string;
+  serviceType: string;
   subjectsJson: string;
   languagesJson: string;
   qualifications: string;
   experienceYears: number;
   priceCents: number;
   priceUnit: string;
+  listingTier: string;
+  listingMonthlyCents: number;
   sessionMode: string;
   location: string;
   timezone: string;
@@ -33,10 +36,12 @@ export type TutorRow = {
 
 export const tutorColumns = `t.id,t.school_id AS schoolId,t.user_id AS userId,
   t.created_by AS createdBy,t.slug,t.display_name AS displayName,
-  t.headline,t.bio,t.subjects_json AS subjectsJson,
+  t.headline,t.bio,t.service_type AS serviceType,t.subjects_json AS subjectsJson,
   t.languages_json AS languagesJson,t.qualifications,
   t.experience_years AS experienceYears,t.price_cents AS priceCents,
-  t.price_unit AS priceUnit,t.session_mode AS sessionMode,t.location,
+  t.price_unit AS priceUnit,t.listing_tier AS listingTier,
+  t.listing_monthly_cents AS listingMonthlyCents,
+  t.session_mode AS sessionMode,t.location,
   t.timezone,t.availability,t.photo_url AS photoUrl,
   t.contact_email AS contactEmail,t.phone_number AS phoneNumber,
   t.whatsapp_number AS whatsappNumber,t.booking_url AS bookingUrl,
@@ -64,12 +69,15 @@ export function serializeTutor(row: TutorRow, includePrivate = false) {
     displayName: row.displayName,
     headline: row.headline,
     bio: row.bio,
+    serviceType: row.serviceType,
     subjects: parseList(row.subjectsJson),
     languages: parseList(row.languagesJson),
     qualifications: row.qualifications,
     experienceYears: Number(row.experienceYears || 0),
     priceCents: Number(row.priceCents || 0),
     priceUnit: row.priceUnit,
+    listingTier: row.listingTier || "listed",
+    listingMonthlyCents: Number(row.listingMonthlyCents || 14_900),
     sessionMode: row.sessionMode,
     location: row.location,
     timezone: row.timezone,

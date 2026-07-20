@@ -601,6 +601,9 @@ test("publishes academy tutors and protects learner enquiry details", async () =
   const publicTutor = serializeTutor(privateRow);
   assert.equal(publicTutor.displayName, "Lindiwe Mokoena");
   assert.deepEqual(publicTutor.subjects, ["Mathematics", "Physical Science"]);
+  assert.equal(publicTutor.serviceType, "coaching");
+  assert.equal(publicTutor.listingTier, "listed");
+  assert.equal(publicTutor.listingMonthlyCents, 14_900);
   assert.equal(publicTutor.phoneNumber, "");
   assert.equal(publicTutor.contactEmail, undefined);
 

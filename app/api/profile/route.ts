@@ -43,7 +43,7 @@ export async function PATCH(request: Request) {
   await ensureProfile(user);
 
   if (body.onboardingPath !== undefined) {
-    if (!["creator", "learner"].includes(body.onboardingPath)) {
+    if (!["creator", "learner", "coach"].includes(body.onboardingPath)) {
       return Response.json({ error: "Choose a valid starting path." }, { status: 400 });
     }
     await env.DB.prepare(
@@ -64,7 +64,7 @@ export async function PATCH(request: Request) {
     ).bind(user.email, cleanName, user.id).run();
   }
 
-  if (body.role === "creator") {
+  if (body.role === "creator" || body.role === "coach") {
     const schoolName = body.schoolName?.trim();
     if (schoolName && (schoolName.length < 2 || schoolName.length > 80)) {
       return Response.json(
@@ -72,7 +72,7 @@ export async function PATCH(request: Request) {
         { status: 400 },
       );
     }
-    await createCreatorSchool(user, schoolName);
+    await createCreatorSchool(user, schoolName, body.role === "coach" ? "coach" : "creator");
   } else if (body.role === "learner") {
     await env.DB.prepare(
       `UPDATE profiles SET role='learner',onboarding_path='learner',

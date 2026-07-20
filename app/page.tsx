@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 const creatorSignupHref = "/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcreator";
+const coachSignupHref = "/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach";
 const generalSignupHref = "/login?mode=signup&next=%2Fwelcome";
 
 const features = [
@@ -38,13 +39,13 @@ const valueStack = [
   },
   {
     n: "02",
-    title: "Learner momentum",
-    text: "Give every learner one clear home for lessons, saved progress, live sessions, community, and certificates.",
+    title: "Learning with human guidance",
+    text: "Give every learner one clear home for lessons, bookable one-to-one coaching, live sessions, saved progress, community, and certificates.",
   },
   {
     n: "03",
     title: "Products that retain",
-    text: "Package courses into bundles, memberships, and live programmes instead of selling disconnected files.",
+    text: "Package courses with personal coaching, bundles, memberships, and live programmes instead of selling disconnected files.",
   },
   {
     n: "04",
@@ -138,7 +139,7 @@ export default function Home() {
           <a href="#platform">Platform</a>
           <a href="#value">Why Northstar</a>
           <Link href="/courses">Free courses</Link>
-          <Link href="/tutors">Find a tutor</Link>
+          <Link href="/tutors">Find a coach</Link>
           <a href="#pricing">Pricing</a>
         </nav>
         <div className="nav-actions"><a className="login" href="/login?mode=login">Log in</a><a className="button small" href={generalSignupHref}>Join free</a></div>
@@ -147,7 +148,7 @@ export default function Home() {
 
       <section className="hero shell" id="top">
         <div className="hero-copy">
-          <p className="eyebrow">Courses <span>•</span> Live learning <span>•</span> Human tutoring <span>•</span> Progress</p>
+          <p className="eyebrow">Courses <span>•</span> Live learning <span>•</span> Human coaching <span>•</span> Progress</p>
           <h1>One place to build, deliver, and grow <em>learning that works.</em></h1>
           <p className="lede">Create courses, host protected video, run live sessions and a community, invite learners, track progress, and award certificates—from one branded platform.</p>
           <div className="hero-actions"><a className="button" href={creatorSignupHref}>Build my academy free <span>↗</span></a><a className="text-link" href="#value">See everything included <span>↓</span></a></div>
@@ -186,8 +187,11 @@ export default function Home() {
           <p className="section-kicker">WHEN YOU NEED A PERSON, NOT ANOTHER VIDEO</p>
           <h2>Find one-to-one help for the part that has you stuck.</h2>
         </div>
-        <p>Compare tutors across NorthstarLabs academies by subject, experience, price, format, and real appointment availability.</p>
-        <Link href="/tutors">Find my tutor <span>→</span></Link>
+        <p>Search coaches and tutors by topic, experience, self-set hourly rate, format, and real appointment availability.</p>
+        <div className="home-tutor-actions">
+          <Link href="/tutors">Find my coach <span>→</span></Link>
+          <a href={coachSignupHref}>Advertise my services <span>→</span></a>
+        </div>
       </section>
 
       <section className="logos shell" aria-label="Who NorthstarLabs is designed for">
@@ -199,7 +203,7 @@ export default function Home() {
         <div className="value-heading">
           <p className="section-kicker">THE VALUE OF ONE CONNECTED PLATFORM</p>
           <h2>Stop stitching tools together. Start building learner momentum.</h2>
-          <p>NorthstarLabs connects the work before enrolment, the experience during learning, and the insight you need afterwards. Nothing important gets stranded in another app.</p>
+          <p>NorthstarLabs connects the work before enrolment, structured learning, and the personal coaching that helps people make progress. Nothing important gets stranded in another app.</p>
         </div>
 
         <div className="value-comparison" aria-label="Disconnected tools compared with NorthstarLabs">
@@ -240,8 +244,8 @@ export default function Home() {
         </div>
         <div className="signup-steps" aria-label="How to join NorthstarLabs">
           <div><span>01</span><p><b>Create your free account</b><small>Google or email. No payment details.</small></p></div>
-          <div><span>02</span><p><b>Choose creator or learner</b><small>Your account includes both paths.</small></p></div>
-          <div><span>03</span><p><b>Start in the right place</b><small>Build an academy or choose a course.</small></p></div>
+          <div><span>02</span><p><b>Choose your starting path</b><small>Create, coach, or begin learning.</small></p></div>
+          <div><span>03</span><p><b>Start in the right place</b><small>Build, advertise your expertise, or choose a course.</small></p></div>
         </div>
         <div className="join-path-grid">
           <article>

@@ -141,6 +141,13 @@
       "when": 1784488000000,
       "tag": "0019_stefan_bitcoin_deep_dive",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1784541413483,
+      "tag": "0020_clammy_sally_floyd",
+      "breakpoints": true
     }
   ]
 }

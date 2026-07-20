@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { coachListingPlans } from "../../../lib/coach-listing-plans";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 
 type Tutor = {
@@ -10,12 +11,15 @@ type Tutor = {
   displayName: string;
   headline: string;
   bio: string;
+  serviceType: string;
   subjects: string[];
   languages: string[];
   qualifications: string;
   experienceYears: number;
   priceCents: number;
   priceUnit: string;
+  listingTier: string;
+  listingMonthlyCents: number;
   sessionMode: string;
   location: string;
   timezone: string;
@@ -79,12 +83,13 @@ type TutorDraft = {
   displayName: string;
   headline: string;
   bio: string;
+  serviceType: string;
   subjects: string;
   languages: string;
   qualifications: string;
   experienceYears: string;
   priceRand: string;
-  priceUnit: string;
+  listingTier: string;
   sessionMode: string;
   location: string;
   timezone: string;
@@ -101,12 +106,13 @@ const emptyDraft: TutorDraft = {
   displayName: "",
   headline: "",
   bio: "",
+  serviceType: "coaching",
   subjects: "",
   languages: "",
   qualifications: "",
   experienceYears: "0",
-  priceRand: "0",
-  priceUnit: "hour",
+  priceRand: "",
+  listingTier: "listed",
   sessionMode: "online",
   location: "",
   timezone: "Africa/Johannesburg",
@@ -217,12 +223,13 @@ export default function TutorAdminPage() {
       displayName: tutor.displayName,
       headline: tutor.headline,
       bio: tutor.bio,
+      serviceType: tutor.serviceType || "coaching",
       subjects: tutor.subjects.join(", "),
       languages: tutor.languages.join(", "),
       qualifications: tutor.qualifications,
       experienceYears: String(tutor.experienceYears || 0),
       priceRand: String(tutor.priceCents / 100),
-      priceUnit: tutor.priceUnit,
+      listingTier: tutor.listingTier || "listed",
       sessionMode: tutor.sessionMode,
       location: tutor.location,
       timezone: tutor.timezone,
@@ -248,12 +255,14 @@ export default function TutorAdminPage() {
         displayName: draft.displayName,
         headline: draft.headline,
         bio: draft.bio,
+        serviceType: draft.serviceType,
         subjects: list(draft.subjects),
         languages: list(draft.languages),
         qualifications: draft.qualifications,
         experienceYears: Number(draft.experienceYears || 0),
         priceCents: Math.round(Math.max(0, Number(draft.priceRand || 0)) * 100),
-        priceUnit: draft.priceUnit,
+        priceUnit: "hour",
+        listingTier: draft.listingTier,
         sessionMode: draft.sessionMode,
         location: draft.location,
         timezone: draft.timezone,
@@ -268,8 +277,8 @@ export default function TutorAdminPage() {
     });
     const result = await response.json();
     setMessage(response.ok
-      ? editingId ? "Tutor profile updated." : "Tutor profile created as a private draft."
-      : result.error || "The tutor profile could not be saved.");
+      ? editingId ? "Coach profile updated." : "Coach profile created as a private draft."
+      : result.error || "The coach profile could not be saved.");
     if (response.ok) {
       resetEditor();
       await load();
@@ -286,7 +295,7 @@ export default function TutorAdminPage() {
     const result = await response.json();
     setMessage(response.ok
       ? status === "published"
-        ? `${tutor.displayName} is now visible in the academy tutor directory.`
+        ? `${tutor.displayName} is now visible in the coach marketplace.`
         : status === "paused"
           ? `${tutor.displayName} is hidden while unavailable.`
           : `${tutor.displayName} returned to draft.`
@@ -300,7 +309,7 @@ export default function TutorAdminPage() {
     setBusy(tutor.id);
     const response = await authed(`/api/tutors?id=${encodeURIComponent(tutor.id)}`, { method: "DELETE" });
     const result = await response.json();
-    setMessage(response.ok ? "Tutor archived." : result.error || "The tutor could not be archived.");
+    setMessage(response.ok ? "Coach profile archived." : result.error || "The coach profile could not be archived.");
     await load();
     setBusy("");
   }
@@ -378,10 +387,10 @@ export default function TutorAdminPage() {
       <div>
         <p className="sys-kicker">ONE-TO-ONE SERVICES</p>
         <h1>Turn expertise into personal support.</h1>
-        <p>Create trusted tutor profiles, publish clear prices and availability, then manage every learner enquiry from one place.</p>
+        <p>Create a trusted coach or tutor profile, choose how prominently it is advertised, set your own hourly rate, and manage learner enquiries in one place.</p>
       </div>
       <dl>
-        <div><dt>Visible tutors</dt><dd>{activeTutors}</dd></div>
+        <div><dt>Visible profiles</dt><dd>{activeTutors}</dd></div>
         <div><dt>New enquiries</dt><dd>{newInquiries}</dd></div>
       </dl>
     </section>
@@ -392,19 +401,19 @@ export default function TutorAdminPage() {
       <form className="panel tutor-editor" onSubmit={saveTutor}>
         <div className="product-section-heading">
           <span>{editingId ? "EDIT" : "NEW"}</span>
-          <div><h2>{editingId ? "Update tutor profile" : "Add a tutor"}</h2><p>Start with the information a learner needs to choose confidently.</p></div>
+          <div><h2>{editingId ? "Update coach profile" : "Create your coach profile"}</h2><p>Use specific topics, a clear hourly rate, and honest availability so learners can choose confidently.</p></div>
         </div>
         <div className="product-form-grid">
-          <label>Tutor name<input required minLength={2} maxLength={100} value={draft.displayName} onChange={(event) => updateDraft("displayName", event.target.value)} placeholder="Lindiwe Mokoena" /></label>
-          <label>Professional headline<input required maxLength={160} value={draft.headline} onChange={(event) => updateDraft("headline", event.target.value)} placeholder="Mathematics tutor for Grades 10–12" /></label>
-          <label className="product-span-two">About the tutor<textarea maxLength={3000} value={draft.bio} onChange={(event) => updateDraft("bio", event.target.value)} placeholder="Approach, strengths and the learners this tutor helps best." /></label>
-          <label>Subjects<input required value={draft.subjects} onChange={(event) => updateDraft("subjects", event.target.value)} placeholder="Mathematics, Physical Science" /><small>Separate subjects with commas.</small></label>
+          <label>Profile type<select value={draft.serviceType} onChange={(event) => updateDraft("serviceType", event.target.value)}><option value="coaching">Coaching</option><option value="tutoring">Tutoring</option><option value="both">Coaching and tutoring</option></select></label>
+          <label>Coach or tutor name<input required minLength={2} maxLength={100} value={draft.displayName} onChange={(event) => updateDraft("displayName", event.target.value)} placeholder="Lindiwe Mokoena" /></label>
+          <label className="product-span-two">Professional headline<input required maxLength={160} value={draft.headline} onChange={(event) => updateDraft("headline", event.target.value)} placeholder="Career coach for mid-career professionals" /></label>
+          <label className="product-span-two">About your work<textarea maxLength={3000} value={draft.bio} onChange={(event) => updateDraft("bio", event.target.value)} placeholder="Your approach, strengths, and the people you help best." /></label>
+          <label className="product-span-two">Topics learners can search for<input required value={draft.subjects} onChange={(event) => updateDraft("subjects", event.target.value)} placeholder="Career change, Interview preparation, Leadership" /><small>Use specific phrases and separate them with commas.</small></label>
           <label>Languages<input value={draft.languages} onChange={(event) => updateDraft("languages", event.target.value)} placeholder="English, Afrikaans" /></label>
-          <label className="product-span-two">Qualifications and experience<textarea maxLength={1200} value={draft.qualifications} onChange={(event) => updateDraft("qualifications", event.target.value)} placeholder="Degrees, teaching credentials and relevant experience." /></label>
+          <label className="product-span-two">Qualifications and experience<textarea maxLength={1200} value={draft.qualifications} onChange={(event) => updateDraft("qualifications", event.target.value)} placeholder="Degrees, credentials, industry background, and relevant experience." /></label>
           <label>Years of experience<input min={0} max={80} type="number" value={draft.experienceYears} onChange={(event) => updateDraft("experienceYears", event.target.value)} /></label>
           <label>Session format<select value={draft.sessionMode} onChange={(event) => updateDraft("sessionMode", event.target.value)}><option value="online">Online</option><option value="in_person">In person</option><option value="both">Online and in person</option></select></label>
-          <label>Price in rand<input min={0} step="0.01" type="number" value={draft.priceRand} onChange={(event) => updateDraft("priceRand", event.target.value)} /></label>
-          <label>Price per<select value={draft.priceUnit} onChange={(event) => updateDraft("priceUnit", event.target.value)}><option value="hour">Hour</option><option value="session">Session</option></select></label>
+          <label>Your hourly rate in rand<input required min={1} step="0.01" type="number" value={draft.priceRand} onChange={(event) => updateDraft("priceRand", event.target.value)} placeholder="650" /><small>You control this rate. NorthstarLabs does not set it for you.</small></label>
           <label>Location<input maxLength={160} value={draft.location} onChange={(event) => updateDraft("location", event.target.value)} placeholder="Windhoek or online" /></label>
           <label>Timezone<input maxLength={80} value={draft.timezone} onChange={(event) => updateDraft("timezone", event.target.value)} /></label>
           <label className="product-span-two">Availability<input maxLength={500} value={draft.availability} onChange={(event) => updateDraft("availability", event.target.value)} placeholder="Weekdays after 16:00 and Saturday mornings" /></label>
@@ -415,8 +424,22 @@ export default function TutorAdminPage() {
           <label>Booking calendar URL<input type="url" value={draft.bookingUrl} onChange={(event) => updateDraft("bookingUrl", event.target.value)} placeholder="https://calendly.com/…" /></label>
           <label className="academy-switch product-span-two"><input type="checkbox" checked={draft.showDirectContact} onChange={(event) => updateDraft("showDirectContact", event.target.checked)} /><span><b>Show direct contact buttons publicly</b><small>When off, learners use the protected enquiry form and private contact details remain hidden.</small></span></label>
         </div>
+        <fieldset className="coach-plan-picker">
+          <legend>Choose your monthly advertising plan</legend>
+          <p>Plans change marketplace visibility, not verification or coaching quality.</p>
+          <div>
+            {coachListingPlans.map((plan) => <label className={draft.listingTier === plan.id ? "selected" : ""} key={plan.id}>
+              <input type="radio" name="listing-tier" value={plan.id} checked={draft.listingTier === plan.id} onChange={() => updateDraft("listingTier", plan.id)} />
+              <span><b>{plan.name}</b><strong>R{(plan.monthlyCents / 100).toLocaleString("en-ZA")}<small>/month</small></strong></span>
+              <em>{plan.label}</em>
+              <p>{plan.description}</p>
+              <ul>{plan.features.map((feature) => <li key={feature}>✓ {feature}</li>)}</ul>
+            </label>)}
+          </div>
+          <aside><b>No charge today.</b> Advertising billing is not active yet. Selecting a plan now does not charge you; we will ask you to confirm before billing begins.</aside>
+        </fieldset>
         <div className="tutor-editor-actions">
-          <button className="sys-primary" disabled={busy === "profile"}>{busy === "profile" ? "Saving…" : editingId ? "Save tutor changes" : "Create tutor draft"}</button>
+          <button className="sys-primary" disabled={busy === "profile"}>{busy === "profile" ? "Saving…" : editingId ? "Save coach changes" : "Create coach draft"}</button>
           {editingId && <button type="button" onClick={resetEditor}>Cancel editing</button>}
         </div>
       </form>
@@ -424,16 +447,16 @@ export default function TutorAdminPage() {
       <section className="tutor-admin-section">
         <div className="product-section-heading">
           <span>LIVE</span>
-          <div><h2>Your tutors</h2><p>Publish complete profiles and pause them when their availability changes.</p></div>
+          <div><h2>Your coach profiles</h2><p>Publish complete profiles and pause them whenever availability changes.</p></div>
         </div>
         {data.tutors.length ? <div className="tutor-admin-card-grid">
           {data.tutors.map((tutor) => <article className="panel tutor-admin-card" key={tutor.id}>
             <div className="tutor-admin-card-top"><span>{tutor.displayName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span><i className={`status ${tutor.status}`}>{tutor.status}</i></div>
-            <p className="sys-kicker">{tutor.verified ? "✓ VERIFIED" : tutor.sessionMode.replaceAll("_", " ").toUpperCase()}</p>
+            <p className="sys-kicker">{tutor.verified ? "✓ VERIFIED · " : ""}{(tutor.listingTier || "listed").toUpperCase()} PLAN</p>
             <h3>{tutor.displayName}</h3>
             <p>{tutor.headline || "Add a clear professional headline before publishing."}</p>
             <div className="tutor-admin-tags">{tutor.subjects.slice(0, 4).map((subject) => <span key={subject}>{subject}</span>)}</div>
-            <dl><div><dt>Price</dt><dd>{tutor.priceCents ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}/${tutor.priceUnit}` : "Not set"}</dd></div><div><dt>Enquiries</dt><dd>{tutor.inquiryCount}{tutor.newInquiryCount ? ` · ${tutor.newInquiryCount} new` : ""}</dd></div></dl>
+            <dl><div><dt>Hourly rate</dt><dd>{tutor.priceCents ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}/hour` : "Not set"}</dd></div><div><dt>Enquiries</dt><dd>{tutor.inquiryCount}{tutor.newInquiryCount ? ` · ${tutor.newInquiryCount} new` : ""}</dd></div></dl>
             <div className="tutor-admin-actions">
               <button onClick={() => editTutor(tutor)}>Edit</button>
               {tutor.status !== "published" && <button className="sys-primary" disabled={busy === tutor.id} onClick={() => setStatus(tutor, "published")}>Publish</button>}
@@ -443,7 +466,7 @@ export default function TutorAdminPage() {
               <button className="danger-text" onClick={() => archiveTutor(tutor)}>Archive</button>
             </div>
           </article>)}
-        </div> : <article className="panel product-empty"><h3>No tutor profiles yet</h3><p>Add the first tutor above. Profiles stay private until you publish them.</p></article>}
+        </div> : <article className="panel product-empty"><h3>No coach profiles yet</h3><p>Create your first profile above. It stays private until you publish it.</p></article>}
       </section>
 
       <section className="tutor-admin-section" id="availability">

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { coachListingWeight } from "../../lib/coach-listing-plans";
 
 type MarketplaceTutor = {
   id: string;
@@ -10,12 +11,15 @@ type MarketplaceTutor = {
   displayName: string;
   headline: string;
   bio: string;
+  serviceType: string;
   subjects: string[];
   languages: string[];
   qualifications: string;
   experienceYears: number;
   priceCents: number;
   priceUnit: string;
+  listingTier: string;
+  listingMonthlyCents: number;
   sessionMode: string;
   location: string;
   availability: string;
@@ -29,7 +33,14 @@ type MarketplaceTutor = {
   nextAvailableAt: number | null;
 };
 
-type SortMode = "available" | "experience" | "price";
+type SortMode = "recommended" | "available" | "experience" | "price";
+
+const topicGroups = [
+  { name: "Career & work", topics: ["Career change", "Interview preparation", "Leadership", "Executive coaching"] },
+  { name: "Business", topics: ["Business strategy", "Sales", "Entrepreneurship", "Small business"] },
+  { name: "Learning", topics: ["Mathematics", "Study skills", "Exam preparation", "Physical Science"] },
+  { name: "Technology", topics: ["Coding", "Artificial intelligence", "Data analysis", "Bitcoin"] },
+] as const;
 
 function initials(name: string) {
   return name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
@@ -42,7 +53,7 @@ function sessionLabel(mode: string) {
 
 function priceLabel(tutor: MarketplaceTutor) {
   return tutor.priceCents
-    ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}/${tutor.priceUnit}`
+    ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}/hour`
     : "Ask for price";
 }
 
@@ -53,10 +64,12 @@ export default function TutorMarketplacePage() {
   const [query, setQuery] = useState("");
   const [subject, setSubject] = useState("all");
   const [mode, setMode] = useState("all");
-  const [sort, setSort] = useState<SortMode>("available");
+  const [sort, setSort] = useState<SortMode>("recommended");
   const [comparedIds, setComparedIds] = useState<string[]>([]);
 
   useEffect(() => {
+    const topic = new URLSearchParams(location.search).get("topic");
+    if (topic) setQuery(topic);
     fetch("/api/tutors?marketplace=1")
       .then((response) => {
         if (!response.ok) throw new Error("marketplace unavailable");
@@ -92,6 +105,12 @@ export default function TutorMarketplacePage() {
         const bPrice = b.priceCents || Number.MAX_SAFE_INTEGER;
         return aPrice - bPrice;
       }
+      if (sort === "recommended") {
+        const placement = coachListingWeight(a.listingTier) - coachListingWeight(b.listingTier);
+        if (placement) return placement;
+        const verification = Number(b.verified) - Number(a.verified);
+        if (verification) return verification;
+      }
       const aTime = a.nextAvailableAt || Number.MAX_SAFE_INTEGER;
       const bTime = b.nextAvailableAt || Number.MAX_SAFE_INTEGER;
       return aTime - bTime || Number(b.verified) - Number(a.verified);
@@ -118,7 +137,7 @@ export default function TutorMarketplacePage() {
     setQuery("");
     setSubject("all");
     setMode("all");
-    setSort("available");
+    setSort("recommended");
   }
 
   return <main className="marketplace-page">
@@ -126,9 +145,9 @@ export default function TutorMarketplacePage() {
       <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
       <nav>
         <Link href="/courses">Courses</Link>
-        <Link className="active" href="/tutors">Tutors</Link>
+        <Link className="active" href="/tutors">Find a coach</Link>
         <Link href="/login?mode=login">Sign in</Link>
-        <Link className="marketplace-join" href="/login?mode=signup&next=%2Fwelcome">Join free</Link>
+        <Link className="marketplace-join" href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach">Advertise</Link>
       </nav>
     </header>
 
@@ -136,10 +155,10 @@ export default function TutorMarketplacePage() {
       <div>
         <p className="sys-kicker">HUMAN HELP, WHEN A COURSE ISN&apos;T ENOUGH</p>
         <h1>Find the person who can get you <em>unstuck.</em></h1>
-        <p>Compare real expertise, clear pricing and actual appointment availability—then request a time without sharing your details publicly.</p>
+        <p>Search the topic you want to investigate, compare real expertise and self-set hourly rates, then request a time without sharing your details publicly.</p>
         <div className="marketplace-search">
           <label htmlFor="tutor-search">What do you need help with?</label>
-          <div><input id="tutor-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try Mathematics, exam preparation or Afrikaans…" /><a href="#tutor-results">Find my tutor</a></div>
+          <div><input id="tutor-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try career change, Bitcoin, mathematics or leadership…" /><a href="#tutor-results">Find my coach</a></div>
         </div>
       </div>
       <aside>
@@ -154,13 +173,24 @@ export default function TutorMarketplacePage() {
       <div><b>Book confidently</b><span>A time is held until confirmed</span></div>
     </section>
 
+    <section className="marketplace-topics" aria-label="Browse coaching and tutoring topics">
+      <header>
+        <div><p className="sys-kicker">EXPLORE BY TOPIC</p><h2>What would you like to work through?</h2></div>
+        <p>Start broad or choose a specific topic. Your search can include a goal, problem, school subject, or professional skill.</p>
+      </header>
+      <div>{topicGroups.map((group) => <article key={group.name}>
+        <h3>{group.name}</h3>
+        <div>{group.topics.map((topic) => <button className={query.toLowerCase() === topic.toLowerCase() ? "active" : ""} key={topic} onClick={() => setQuery(topic)}>{topic}<span>→</span></button>)}</div>
+      </article>)}</div>
+    </section>
+
     <section className="marketplace-body" id="tutor-results">
       <aside className="marketplace-filters">
         <div><p className="sys-kicker">REFINE YOUR MATCH</p><button onClick={clearFilters}>Reset</button></div>
         <fieldset>
-          <legend>Subject</legend>
+          <legend>Topic</legend>
           <select value={subject} onChange={(event) => setSubject(event.target.value)}>
-            <option value="all">All subjects</option>
+            <option value="all">All topics</option>
             {subjects.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
         </fieldset>
@@ -174,22 +204,25 @@ export default function TutorMarketplacePage() {
         </fieldset>
         <div className="marketplace-filter-help">
           <b>Not sure who to choose?</b>
-          <p>Select up to three tutors and compare them side by side.</p>
+          <p>Select up to three coaches or tutors and compare them side by side.</p>
         </div>
       </aside>
 
       <div className="marketplace-results">
         <header>
-          <div><p className="sys-kicker">YOUR MATCHES</p><h2>{loading ? "Finding tutors…" : `${filtered.length} ${filtered.length === 1 ? "tutor" : "tutors"} to consider`}</h2></div>
-          <label>Sort by<select value={sort} onChange={(event) => setSort(event.target.value as SortMode)}><option value="available">Available soonest</option><option value="experience">Most experienced</option><option value="price">Lowest price</option></select></label>
+          <div><p className="sys-kicker">YOUR MATCHES</p><h2>{loading ? "Finding people…" : `${filtered.length} ${filtered.length === 1 ? "coach or tutor" : "coaches and tutors"} to consider`}</h2></div>
+          <label>Sort by<select value={sort} onChange={(event) => setSort(event.target.value as SortMode)}><option value="recommended">Recommended</option><option value="available">Available soonest</option><option value="experience">Most experienced</option><option value="price">Lowest hourly rate</option></select></label>
         </header>
+        <p className="marketplace-placement-note">Featured placement is paid advertising. Verification is assessed separately and never purchased.</p>
         {notice && <p className="notice" role="status">{notice}</p>}
         {!loading && filtered.length ? <div className="marketplace-grid">{filtered.map((tutor) =>
-          <article className="marketplace-card" key={tutor.id} style={{ borderTopColor: tutor.schoolPrimaryColor || "#3556d8" }}>
+          <article className={`marketplace-card tier-${tutor.listingTier || "listed"}`} key={tutor.id} style={{ borderTopColor: tutor.schoolPrimaryColor || "#3556d8" }}>
+            {tutor.listingTier === "spotlight" && <span className="marketplace-paid-badge">SPONSORED SPOTLIGHT</span>}
+            {tutor.listingTier === "featured" && <span className="marketplace-paid-badge featured">FEATURED</span>}
             <div className="marketplace-card-person">
               {tutor.photoUrl ? <Image src={tutor.photoUrl} alt="" width={84} height={98} unoptimized /> : <span>{initials(tutor.displayName)}</span>}
               <div>
-                <small>{tutor.verified ? "✓ VERIFIED TUTOR" : tutor.schoolName.toUpperCase()}</small>
+                <small>{tutor.verified ? "✓ VERIFIED · " : ""}{tutor.serviceType === "both" ? "COACH & TUTOR" : tutor.serviceType === "tutoring" ? "TUTOR" : "COACH"}</small>
                 <h3>{tutor.displayName}</h3>
                 <p>{tutor.headline}</p>
               </div>
@@ -199,7 +232,7 @@ export default function TutorMarketplacePage() {
             <dl>
               <div><dt>Experience</dt><dd>{tutor.experienceYears ? `${tutor.experienceYears} years` : "See profile"}</dd></div>
               <div><dt>Format</dt><dd>{sessionLabel(tutor.sessionMode)}</dd></div>
-              <div><dt>From</dt><dd>{priceLabel(tutor)}</dd></div>
+              <div><dt>Hourly rate</dt><dd>{priceLabel(tutor)}</dd></div>
             </dl>
             <div className={`marketplace-availability ${tutor.availableSlotCount ? "open" : ""}`}>
               <span>{tutor.availableSlotCount ? "●" : "○"}</span>
@@ -215,19 +248,19 @@ export default function TutorMarketplacePage() {
             </div>
           </article>
         )}</div> : !loading && <article className="marketplace-empty">
-          <span>?</span><div><h2>No exact match yet.</h2><p>Try a broader subject, another format, or clear the filters to see every available tutor.</p><button onClick={clearFilters}>Show all tutors</button></div>
+          <span>?</span><div><h2>No exact match yet.</h2><p>Try a broader topic, another format, or clear the filters to see every available coach and tutor.</p><button onClick={clearFilters}>Show everyone</button></div>
         </article>}
       </div>
     </section>
 
     {compared.length > 0 && <section className="marketplace-compare" id="compare">
       <div className="marketplace-compare-heading">
-        <div><p className="sys-kicker">SIDE-BY-SIDE</p><h2>Compare what matters.</h2><p>Select up to three tutors. The strongest choice is the one whose expertise and availability fit your next step.</p></div>
+        <div><p className="sys-kicker">SIDE-BY-SIDE</p><h2>Compare what matters.</h2><p>Select up to three people. The strongest choice is the one whose expertise, approach, rate, and availability fit your next step.</p></div>
         <button onClick={() => setComparedIds([])}>Clear comparison</button>
       </div>
       <div className="marketplace-compare-grid" style={{ gridTemplateColumns: `170px repeat(${compared.length}, minmax(210px, 1fr))` }}>
-        <b>Tutor</b>{compared.map((tutor) => <strong key={`name-${tutor.id}`}>{tutor.displayName}<small>{tutor.schoolName}</small></strong>)}
-        <b>Subjects</b>{compared.map((tutor) => <span key={`subject-${tutor.id}`}>{tutor.subjects.slice(0, 3).join(", ")}</span>)}
+        <b>Coach or tutor</b>{compared.map((tutor) => <strong key={`name-${tutor.id}`}>{tutor.displayName}<small>{tutor.schoolName}</small></strong>)}
+        <b>Topics</b>{compared.map((tutor) => <span key={`subject-${tutor.id}`}>{tutor.subjects.slice(0, 3).join(", ")}</span>)}
         <b>Experience</b>{compared.map((tutor) => <span key={`experience-${tutor.id}`}>{tutor.experienceYears ? `${tutor.experienceYears} years` : "See profile"}</span>)}
         <b>Format</b>{compared.map((tutor) => <span key={`mode-${tutor.id}`}>{sessionLabel(tutor.sessionMode)}</span>)}
         <b>Price</b>{compared.map((tutor) => <span key={`price-${tutor.id}`}>{priceLabel(tutor)}</span>)}
@@ -238,12 +271,12 @@ export default function TutorMarketplacePage() {
 
     {compared.length > 0 && <div className="marketplace-compare-dock">
       <p><b>{compared.length}/3 selected</b><span>{compared.map((tutor) => tutor.displayName.split(" ")[0]).join(", ")}</span></p>
-      <a href="#compare">Compare tutors</a>
+      <a href="#compare">Compare people</a>
     </div>}
 
     <section className="marketplace-bottom">
-      <div><p className="sys-kicker">TEACH ONE-TO-ONE?</p><h2>Put your expertise where learners can find it.</h2></div>
-      <Link href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcreator">Create your academy free →</Link>
+      <div><p className="sys-kicker">COACH OR TEACH ONE-TO-ONE?</p><h2>Put your expertise where learners can find it.</h2><p>Choose your visibility plan, set your own hourly rate, and receive protected enquiries.</p></div>
+      <Link href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach">Advertise my coaching →</Link>
     </section>
   </main>;
 }
