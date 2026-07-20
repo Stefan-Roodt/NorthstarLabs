@@ -1,60 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useState } from "react";
+import { useEffect, useState } from "react";
+import { getStarterCourse, starterCourses, type CatalogCourse } from "../../lib/starter-courses";
 import { LearningRequestForm } from "../learning-request-form";
 
-type StartingPoint = "new" | "some" | "stuck";
-type SupportPreference = "course" | "coach" | "blended" | "unsure";
-type Pace = "week" | "month" | "exploring";
+const bitcoinCourseHref = "/courses/stefan-bitcoin-genesis-next-era";
 
-const startingPoints: Array<{ value: StartingPoint; title: string; text: string }> = [
-  { value: "new", title: "Starting fresh", text: "I need the foundations and a clear route in." },
-  { value: "some", title: "Building on experience", text: "I know some of it and want to move further." },
-  { value: "stuck", title: "Stuck on something specific", text: "I need targeted help with a real roadblock." },
-];
+export default function FindCoursesPage() {
+  const [courses, setCourses] = useState<CatalogCourse[]>(starterCourses);
 
-const supportOptions: Array<{ value: SupportPreference; title: string; text: string }> = [
-  { value: "course", title: "Learn at my pace", text: "Give me structured lessons I can work through." },
-  { value: "coach", title: "Talk to an expert", text: "I want personal feedback and a direct conversation." },
-  { value: "blended", title: "Use both", text: "Give me the path and human help when I need it." },
-  { value: "unsure", title: "Recommend it", text: "Use my goal to point me in the right direction." },
-];
-
-const paceLabels: Record<Pace, string> = {
-  week: "I want to make progress this week",
-  month: "I am working toward a result this month",
-  exploring: "I am exploring before I commit",
-};
-
-export default function NorthstarNavigatorPage() {
-  const [goal, setGoal] = useState("");
-  const [startingPoint, setStartingPoint] = useState<StartingPoint>("new");
-  const [support, setSupport] = useState<SupportPreference>("unsure");
-  const [pace, setPace] = useState<Pace>("month");
-  const [showResult, setShowResult] = useState(false);
-
-  const encodedGoal = encodeURIComponent(goal.trim());
-  const courseHref = `/courses?query=${encodedGoal}`;
-  const coachHref = `/tutors?topic=${encodedGoal}`;
-  const requestType = support === "course" ? "course" : support === "coach" ? "coach" : "either";
-  const requestDetail = [
-    `Starting point: ${startingPoints.find((item) => item.value === startingPoint)?.title}.`,
-    `Preferred support: ${supportOptions.find((item) => item.value === support)?.title}.`,
-    `Timing: ${paceLabels[pace]}.`,
-    "Please help me find a credible next step for this goal.",
-  ].join(" ");
-
-  function findPath(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setShowResult(true);
-    requestAnimationFrame(() => {
-      document.getElementById("navigator-result")?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
-  }
+  useEffect(() => {
+    fetch("/api/catalog")
+      .then((response) => response.ok ? response.json() as Promise<CatalogCourse[]> : Promise.reject())
+      .then(setCourses)
+      .catch(() => undefined);
+  }, []);
 
   return <main className="navigator-page">
     <header className="navigator-nav">
@@ -63,84 +24,52 @@ export default function NorthstarNavigatorPage() {
     </header>
 
     <section className="navigator-hero">
-      <p className="sys-kicker">NORTHSTAR NAVIGATOR</p>
-      <h1>Start with the result you want—not the product we want to sell.</h1>
-      <p>Tell us where you want to go. We will give you a clear route into a relevant course, a human coach, or both. No account is required to see your next step.</p>
-      <div><span>01 · Describe the goal</span><span>02 · Choose how you learn</span><span>03 · See the next step</span></div>
+      <p className="sys-kicker">NORTHSTARLABS COURSES</p>
+      <h1>Choose a real course. Start when it fits.</h1>
+      <p>There is no pretend personalisation here. Every course has a visible curriculum, a clear learning promise, and a direct path to join.</p>
+      <div><span>Inspect the curriculum</span><span>Decide if it fits</span><span>Join when ready</span></div>
     </section>
 
-    <form className="navigator-form" onSubmit={findPath}>
-      <section>
-        <div className="navigator-question"><span>01</span><div><p className="sys-kicker">YOUR OUTCOME</p><h2>What do you want to be able to do?</h2><p>Specific beats broad. Describe the result, problem, exam, project, or decision.</p></div></div>
-        <label className="navigator-goal">
-          <span>My goal</span>
-          <textarea required minLength={3} maxLength={240} value={goal} onChange={(event) => { setGoal(event.target.value); setShowResult(false); }} placeholder="For example: understand Bitcoin well enough to explain its history, risks, and possible future to my board" />
-          <small>{goal.length}/240</small>
-        </label>
-      </section>
-
-      <section>
-        <div className="navigator-question"><span>02</span><div><p className="sys-kicker">YOUR STARTING POINT</p><h2>Where are you now?</h2></div></div>
-        <div className="navigator-options three">{startingPoints.map((item) => <label key={item.value} className={startingPoint === item.value ? "selected" : ""}>
-          <input type="radio" name="starting-point" value={item.value} checked={startingPoint === item.value} onChange={() => { setStartingPoint(item.value); setShowResult(false); }} />
-          <b>{item.title}</b><span>{item.text}</span>
-        </label>)}</div>
-      </section>
-
-      <section>
-        <div className="navigator-question"><span>03</span><div><p className="sys-kicker">THE RIGHT SUPPORT</p><h2>How would you prefer to make progress?</h2></div></div>
-        <div className="navigator-options">{supportOptions.map((item) => <label key={item.value} className={support === item.value ? "selected" : ""}>
-          <input type="radio" name="support" value={item.value} checked={support === item.value} onChange={() => { setSupport(item.value); setShowResult(false); }} />
-          <b>{item.title}</b><span>{item.text}</span>
-        </label>)}</div>
-      </section>
-
-      <section className="navigator-finish">
-        <div>
-          <label>When would this be useful?
-            <select value={pace} onChange={(event) => { setPace(event.target.value as Pace); setShowResult(false); }}>
-              <option value="week">{paceLabels.week}</option>
-              <option value="month">{paceLabels.month}</option>
-              <option value="exploring">{paceLabels.exploring}</option>
-            </select>
-          </label>
-          <small>Your answers stay in this browser unless you choose to send NorthstarLabs a request.</small>
-        </div>
-        <button className="button" type="submit">Show my best next step <span>→</span></button>
-      </section>
-    </form>
-
-    {showResult && <section className="navigator-result" id="navigator-result">
-      <div className="navigator-result-heading">
-        <p className="sys-kicker">YOUR NORTHSTAR ROUTE</p>
-        <h2>Begin with a credible match. Add human help when it improves the outcome.</h2>
-        <p>We use your goal to narrow the search. You can inspect the options before creating an account or contacting anyone.</p>
+    <section className="navigator-direct" aria-labelledby="direct-course-title">
+      <div>
+        <p className="sys-kicker">FEATURED COURSE</p>
+        <h2 id="direct-course-title">Start the Bitcoin course now.</h2>
+        <p><b>Bitcoin Intelligence: From Genesis Block to Boardroom</b> is a structured NorthstarLabs course with 35 short lessons on Bitcoin’s origins, engineering, money, custody, governance, risks, and plausible futures.</p>
+        <small>See the full curriculum before joining. No questionnaire required.</small>
       </div>
-      <div className="navigator-route">
-        {(support === "course" || support === "blended" || support === "unsure") && <article>
-          <span>1</span><p className="sys-kicker">STRUCTURE THE PATH</p><h3>Search courses for your exact goal.</h3><p>Compare the promise, lesson structure, creator, and expected result. Start only if the fit is useful.</p><Link href={courseHref}>Show relevant courses →</Link>
-        </article>}
-        {(support === "coach" || support === "blended" || support === "unsure" || startingPoint === "stuck") && <article>
-          <span>{support === "coach" ? "1" : "2"}</span><p className="sys-kicker">GET PERSONAL HELP</p><h3>Find an expert for the roadblock.</h3><p>Compare topic fit, credentials, verified learner proof, availability, and self-set hourly rates.</p><Link href={coachHref}>Show relevant coaches →</Link>
-        </article>}
-        <article className="navigator-proof">
-          <span>{support === "course" ? "2" : "3"}</span><p className="sys-kicker">KEEP THE PROGRESS</p><h3>Turn activity into evidence.</h3><p>Keep lessons, live sessions, coaching, completion, ratings, and certificates connected under one account.</p><Link href="/login?mode=signup&next=%2Fwelcome">Create my free account →</Link>
-        </article>
+      <div className="navigator-direct-actions">
+        <Link className="button" href={bitcoinCourseHref}>Explore the Bitcoin course <span>→</span></Link>
+        <Link href="/courses">Browse all courses →</Link>
       </div>
-      <details className="navigator-fallback">
-        <summary>No credible match? Ask NorthstarLabs to look further <span>+</span></summary>
-        <div><p>We will check the current catalogue and coach network. If we cannot find something relevant, we will say so rather than force an unrelated result.</p>
-          <LearningRequestForm
-            key={`${goal}-${startingPoint}-${support}-${pace}`}
-            defaultType={requestType}
-            defaultTopic={goal}
-            defaultDetail={requestDetail}
-            source="northstar-navigator"
-            compact
-          />
-        </div>
-      </details>
-    </section>}
+    </section>
+
+    <section className="navigator-course-picker" aria-labelledby="course-picker-title">
+      <div className="navigator-course-picker-heading">
+        <div><p className="sys-kicker">LIVE NORTHSTARLABS COURSES</p><h2 id="course-picker-title">Pick the subject you came for.</h2><p>These are the courses we actually offer today. Open one to see exactly what you will learn, how it is structured, and what completion requires.</p></div>
+        <Link href="/courses">Open the full catalogue →</Link>
+      </div>
+      <div className="navigator-course-grid">
+        {courses.map((course) => {
+          const starter = getStarterCourse(course.id);
+          return <article key={course.id}>
+            <div><span>{course.title.slice(0, 2).toUpperCase()}</span><small>{starter?.category || "NorthstarLabs course"}</small></div>
+            <p className="sys-kicker">{course.lessonCount} LESSONS · {course.priceCents ? `R${(course.priceCents / 100).toFixed(0)}` : "FREE"}</p>
+            <h3>{course.title}</h3>
+            <p>{course.description || "A structured course with practical learning and visible progress."}</p>
+            <Link href={`/courses/${course.id}`}>See course and curriculum →</Link>
+          </article>;
+        })}
+      </div>
+    </section>
+
+    <section className="navigator-request" id="request-a-course">
+      <div>
+        <p className="sys-kicker">NOT HERE YET?</p>
+        <h2>Tell us what should exist.</h2>
+        <p>If we do not offer the course you need, send the detail. NorthstarLabs will use it to look for a credible coach, identify demand, or consider what to build next—without pretending an unrelated course is a match.</p>
+      </div>
+      <LearningRequestForm defaultType="course" source="course-finder" compact />
+    </section>
 
     <footer className="navigator-footer"><Link className="system-brand" href="/">✦ NORTHSTARLABS</Link><p>Learn. Ask. Progress.</p><div><Link href="/legal/terms">Terms</Link><Link href="/legal/privacy">Privacy</Link></div></footer>
   </main>;
