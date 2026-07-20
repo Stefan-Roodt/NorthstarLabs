@@ -163,7 +163,7 @@ export default function Home() {
           <a className="nav-route" href={creatorSignupHref}><small>TEACH</small><b>Build an academy</b></a>
           <a className="nav-how" href="#value">Why Northstar?</a>
         </nav>
-        <div className="nav-actions"><a className="login" href="/login?mode=login">Sign in</a><Link className="button small" href="/find">Find my next step <span>→</span></Link></div>
+        <div className="nav-actions"><a className="login" href="/login?mode=login">Sign in</a><Link className="button small" href="/find">Explore academies <span>→</span></Link></div>
         <button className="menu" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-label="Toggle navigation">{menuOpen ? "Close" : "Menu"}</button>
       </header>
 
@@ -172,7 +172,7 @@ export default function Home() {
           <p className="eyebrow">For creators <span>•</span> Coaches <span>•</span> Learners</p>
           <h1>Where courses, coaching, and community become <em>real progress.</em></h1>
           <p className="lede">Build and deliver structured learning—or find the course and human support that helps you move forward. NorthstarLabs keeps content, live sessions, community, and progress connected.</p>
-          <div className="hero-actions"><Link className="button" href="/find">Find my best next step <span>→</span></Link><a className="text-link" href={creatorSignupHref}>Build an academy <span>→</span></a></div>
+          <div className="hero-actions"><Link className="button" href="/find">I want to learn <span>→</span></Link><a className="text-link" href={creatorSignupHref}>I want to create modules <span>→</span></a></div>
           <ul className="hero-benefits" aria-label="Free account benefits">
             <li><span>✓</span> No credit card</li>
             <li><span>✓</span> A guided starting point</li>

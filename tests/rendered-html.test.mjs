@@ -724,7 +724,7 @@ test("makes NorthstarLabs clear, memorable, discoverable, and responsive to unme
   assert.match(home, /LEARN/);
   assert.match(home, /GET UNSTUCK/);
   assert.match(home, /TEACH/);
-  assert.match(home, /Find my next step/);
+  assert.match(home, /Explore academies/);
   assert.match(home, /Learn\. Ask\. Progress\./);
   assert.match(home, /If we do not have what you need/);
   assert.match(home, /LearningRequestForm/);

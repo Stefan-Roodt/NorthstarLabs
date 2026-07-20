@@ -47,19 +47,20 @@ export default function Catalog() {
         <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
         <nav>
           <Link href="/">Home</Link>
-          <Link href="/tutors">Find a tutor</Link>
+          <Link href="/tutors">Work with a coach</Link>
+          <Link href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcreator">Create modules</Link>
           <a href="/login">Sign in</a>
         </nav>
       </header>
 
       <section className="catalog-hero">
         <p className="sys-kicker">NORTHSTARLABS ORIGINALS</p>
-        <h1>Learn by building something real.</h1>
-        <p>Free, practical field guides for turning expertise into learning people can use.</p>
+        <h1>Choose a module to take.</h1>
+        <p>This is the learner catalogue. Open a module, inspect its syllabus, and enrol when it is right for you.</p>
         <div className="catalog-promises" aria-label="Course collection benefits">
-          <span>Free to enrol</span>
-          <span>Practical lessons</span>
-          <span>Completion certificates</span>
+          <span>See the syllabus first</span>
+          <span>Start as a learner</span>
+          <span>Earn completion evidence</span>
         </div>
         <label className="catalog-search">
           <span>What would you like to achieve?</span>
@@ -96,7 +97,7 @@ export default function Catalog() {
                 <span>By {course.creator || "NorthstarLabs"}</span>
                 <b>{course.priceCents ? `R${(course.priceCents / 100).toFixed(0)}` : "Free"}</b>
               </div>
-              <a className="sys-primary" href={`/courses/${course.id}`}>Explore course →</a>
+              <a className="sys-primary" href={`/courses/${course.id}`}>View module syllabus →</a>
             </article>
           );
         })}
@@ -119,10 +120,10 @@ export default function Catalog() {
       <section className="catalog-creator-cta">
         <div>
           <p className="sys-kicker">TEACH SOMETHING NEXT</p>
-          <h2>Have expertise worth sharing?</h2>
-          <p>Use NorthstarLabs to turn it into a course, guide learners, and see where they need support.</p>
+          <h2>Want to build modules instead?</h2>
+          <p>This is the creator route: open your academy, create your modules, then publish them for your learners.</p>
         </div>
-        <a className="sys-primary" href="/login?next=/welcome?path=creator">Build your course free →</a>
+        <a className="sys-primary" href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcreator">Create an academy →</a>
       </section>
 
       <footer className="catalog-footer">
