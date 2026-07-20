@@ -41,8 +41,33 @@ function inlineMarkdown(value: string, keyPrefix: string): ReactNode[] {
   return nodes;
 }
 
-export function LessonContent({ content }: { content: string }) {
+export function LessonContent({
+  content,
+  omitLessonIntro = false,
+}: {
+  content: string;
+  omitLessonIntro?: boolean;
+}) {
   const lines = content.replace(/\r\n/g, "\n").split("\n");
+  if (omitLessonIntro) {
+    const firstContent = lines.findIndex((line) => line.trim());
+    if (firstContent >= 0 && /^#\s+/.test(lines[firstContent].trim())) {
+      lines.splice(firstContent, 1);
+    }
+    const outcomeIndex = lines.findIndex((line) =>
+      /^#{1,3}\s+(your\s+outcome|learning\s+outcomes?)\s*$/i.test(line.trim())
+    );
+    if (outcomeIndex >= 0) {
+      let outcomeEnd = outcomeIndex + 1;
+      while (
+        outcomeEnd < lines.length &&
+        !/^#{1,3}\s+/.test(lines[outcomeEnd].trim())
+      ) {
+        outcomeEnd += 1;
+      }
+      lines.splice(outcomeIndex, outcomeEnd - outcomeIndex);
+    }
+  }
   const blocks: ReactNode[] = [];
   for (let index = 0; index < lines.length;) {
     const line = lines[index].trimEnd();

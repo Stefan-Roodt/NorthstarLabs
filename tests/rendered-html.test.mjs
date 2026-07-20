@@ -978,3 +978,35 @@ test("keeps course context through registration and welcomes new enrolments into
   assert.match(styles, /\.auth-course-context/);
   assert.match(styles, /\.first-lesson-welcome/);
 });
+
+test("makes every lesson easy to understand, focus on, and complete", async () => {
+  const [learn, guideSource, styles] = await Promise.all([
+    readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/lesson-guide.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/system.css", import.meta.url), "utf8"),
+  ]);
+  const { getLessonGuide } = await import("../lib/lesson-guide.ts");
+  const guide = getLessonGuide(`# Lesson title
+
+## Your outcome
+
+Explain the idea clearly.
+
+## Core idea
+
+Read this.
+
+## Reflection
+
+Apply it.`);
+  assert.equal(guide.outcome, "Explain the idea clearly.");
+  assert.deepEqual(guide.outline, ["Core idea", "Reflection"]);
+  assert.match(learn, /TO FINISH/);
+  assert.match(learn, /YOUR OUTCOME/);
+  assert.match(learn, /IN THIS LESSON/);
+  assert.match(learn, /Focus mode/);
+  assert.match(learn, /omitLessonIntro/);
+  assert.match(guideSource, /getLessonGuide/);
+  assert.match(styles, /\.lesson-brief/);
+  assert.match(styles, /\.learn-page\.focus-mode/);
+});

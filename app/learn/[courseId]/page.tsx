@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { type CSSProperties, type SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 import { LessonContent } from "../../../lib/lesson-content";
+import { getLessonGuide } from "../../../lib/lesson-guide";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 
 type Quiz = {
@@ -185,6 +186,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
   const [resourceMessage, setResourceMessage] = useState("");
   const [learnerMessage, setLearnerMessage] = useState("");
   const [orientationDismissed, setOrientationDismissed] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
   const [search, setSearch] = useState("");
   const [certificate, setCertificate] = useState<Certificate | null>(null);
   const searchParams = useSearchParams();
@@ -348,7 +350,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
     if (result.certificateCode) {
       setCertificate({
         code: result.certificateCode,
-        issuedAt: Date.now(),
+        issuedAt: 0,
         status: "active",
         expiresAt: null,
       });
@@ -422,7 +424,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       if (result.certificateCode) {
         setCertificate({
           code: result.certificateCode,
-          issuedAt: Date.now(),
+          issuedAt: 0,
           status: "active",
           expiresAt: null,
         });
@@ -472,8 +474,20 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
   const done = lessons.filter((lesson) => lesson.completed).length;
   const progress = Math.round(done / lessons.length * 100);
   const lesson = lessons[current];
+  const currentSection = sections.find((section) => section.id === lesson.sectionId);
+  const lessonGuide = getLessonGuide(lesson.content);
   const normalizedSearch = search.trim().toLowerCase();
   const watchRequirementMet = lesson.requiredWatchPercent <= lesson.watchedPercent;
+  const completionRequirement = lesson.quiz
+    ? `Pass the knowledge check at ${lesson.quiz.passingScore}% or higher`
+    : lesson.requiredWatchPercent > 0
+      ? `Watch at least ${lesson.requiredWatchPercent}% of the video`
+      : "Read the lesson and mark it complete";
+  const lessonFormat = lesson.quiz
+    ? "Knowledge check"
+    : lesson.primaryAsset?.kind === "video"
+      ? "Video + guided notes"
+      : "Guided lesson";
 
   const schoolStyle = school ? {
     "--blue": school.primaryColor,
@@ -489,7 +503,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
     });
   }
 
-  return <main className="learn-page" style={schoolStyle}>
+  return <main className={`learn-page${focusMode ? " focus-mode" : ""}`} style={schoolStyle}>
     <header>
       <Link className="learner-school-brand" href={school ? `/schools/${school.slug}` : "/"}>
         {school?.logoUrl ? <>
@@ -504,6 +518,12 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       {preview
         ? <Link href={`/dashboard/courses/${id}`}>Exit preview</Link>
         : <div className="learner-course-links">
+          <button
+            aria-pressed={focusMode}
+            onClick={() => setFocusMode((currentMode) => !currentMode)}
+          >
+            {focusMode ? "Show curriculum" : "Focus mode"}
+          </button>
           {school?.showCommunity && <Link href={`/schools/${school.slug}/community`}>Community</Link>}
           <Link href="/learn">My learning</Link>
         </div>}
@@ -586,12 +606,30 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
           : <div className="lesson-banner">{(school?.name || "NorthStarLabs").toUpperCase()} · {lesson.lessonType.toUpperCase()} LESSON</div>}
         <p className="sys-kicker">LESSON {current + 1} OF {lessons.length}{lesson.durationMinutes ? ` · ${lesson.durationMinutes} MIN` : ""}</p>
         <h1>{lesson.title}</h1>
+        <section className="lesson-brief" aria-label="Lesson guide">
+          <div className="lesson-brief-meta">
+            <span><small>MODULE</small><b>{currentSection?.title || "Course content"}</b></span>
+            <span><small>FORMAT</small><b>{lessonFormat}</b></span>
+            <span><small>TIME</small><b>{lesson.durationMinutes ? `About ${lesson.durationMinutes} minutes` : "Self-paced"}</b></span>
+            <span><small>TO FINISH</small><b>{completionRequirement}</b></span>
+          </div>
+          {(lessonGuide.outcome || lessonGuide.outline.length > 0) && <div className="lesson-brief-body">
+            {lessonGuide.outcome && <div>
+              <p className="sys-kicker">YOUR OUTCOME</p>
+              <p>{lessonGuide.outcome}</p>
+            </div>}
+            {lessonGuide.outline.length > 0 && <aside>
+              <small>IN THIS LESSON</small>
+              <ol>{lessonGuide.outline.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ol>
+            </aside>}
+          </div>}
+        </section>
         {!preview && lesson.requiredWatchPercent > 0 && <div className={`watch-requirement ${watchRequirementMet ? "met" : ""}`}>
           <div><b>{watchRequirementMet ? "Video requirement complete" : `Watch ${lesson.requiredWatchPercent}% to complete`}</b><span>{lesson.watchedPercent}% watched</span></div>
           <i><b style={{ width: `${Math.min(100, lesson.watchedPercent)}%` }} /></i>
         </div>}
         {lesson.content
-          ? <LessonContent content={lesson.content} />
+          ? <LessonContent content={lesson.content} omitLessonIntro />
           : <p className="lesson-empty-copy">Your creator is still adding the written guidance for this lesson.</p>}
 
         {lesson.transcript && <details className="lesson-transcript">
