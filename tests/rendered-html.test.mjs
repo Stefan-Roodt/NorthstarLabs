@@ -939,3 +939,22 @@ test("ships real Northstar-produced faculty videos and attaches them behind less
   assert.match(stream, /env\.ASSETS\.fetch/);
   assert.match(worker, /Media access requires a current lesson grant/);
 });
+
+test("shows prospective learners the real curriculum, faculty, assessments, and certificate standard", async () => {
+  const [page, detailApi, styles] = await Promise.all([
+    readFile(new URL("../app/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/catalog/[courseId]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/system.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(page, /See exactly what you will learn/);
+  assert.match(page, /A CERTIFICATE THAT MEANS SOMETHING/);
+  assert.match(page, /This is not a click-through certificate/);
+  assert.match(page, /course\.sections/);
+  assert.match(detailApi, /facultyHeadline/);
+  assert.match(detailApi, /playableVideoCount/);
+  assert.match(detailApi, /assessmentCount/);
+  assert.match(detailApi, /certificateTitle/);
+  assert.match(detailApi, /FROM lessons l/);
+  assert.match(styles, /\.course-module-list/);
+  assert.match(styles, /\.course-completion-standard/);
+});

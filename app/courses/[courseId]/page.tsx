@@ -5,8 +5,41 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 import { getStarterCourse, type CatalogCourse } from "../../../lib/starter-courses";
 
+type CourseSection = {
+  id: string;
+  title: string;
+  position: number;
+  lessons: Array<{
+    id: string;
+    title: string;
+    type: string;
+    durationMinutes: number;
+    hasVideo: boolean;
+    hasAssessment: boolean;
+  }>;
+};
+
+type CourseDetail = CatalogCourse & {
+  certificateTitle?: string;
+  facultyHeadline?: string | null;
+  facultyBio?: string | null;
+  sectionCount?: number;
+  assessmentCount?: number;
+  playableVideoCount?: number;
+  resourceCount?: number;
+  durationMinutes?: number;
+  sections?: CourseSection[];
+};
+
+function lessonLabel(lesson: CourseSection["lessons"][number]) {
+  if (lesson.hasAssessment || lesson.type === "quiz") return "Assessment";
+  if (lesson.hasVideo) return "Video";
+  if (lesson.type === "text") return "Lesson";
+  return lesson.type.replaceAll("_", " ");
+}
+
 export default function CoursePage({ params }: { params: Promise<{ courseId: string }> }) {
-  const [course, setCourse] = useState<CatalogCourse | null>(null);
+  const [course, setCourse] = useState<CourseDetail | null>(null);
   const [id, setId] = useState("");
   const [message, setMessage] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -19,9 +52,12 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
 
   useEffect(() => {
     if (!id) return;
-    fetch("/api/catalog")
-      .then((response) => response.json() as Promise<CatalogCourse[]>)
-      .then((all) => setCourse(all.find((item) => item.id === id) || getStarterCourse(id) || null))
+    fetch(`/api/catalog/${encodeURIComponent(id)}`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Course not found.");
+        return response.json() as Promise<CourseDetail>;
+      })
+      .then(setCourse)
       .catch(() => setCourse(getStarterCourse(id) || null))
       .finally(() => setLoaded(true));
   }, [id]);
@@ -75,13 +111,19 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
   );
 
   const starter = getStarterCourse(course.id);
-  const curriculum = starter?.curriculum || Array.from(
-    { length: Math.max(1, course.lessonCount) },
-    (_, index) => ({
-      title: `Lesson ${index + 1}`,
-      description: "A practical lesson from this course curriculum.",
-    }),
-  );
+  const curriculum = course.sections || [];
+  const hasRealCurriculum = curriculum.length > 0;
+  const assessmentCount = Number(course.assessmentCount || 0);
+  const videoCount = Number(course.playableVideoCount || 0);
+  const durationHours = course.durationMinutes
+    ? Math.max(1, Math.round(course.durationMinutes / 60))
+    : null;
+  const facultyInitials = (course.creator || "NorthstarLabs")
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 
   return (
     <main className="course-sales course-sales-expanded">
@@ -99,8 +141,11 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
           <h1>{course.title}</h1>
           <p>{starter?.promise || course.description || "A practical learning experience designed to move you from knowing to doing."}</p>
           <div className="course-byline">
-            <span>NS</span>
-            <p><b>{course.creator || "NorthstarLabs"}</b><small>Practical learning, built for action</small></p>
+            <span>{facultyInitials}</span>
+            <p>
+              <b>{course.creator || "NorthstarLabs"}</b>
+              <small>{course.facultyHeadline || "Practical learning, built for action"}</small>
+            </p>
           </div>
         </div>
 
@@ -117,8 +162,9 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
           {message && <p className="form-message" role="status">{message}</p>}
           <ul>
             <li>{course.lessonCount} practical lessons</li>
-            <li>{starter?.duration || "Self-paced"} learning time</li>
-            <li>Completion certificate</li>
+            <li>{assessmentCount || "Built-in"} knowledge checks</li>
+            <li>{videoCount ? `${videoCount} faculty video${videoCount === 1 ? "" : "s"} plus guided lessons` : "Guided written lessons and labs"}</li>
+            <li>{course.certificateTitle || "Verifiable completion certificate"}</li>
             <li>Progress saved to your account</li>
           </ul>
           <small>Secure access through your NorthstarLabs account.</small>
@@ -128,7 +174,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
       <section className="course-proof-bar">
         <div><span>LEVEL</span><b>{starter?.level || "All levels"}</b></div>
         <div><span>FORMAT</span><b>{starter?.format || "Self-paced"}</b></div>
-        <div><span>TIME</span><b>{starter?.duration || `${course.lessonCount} lessons`}</b></div>
+        <div><span>TIME</span><b>{durationHours ? `${durationHours} guided hours` : starter?.duration || `${course.lessonCount} lessons`}</b></div>
         <div><span>PRICE</span><b>{course.priceCents ? `R${(course.priceCents / 100).toFixed(0)}` : "Free"}</b></div>
       </section>
 
@@ -153,6 +199,10 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
             {(starter?.audience || ["Independent learners", "Working professionals", "Curious builders"])
               .map((person) => <li key={person}>{person}</li>)}
           </ul>
+          {course.facultyBio && <div className="course-faculty-note">
+            <small>YOUR FACULTY</small>
+            <p>{course.facultyBio}</p>
+          </div>}
         </aside>
       </section>
 
@@ -160,19 +210,61 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
         <div className="course-curriculum-heading">
           <div>
             <p className="sys-kicker">COURSE CURRICULUM</p>
-            <h2>A focused path from idea to action.</h2>
+            <h2>See exactly what you will learn.</h2>
           </div>
-          <p>{course.lessonCount} lessons · {starter?.duration || "Learn at your own pace"}</p>
+          <p>
+            {course.sectionCount || curriculum.length || 1} modules · {course.lessonCount} lessons
+            {assessmentCount ? ` · ${assessmentCount} assessments` : ""}
+          </p>
         </div>
-        <div className="curriculum-list">
-          {curriculum.map((lesson, index) => (
-            <article key={lesson.title}>
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              <div><h3>{lesson.title}</h3><p>{lesson.description}</p></div>
-              <small>{index === curriculum.length - 1 ? "Finish" : "Learn"}</small>
-            </article>
-          ))}
+        {hasRealCurriculum
+          ? <div className="course-module-list">
+              {curriculum.map((section, sectionIndex) => (
+                <article className="course-module" key={section.id}>
+                  <header>
+                    <span>{String(sectionIndex + 1).padStart(2, "0")}</span>
+                    <div>
+                      <small>MODULE {sectionIndex + 1}</small>
+                      <h3>{section.title}</h3>
+                    </div>
+                    <b>{section.lessons.length} lessons</b>
+                  </header>
+                  <ol>
+                    {section.lessons.map((lesson) => (
+                      <li key={lesson.id}>
+                        <span>{lesson.title}</span>
+                        <small>
+                          {lessonLabel(lesson)}
+                          {lesson.durationMinutes ? ` · ${lesson.durationMinutes} min` : ""}
+                        </small>
+                      </li>
+                    ))}
+                  </ol>
+                </article>
+              ))}
+            </div>
+          : <div className="curriculum-list">
+              {(starter?.curriculum || []).map((lesson, index) => (
+                <article key={lesson.title}>
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <div><h3>{lesson.title}</h3><p>{lesson.description}</p></div>
+                  <small>{index === (starter?.curriculum.length || 0) - 1 ? "Finish" : "Learn"}</small>
+                </article>
+              ))}
+            </div>}
+      </section>
+
+      <section className="course-completion-standard">
+        <div>
+          <p className="sys-kicker">A CERTIFICATE THAT MEANS SOMETHING</p>
+          <h2>Complete the work. Prove the learning.</h2>
+          <p>This is not a click-through certificate. Your progress is recorded lesson by lesson and every required assessment must be passed.</p>
         </div>
+        <ol>
+          <li><span>01</span><div><b>Complete the curriculum</b><p>Work through all {course.lessonCount} lessons in order.</p></div></li>
+          <li><span>02</span><div><b>Pass the assessments</b><p>{assessmentCount ? `Demonstrate understanding across ${assessmentCount} knowledge checks.` : "Meet the course assessment standard."}</p></div></li>
+          <li><span>03</span><div><b>Earn verifiable proof</b><p>Receive your {course.certificateTitle || "NorthstarLabs certificate"}, with a public verification code.</p></div></li>
+        </ol>
       </section>
 
       <section className="course-final-cta">
