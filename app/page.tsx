@@ -133,7 +133,7 @@ export default function Home() {
   return (
     <main>
       <header className="nav shell">
-        <a className="brand" href="#top" aria-label="NorthstarLabs home"><span className="brand-mark">✦</span> NORTHSTARLABS</a>
+        <a className="brand" href="#top" aria-label="NorthstarLabs home"><span className="brand-mark" aria-hidden="true">✦</span><span className="brand-wordmark">NORTHSTARLABS</span></a>
         <nav className={menuOpen ? "nav-links open" : "nav-links"} aria-label="Main navigation">
           <a href="#platform">Platform</a>
           <a href="#value">Why Northstar</a>
@@ -306,7 +306,7 @@ export default function Home() {
 
       <section className="cta"><div className="shell"><p className="eyebrow">YOUR KNOWLEDGE DESERVES A WORKING SYSTEM</p><h2>Build it once.<br/>Help people grow.</h2><p>Give your expertise a clear structure, a memorable home, and a learner experience you can improve over time.</p><div><a className="button" href={creatorSignupHref}>Build my academy free <span>↗</span></a><Link className="text-link light" href="/courses">Experience a real course →</Link></div><small className="cta-reassurance">No credit card · Guided setup · Switch between creating and learning anytime</small></div></section>
 
-      <footer className="footer shell"><div className="brand">✦ NORTHSTARLABS</div><p>One connected platform for practical learning businesses.</p><div className="footer-links"><a href="#platform">Platform</a><Link href="/courses">Courses</Link><a href="#product-tour">Product tour</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><Link href="/legal/terms">Terms</Link><Link href="/legal/privacy">Privacy</Link></div><small>© 2026 Northstar Labs. All rights reserved.</small></footer>
+      <footer className="footer shell"><div className="brand"><span className="brand-mark" aria-hidden="true">✦</span><span className="brand-wordmark">NORTHSTARLABS</span></div><p>One connected platform for practical learning businesses.</p><div className="footer-links"><a href="#platform">Platform</a><Link href="/courses">Courses</Link><a href="#product-tour">Product tour</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><Link href="/legal/terms">Terms</Link><Link href="/legal/privacy">Privacy</Link></div><small>© 2026 Northstar Labs. All rights reserved.</small></footer>
     </main>
   );
 }
