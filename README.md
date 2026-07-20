@@ -67,11 +67,12 @@ Optional quota overrides:
 - `SCHOOL_STORAGE_QUOTA_BYTES` defaults to 5 GB per academy.
 - `SCHOOL_MEDIA_ASSET_LIMIT` defaults to 2,000 files per academy.
 
-Call `POST /api/platform/maintenance` from a trusted daily scheduler with the
+Call `POST /api/platform/maintenance` from a trusted hourly scheduler with the
 secret in `x-maintenance-secret`. It creates a daily backup when due and removes
 expired rate-limit buckets, playback grants, old resolved events, and expired
-product access. Backup integrity can be verified from the platform reliability
-console.
+product access. It also backfills future live-session reminders and hands their
+exact delivery times to the email provider. Backup integrity can be verified
+from the platform reliability console.
 
 ## Workspace Auth Headers
 

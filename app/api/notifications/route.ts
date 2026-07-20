@@ -1,8 +1,13 @@
 import { env } from "cloudflare:workers";
+import {
+  cancelUserLiveSessionReminders,
+  queueUserLiveSessionReminders,
+} from "../../../lib/live-session-reminders";
 import { requireApiUser } from "../../../lib/server-auth";
 
 const preferenceSelect = `SELECT enrollment_emails AS enrollmentEmails,
   completion_emails AS completionEmails,community_emails AS communityEmails,
+  live_session_reminders AS liveSessionReminders,
   creator_summaries AS creatorSummaries,product_updates AS productUpdates,
   updated_at AS updatedAt FROM notification_preferences WHERE user_id=?`;
 
@@ -11,8 +16,8 @@ async function ensurePreferences(userId: string) {
   await env.DB.prepare(
     `INSERT INTO notification_preferences
       (id,user_id,enrollment_emails,completion_emails,community_emails,
-       creator_summaries,product_updates,updated_at)
-     VALUES (?,?,1,1,1,1,0,?)
+       live_session_reminders,creator_summaries,product_updates,updated_at)
+     VALUES (?,?,1,1,1,1,1,0,?)
      ON CONFLICT(user_id) DO NOTHING`,
   ).bind(crypto.randomUUID(), userId, now).run();
   return env.DB.prepare(preferenceSelect).bind(userId).first();
@@ -34,16 +39,23 @@ export async function PATCH(request: Request) {
     : Boolean(body[key]);
   await env.DB.prepare(
     `UPDATE notification_preferences SET enrollment_emails=?,completion_emails=?,
-      community_emails=?,creator_summaries=?,product_updates=?,updated_at=?
+      community_emails=?,live_session_reminders=?,creator_summaries=?,
+      product_updates=?,updated_at=?
      WHERE user_id=?`,
   ).bind(
     value("enrollmentEmails") ? 1 : 0,
     value("completionEmails") ? 1 : 0,
     value("communityEmails") ? 1 : 0,
+    value("liveSessionReminders") ? 1 : 0,
     value("creatorSummaries") ? 1 : 0,
     value("productUpdates") ? 1 : 0,
     Date.now(),
     user.id,
   ).run();
+  if (body.liveSessionReminders === false) {
+    await cancelUserLiveSessionReminders(user.id).catch(() => null);
+  } else if (body.liveSessionReminders === true) {
+    await queueUserLiveSessionReminders(user.id, new URL(request.url).origin).catch(() => null);
+  }
   return Response.json({ saved: true, ...(await ensurePreferences(user.id) as object) });
 }

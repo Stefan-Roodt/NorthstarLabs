@@ -14,6 +14,7 @@ type NotificationPreferences = {
   enrollmentEmails: number;
   completionEmails: number;
   communityEmails: number;
+  liveSessionReminders: number;
   creatorSummaries: number;
   productUpdates: number;
 };
@@ -307,6 +308,7 @@ export default function AccountPage() {
             ["enrollmentEmails", "Course enrolments", "Confirmation when you join a course."],
             ["completionEmails", "Completion and certificates", "Your verified certificate and completion notice."],
             ["communityEmails", "Community activity", "Relevant community and moderation notifications."],
+            ["liveSessionReminders", "Live session reminders", "Email reminders before registered 1:1 and group sessions."],
             ["creatorSummaries", "Creator summaries", "Scheduled learning-performance reports."],
             ["productUpdates", "Product updates", "Occasional NorthStarLabs product news."],
           ].map(([key, label, description]) => <label key={key}>

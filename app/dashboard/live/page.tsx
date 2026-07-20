@@ -130,7 +130,7 @@ export default function LiveLearningPage() {
       setBusy("");
       return;
     }
-    setMessage(`${result.title} is scheduled. ${result.registrations || 0} eligible learners were registered.`);
+    setMessage(`${result.title} is scheduled. ${result.registrations || 0} eligible learners were registered, with automatic reminders prepared.`);
     setTitle("");
     setDescription("");
     setMeetingUrl("");
@@ -196,14 +196,14 @@ export default function LiveLearningPage() {
       <nav><Link href="/dashboard/products">Products</Link><Link href="/dashboard/integrations">Integrations</Link><Link href="/learn">Learner view</Link></nav>
     </header>
     <section className="live-admin-hero">
-      <div><p className="sys-kicker">COHORTS & LIVE LEARNING</p><h1>Make learning happen together.</h1><p>Schedule Zoom, Google Meet or Microsoft Teams sessions, register everyone with access, export calendars, track attendance and attach recordings later.</p></div>
+      <div><p className="sys-kicker">COHORTS & LIVE LEARNING</p><h1>Make learning happen together.</h1><p>Schedule 1:1 or group sessions, register everyone with access, send automatic email reminders, export calendars with alarms, track attendance and attach recordings later.</p></div>
       <span><strong>{upcoming.length}</strong> upcoming</span>
     </section>
 
     <section className="live-admin-grid">
       {message && <div className="notice live-admin-notice" role="status">{message}</div>}
       <form className="panel live-session-editor" onSubmit={createSession}>
-        <div className="product-section-heading"><span>NEW</span><div><h2>Schedule a session</h2><p>Access follows the selected course or product.</p></div></div>
+        <div className="product-section-heading"><span>NEW</span><div><h2>Schedule a session</h2><p>Access follows the selected course or product. Registered learners receive email reminders 24 hours and 1 hour before the start.</p></div></div>
         <div className="product-form-grid">
           <label>Session title<input required minLength={2} maxLength={120} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Monthly coaching call" /></label>
           <label>Who gets access<select required value={accessTarget} onChange={(event) => setAccessTarget(event.target.value)}>
@@ -218,13 +218,13 @@ export default function LiveLearningPage() {
             <option value="zoom">Zoom</option><option value="google_meet">Google Meet</option><option value="microsoft_teams">Microsoft Teams</option><option value="other">Other secure link</option>
           </select></label>
           <label>Secure meeting URL<input required type="url" value={meetingUrl} onChange={(event) => setMeetingUrl(event.target.value)} placeholder="https://..." /></label>
-          <label>Capacity<input min={0} max={100000} type="number" value={capacity} onChange={(event) => setCapacity(event.target.value)} /><small>Use 0 for no limit.</small></label>
+          <label>Capacity<input min={0} max={100000} type="number" value={capacity} onChange={(event) => setCapacity(event.target.value)} /><small>Use 1 for a 1:1 session, or 0 for an unlimited group.</small></label>
         </div>
         <button className="sys-primary" disabled={busy === "create" || !accessTarget}>{busy === "create" ? "Scheduling..." : "Schedule live session"}</button>
       </form>
 
       <section className="live-session-list">
-        <div className="product-section-heading"><span>UPCOMING</span><div><h2>Your live calendar</h2><p>Meeting links are only returned to eligible signed-in learners.</p></div></div>
+        <div className="product-section-heading"><span>UPCOMING</span><div><h2>Your live calendar</h2><p>Meeting links are protected. Cancelling a session also withdraws its pending reminders.</p></div></div>
         {upcoming.length ? upcoming.map((session) => <SessionCard key={session.id} session={session} attendance={data.attendance.filter((item) => item.sessionId === session.id)} busy={busy} onCalendar={downloadCalendar} onStatus={setStatus} onAttendance={markAttendance} />)
           : <article className="panel product-empty"><h3>No sessions scheduled</h3><p>Create a session and eligible learners will be registered automatically.</p></article>}
       </section>

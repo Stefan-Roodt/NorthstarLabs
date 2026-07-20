@@ -7,7 +7,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: ["OAI-SearchBot", "ChatGPT-User", "Claude-SearchBot", "PerplexityBot"],
-        allow: ["/", "/about", "/find", "/courses", "/tutors", "/schools/", "/legal/", "/certificates/"],
+        allow: ["/", "/about", "/find", "/courses", "/tutors", "/solutions", "/schools/", "/legal/", "/certificates/"],
         disallow: privateRoutes,
       },
       {

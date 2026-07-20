@@ -6,6 +6,14 @@ import { LearningRequestForm } from "./learning-request-form";
 
 const creatorSignupHref = "/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcreator";
 const coachSignupHref = "/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach";
+const homeSearchPaths = [
+  { slug: "online-courses-south-africa", title: "Online courses in South Africa", description: "Choose practical courses by outcome, effort, evidence, and available human support." },
+  { slug: "find-business-coach-south-africa", title: "Find a business coach", description: "Compare topic fit, rates, credentials, availability, and verified-session proof." },
+  { slug: "bitcoin-web3-courses", title: "Bitcoin and Web3 courses", description: "Learn from first principles without price hype or invented certainty." },
+  { slug: "become-a-coach", title: "Become a Northstar coach", description: "Make your expertise searchable, set your rate, and receive protected enquiries." },
+  { slug: "create-and-sell-online-course", title: "Create and sell an online course", description: "Turn expertise into a structured learning product people can finish." },
+  { slug: "corporate-training-platform", title: "Corporate training platform", description: "Connect branded learning, live support, administration, and useful reporting." },
+];
 
 const platformFlow = [
   {
@@ -382,6 +390,22 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="home-search-paths shell" aria-labelledby="home-search-paths-title">
+        <header>
+          <div><p className="section-kicker">POPULAR NORTHSTAR ROUTES</p><h2 id="home-search-paths-title">Start with the decision you are trying to make.</h2></div>
+          <p>Use a practical guide to compare what good looks like, what NorthstarLabs offers now, and the most useful next action for your goal.</p>
+        </header>
+        <div className="home-search-grid">
+          {homeSearchPaths.map((page, index) => <Link href={`/solutions/${page.slug}`} key={page.slug}>
+            <span>{String(index + 1).padStart(2, "0")} / GUIDE</span>
+            <h3>{page.title}</h3>
+            <p>{page.description}</p>
+            <strong>Explore this route →</strong>
+          </Link>)}
+        </div>
+        <Link className="home-search-all" href="/solutions">See every NorthstarLabs solution →</Link>
+      </section>
+
       <section className="northstar-promise shell" id="request-help">
         <div className="northstar-promise-copy">
           <p className="section-kicker">THE NORTHSTAR PROMISE</p>
@@ -419,7 +443,7 @@ export default function Home() {
 
       <section className="cta"><div className="shell"><p className="eyebrow">YOUR KNOWLEDGE DESERVES A WORKING SYSTEM</p><h2>Build it once.<br/>Help people grow.</h2><p>Give your expertise a clear structure, a memorable home, and a learner experience you can improve over time.</p><div><a className="button" href={creatorSignupHref}>Build my academy free <span>↗</span></a><Link className="text-link light" href="/courses">Experience a real course →</Link></div><small className="cta-reassurance">No credit card · Guided setup · Switch between creating and learning anytime</small></div></section>
 
-      <footer className="footer shell"><div className="brand"><span className="brand-mark" aria-hidden="true">✦</span><span className="brand-wordmark">NORTHSTARLABS</span></div><p>Courses for the path. Human coaching for the roadblocks.</p><div className="footer-links"><Link href="/about">About NorthstarLabs</Link><a href="#platform">How it works</a><Link href="/courses">Courses</Link><Link href="/tutors">Coaches</Link><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><Link href="/legal/terms">Terms</Link><Link href="/legal/privacy">Privacy</Link></div><small>© 2026 Northstar Labs. All rights reserved.</small></footer>
+      <footer className="footer shell"><div className="brand"><span className="brand-mark" aria-hidden="true">✦</span><span className="brand-wordmark">NORTHSTARLABS</span></div><p>Courses for the path. Human coaching for the roadblocks.</p><div className="footer-links"><Link href="/about">About NorthstarLabs</Link><a href="#platform">How it works</a><Link href="/solutions">Solutions</Link><Link href="/courses">Courses</Link><Link href="/tutors">Coaches</Link><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><Link href="/legal/terms">Terms</Link><Link href="/legal/privacy">Privacy</Link></div><small>© 2026 Northstar Labs. All rights reserved.</small></footer>
     </main>
   );
 }

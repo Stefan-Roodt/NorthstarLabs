@@ -2,6 +2,10 @@ import { env } from "cloudflare:workers";
 import { writeAuditLog } from "../../../lib/audit-log";
 import { emitIntegrationEvent } from "../../../lib/integrations";
 import {
+  cancelLiveSessionReminders,
+  queueLiveSessionReminders,
+} from "../../../lib/live-session-reminders";
+import {
   requestedSchoolId,
   requireCreatorSchool,
 } from "../../../lib/school-access";
@@ -164,7 +168,12 @@ export async function POST(request: Request) {
       "live_session.registered",
       { sessionId: session.id, userId: user.id },
     );
-    return Response.json({ registered: true, sessionId: session.id });
+    const reminders = await queueLiveSessionReminders({
+      sessionId: String(session.id),
+      userId: user.id,
+      origin: new URL(request.url).origin,
+    }).catch(() => ({ recipients: 0, reminders: 0, statuses: { unavailable: 1 } }));
+    return Response.json({ registered: true, sessionId: session.id, reminders });
   }
 
   const school = await requireCreatorSchool(user, requestedSchoolId(request));
@@ -273,6 +282,11 @@ export async function POST(request: Request) {
     productId,
     courseId,
   });
+  const reminders = await queueLiveSessionReminders({
+    sessionId: id,
+    origin: new URL(request.url).origin,
+    limit: 50,
+  }).catch(() => ({ recipients: 0, reminders: 0, statuses: { unavailable: 1 } }));
   return Response.json({
     id,
     schoolId: school.id,
@@ -287,6 +301,7 @@ export async function POST(request: Request) {
     capacity,
     status: "scheduled",
     registrations: registrations.length,
+    reminders,
   }, { status: 201 });
 }
 
@@ -324,6 +339,9 @@ export async function PATCH(request: Request) {
       userId: body.userId,
       status,
     });
+    if (status === "cancelled" || status === "no_show") {
+      await cancelLiveSessionReminders(session.id, String(body.userId || "")).catch(() => null);
+    }
     return Response.json({ saved: true });
   }
 
@@ -345,5 +363,8 @@ export async function PATCH(request: Request) {
     sessionId: session.id,
     title: session.title,
   });
+  if (status === "cancelled") {
+    await cancelLiveSessionReminders(session.id).catch(() => null);
+  }
   return Response.json({ saved: true, status });
 }

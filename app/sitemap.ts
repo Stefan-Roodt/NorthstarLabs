@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { env } from "cloudflare:workers";
+import { searchLandingPages } from "../lib/search-landing-pages";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://northstarlabs.co.za";
@@ -10,6 +11,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/find`, lastModified, changeFrequency: "weekly", priority: 0.9 },
     { url: `${baseUrl}/courses`, lastModified, changeFrequency: "daily", priority: 0.8 },
     { url: `${baseUrl}/tutors`, lastModified, changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/solutions`, lastModified, changeFrequency: "weekly", priority: 0.85 },
+    ...searchLandingPages.map((page) => ({
+      url: `${baseUrl}/solutions/${page.slug}`,
+      lastModified,
+      changeFrequency: "monthly" as const,
+      priority: 0.75,
+    })),
     { url: `${baseUrl}/legal/terms`, lastModified, changeFrequency: "monthly", priority: 0.3 },
     { url: `${baseUrl}/legal/privacy`, lastModified, changeFrequency: "monthly", priority: 0.3 },
   ];

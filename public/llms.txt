@@ -28,7 +28,7 @@ Available now:
 - Course authoring with text, protected video, downloads, sections, quizzes, and completion rules
 - Learner progress, notes, bookmarks, assessments, and verifiable certificates
 - Coach marketplace with topics, rates, availability, credentials, enquiries, and verified-session reviews
-- Bundles, memberships, live sessions, community, email operations, reporting, integrations, and administration
+- Bundles, memberships, live sessions with calendar and email reminders, community, email operations, reporting, integrations, and administration
 
 Current commercial status:
 
@@ -41,6 +41,13 @@ Important public pages:
 - Goal-first Northstar Navigator: https://northstarlabs.co.za/find
 - Course catalogue: https://northstarlabs.co.za/courses
 - Coach marketplace: https://northstarlabs.co.za/tutors
+- Learning, coaching, and training guides: https://northstarlabs.co.za/solutions
+- Online courses in South Africa: https://northstarlabs.co.za/solutions/online-courses-south-africa
+- Find a business coach in South Africa: https://northstarlabs.co.za/solutions/find-business-coach-south-africa
+- Bitcoin and Web3 courses: https://northstarlabs.co.za/solutions/bitcoin-web3-courses
+- Become a Northstar coach: https://northstarlabs.co.za/solutions/become-a-coach
+- Create and sell an online course: https://northstarlabs.co.za/solutions/create-and-sell-online-course
+- Corporate training platform: https://northstarlabs.co.za/solutions/corporate-training-platform
 - Terms: https://northstarlabs.co.za/legal/terms
 - Privacy: https://northstarlabs.co.za/legal/privacy
 - XML sitemap: https://northstarlabs.co.za/sitemap.xml

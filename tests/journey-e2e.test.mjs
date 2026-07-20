@@ -69,7 +69,7 @@ async function migratedDatabase() {
   return database;
 }
 
-test("seeds Stefan's video-first Web3 course as a complete private draft", async () => {
+test("publishes Stefan's video-first Web3 course as a NorthstarLabs signature programme", async () => {
   const db = await migratedDatabase();
   const course = db.prepare(`
     SELECT c.title,c.status,c.price_cents AS priceCents,
@@ -79,13 +79,13 @@ test("seeds Stefan's video-first Web3 course as a complete private draft", async
     WHERE c.id='stefan-web3-foundations'
   `).get();
   assert.deepEqual({ ...course }, {
-    title: "Web3 Foundations: From Blocks to Builders",
-    status: "draft",
+    title: "Web3 Product Lab: From Protocol to Proof",
+    status: "published",
     priceCents: 0,
     enforceLessonOrder: 1,
-    certificateTitle: "Certificate: Web3 Foundations",
-    ownerId: "stefan-course-owner-fixture",
-    schoolId: "stefan-course-school-fixture",
+    certificateTitle: "NorthstarLabs Distinction: Responsible Web3 Product Design",
+    ownerId: "northstarlabs-studio",
+    schoolId: "northstarlabs",
   });
 
   const curriculum = db.prepare(`
@@ -121,7 +121,7 @@ test("seeds Stefan's video-first Web3 course as a complete private draft", async
   assert.equal(orphans.count, 0);
 });
 
-test("seeds Stefan's evidence-led Bitcoin deep dive as a complete private draft", async () => {
+test("publishes Stefan's evidence-led Bitcoin deep dive as a NorthstarLabs signature programme", async () => {
   const db = await migratedDatabase();
   const course = db.prepare(`
     SELECT c.title,c.status,c.price_cents AS priceCents,
@@ -131,13 +131,13 @@ test("seeds Stefan's evidence-led Bitcoin deep dive as a complete private draft"
     WHERE c.id='stefan-bitcoin-genesis-next-era'
   `).get();
   assert.deepEqual({ ...course }, {
-    title: "Bitcoin: From Genesis to the Next Era",
-    status: "draft",
+    title: "Bitcoin Intelligence: From Genesis Block to Boardroom",
+    status: "published",
     priceCents: 0,
     enforceLessonOrder: 1,
-    certificateTitle: "Certificate: Bitcoin Foundations and Futures",
-    ownerId: "stefan-course-owner-fixture",
-    schoolId: "stefan-course-school-fixture",
+    certificateTitle: "NorthstarLabs Distinction: Bitcoin Intelligence",
+    ownerId: "northstarlabs-studio",
+    schoolId: "northstarlabs",
   });
 
   const curriculum = db.prepare(`
@@ -293,7 +293,7 @@ test("completes an isolated creator-to-learner production journey", async () => 
   `), /UNIQUE constraint failed/);
 });
 
-test("seeds three substantial free courses with sections and assessments", async () => {
+test("archives the legacy shelf and publishes the AI signature programme", async () => {
   const db = await migratedDatabase();
   const courseIds = [
     "design-lessons-people-remember",
@@ -306,7 +306,7 @@ test("seeds three substantial free courses with sections and assessments", async
         enforce_lesson_order AS enforceLessonOrder
       FROM courses WHERE id=?
     `).get(courseId);
-    assert.equal(course.status, "published");
+    assert.equal(course.status, "archived");
     assert.equal(course.priceCents, 0);
     assert.equal(course.enforceLessonOrder, 1);
     assert.equal(
@@ -339,6 +339,28 @@ test("seeds three substantial free courses with sections and assessments", async
       5,
     );
   }
+  const signature = db.prepare(`
+    SELECT status,price_cents AS priceCents,enforce_lesson_order AS enforceLessonOrder
+    FROM courses WHERE id='northstar-ai-command-studio'
+  `).get();
+  assert.deepEqual({ ...signature }, {
+    status: "published",
+    priceCents: 0,
+    enforceLessonOrder: 1,
+  });
+  assert.equal(
+    db.prepare("SELECT COUNT(*) AS count FROM lessons WHERE course_id='northstar-ai-command-studio'")
+      .get().count,
+    12,
+  );
+  assert.equal(
+    db.prepare(`
+      SELECT COUNT(*) AS count FROM quizzes q
+      JOIN lessons l ON l.id=q.lesson_id
+      WHERE l.course_id='northstar-ai-command-studio'
+    `).get().count,
+    4,
+  );
 });
 
 test("safe course deletion leaves no learner or assessment orphans", async () => {

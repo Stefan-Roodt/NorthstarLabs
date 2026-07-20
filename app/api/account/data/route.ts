@@ -53,6 +53,7 @@ async function accountExport(userId: string) {
       env.DB.prepare(
         `SELECT enrollment_emails AS enrollmentEmails,
           completion_emails AS completionEmails,community_emails AS communityEmails,
+          live_session_reminders AS liveSessionReminders,
           creator_summaries AS creatorSummaries,product_updates AS productUpdates,
           updated_at AS updatedAt
          FROM notification_preferences WHERE user_id=?`,

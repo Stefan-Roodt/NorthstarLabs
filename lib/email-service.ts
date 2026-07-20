@@ -12,6 +12,7 @@ export type EmailTemplateKey =
   | "tutor_booking_cancelled"
   | "learning_request_received"
   | "learning_request_admin"
+  | "live_session_reminder"
   | "creator_summary"
   | "test";
 
@@ -24,8 +25,11 @@ type QueueEmailInput = {
   templateKey: EmailTemplateKey;
   variables: EmailVariables;
   idempotencyKey: string;
+  scheduledFor?: number | null;
   sendNow?: boolean;
 };
+
+const RESEND_SCHEDULE_WINDOW_MS = 29 * 24 * 60 * 60_000;
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -167,6 +171,16 @@ function templateContent(templateKey: EmailTemplateKey, values: EmailVariables) 
       detail: String(values.detail || "No additional detail was supplied."),
     };
   }
+  if (templateKey === "live_session_reminder") {
+    return {
+      subject: `${values.session || "Your live session"} ${values.reminderLabel || "starts soon"}`,
+      heading: `${values.session || "Your live session"} ${values.reminderLabel || "starts soon"}`,
+      intro: `${values.learner || "Hello"}, your ${values.sessionType || "live learning"} session with ${academy} begins ${values.starts || "soon"}.`,
+      actionLabel: "Open my live calendar",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: `Time zone: ${values.timezone || "your device time"}. Your secure joining link and calendar download are available in NorthstarLabs.`,
+    };
+  }
   if (templateKey === "creator_summary") {
     return {
       subject: `${academy} learning report`,
@@ -216,11 +230,13 @@ async function emailAllowed(userId: string | null | undefined, templateKey: Emai
   const preferences = await env.DB.prepare(
     `SELECT enrollment_emails AS enrollmentEmails,
       completion_emails AS completionEmails,
+      live_session_reminders AS liveSessionReminders,
       creator_summaries AS creatorSummaries
      FROM notification_preferences WHERE user_id=?`,
   ).bind(userId).first<{
     enrollmentEmails: number;
     completionEmails: number;
+    liveSessionReminders: number;
     creatorSummaries: number;
   }>();
   if (!preferences) return true;
@@ -228,6 +244,9 @@ async function emailAllowed(userId: string | null | undefined, templateKey: Emai
     return Boolean(preferences.enrollmentEmails);
   }
   if (templateKey === "certificate") return Boolean(preferences.completionEmails);
+  if (templateKey === "live_session_reminder") {
+    return Boolean(preferences.liveSessionReminders);
+  }
   if (templateKey === "tutor_enquiry") return true;
   if (templateKey === "tutor_booking_update") return true;
   if (templateKey === "tutor_review_request") return true;
@@ -241,19 +260,32 @@ export async function queueEmail(input: QueueEmailInput) {
   const existing = await env.DB.prepare(
     `SELECT id,status FROM email_messages WHERE idempotency_key=?`,
   ).bind(input.idempotencyKey).first<{ id: string; status: string }>();
-  if (existing) return existing;
+  if (existing?.status === "cancelled") {
+    await env.DB.prepare(
+      "UPDATE email_messages SET idempotency_key=?,updated_at=? WHERE id=?",
+    ).bind(`${input.idempotencyKey}:cancelled:${existing.id}`, Date.now(), existing.id).run();
+  } else if (existing) {
+    return existing;
+  }
   if (!(await emailAllowed(input.recipientUserId, input.templateKey))) {
     return { id: "", status: "suppressed" };
   }
   const rendered = renderEmail(input.templateKey, input.variables);
   const id = crypto.randomUUID();
   const now = Date.now();
+  const scheduledAt = Number.isFinite(input.scheduledFor) &&
+    Number(input.scheduledFor) > now + 60_000
+    ? Number(input.scheduledFor)
+    : null;
+  const availableAt = scheduledAt && scheduledAt > now + RESEND_SCHEDULE_WINDOW_MS
+    ? scheduledAt - RESEND_SCHEDULE_WINDOW_MS
+    : now;
   await env.DB.prepare(
     `INSERT INTO email_messages
       (id,school_id,recipient_user_id,recipient_email,template_key,subject,
        html_body,text_body,status,provider,idempotency_key,attempt_count,
-       available_at,created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,'pending','resend',?,0,?,?,?)`,
+       available_at,scheduled_at,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,'pending','resend',?,0,?,?,?,?)`,
   ).bind(
     id,
     input.schoolId || null,
@@ -264,7 +296,8 @@ export async function queueEmail(input: QueueEmailInput) {
     rendered.html,
     rendered.text,
     input.idempotencyKey,
-    now,
+    availableAt,
+    scheduledAt,
     now,
     now,
   ).run();
@@ -276,7 +309,8 @@ export async function deliverEmail(id: string) {
   const message = await env.DB.prepare(
     `SELECT id,recipient_email AS recipientEmail,subject,html_body AS htmlBody,
       text_body AS textBody,status,idempotency_key AS idempotencyKey,
-      attempt_count AS attemptCount
+      attempt_count AS attemptCount,available_at AS availableAt,
+      scheduled_at AS scheduledAt
      FROM email_messages WHERE id=?`,
   ).bind(id).first<{
     id: string;
@@ -287,9 +321,23 @@ export async function deliverEmail(id: string) {
     status: string;
     idempotencyKey: string;
     attemptCount: number;
+    availableAt: number;
+    scheduledAt: number | null;
   }>();
   if (!message) return { id, status: "missing" };
   if (message.status === "sent") return { id, status: "sent" };
+  if (message.status === "scheduled") return { id, status: "scheduled" };
+  if (message.status === "cancelled") return { id, status: "cancelled" };
+  const now = Date.now();
+  const scheduledFor = message.scheduledAt && message.scheduledAt > now + 60_000
+    ? message.scheduledAt
+    : null;
+  if (scheduledFor && scheduledFor > now + RESEND_SCHEDULE_WINDOW_MS) {
+    await env.DB.prepare(
+      "UPDATE email_messages SET available_at=?,updated_at=? WHERE id=?",
+    ).bind(scheduledFor - RESEND_SCHEDULE_WINDOW_MS, now, id).run();
+    return { id, status: "pending" };
+  }
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) {
@@ -314,16 +362,17 @@ export async function deliverEmail(id: string) {
       html: message.htmlBody,
       text: message.textBody,
       reply_to: process.env.EMAIL_REPLY_TO || undefined,
+      scheduled_at: scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
     }),
   });
   const result = await response.json().catch(() => ({})) as { id?: string; message?: string; name?: string };
-  const now = Date.now();
   if (response.ok && result.id) {
+    const status = scheduledFor ? "scheduled" : "sent";
     await env.DB.prepare(
-      `UPDATE email_messages SET status='sent',provider_message_id=?,
+      `UPDATE email_messages SET status=?,provider_message_id=?,
        attempt_count=attempt_count+1,last_error=NULL,sent_at=?,updated_at=? WHERE id=?`,
-    ).bind(result.id, now, now, id).run();
-    return { id, status: "sent", providerMessageId: result.id };
+    ).bind(status, result.id, scheduledFor ? null : now, now, id).run();
+    return { id, status, providerMessageId: result.id };
   }
   const attempts = Number(message.attemptCount || 0) + 1;
   const status = attempts >= 3 ? "failed" : "retrying";
@@ -348,6 +397,68 @@ export async function retryEmail(id: string) {
      WHERE id=? AND status<>'sent'`,
   ).bind(Date.now(), Date.now(), id).run();
   return deliverEmail(id);
+}
+
+export async function scheduleDeferredEmails(limit = 250) {
+  const rows = await env.DB.prepare(
+    `SELECT id FROM email_messages
+     WHERE status IN ('pending','retrying','configuration_required')
+       AND available_at<=?
+     ORDER BY available_at LIMIT ?`,
+  ).bind(Date.now(), Math.max(1, Math.min(limit, 500))).all<{
+    id: string;
+  }>();
+  const results = [];
+  for (const row of rows.results) results.push(await deliverEmail(row.id));
+  return results;
+}
+
+export async function cancelEmailsByIdempotencyPattern(pattern: string) {
+  const rows = await env.DB.prepare(
+    `SELECT id,status,provider_message_id AS providerMessageId
+     FROM email_messages
+     WHERE idempotency_key LIKE ? AND status IN
+       ('pending','retrying','configuration_required','scheduled')
+     ORDER BY created_at`,
+  ).bind(pattern).all<{
+    id: string;
+    status: string;
+    providerMessageId: string | null;
+  }>();
+  const apiKey = process.env.RESEND_API_KEY;
+  let cancelled = 0;
+  let failed = 0;
+  for (const row of rows.results) {
+    if (row.status === "scheduled" && row.providerMessageId && !apiKey) {
+      failed += 1;
+      await env.DB.prepare(
+        `UPDATE email_messages SET status='failed',last_error=?,updated_at=? WHERE id=?`,
+      ).bind("Reconnect the email provider to cancel this scheduled reminder.", Date.now(), row.id).run();
+      continue;
+    }
+    if (row.status === "scheduled" && row.providerMessageId && apiKey) {
+      const response = await fetch(
+        `https://api.resend.com/emails/${encodeURIComponent(row.providerMessageId)}/cancel`,
+        { method: "POST", headers: { authorization: `Bearer ${apiKey}` } },
+      );
+      if (!response.ok) {
+        failed += 1;
+        await env.DB.prepare(
+          `UPDATE email_messages SET status='failed',last_error=?,updated_at=? WHERE id=?`,
+        ).bind("The scheduled reminder could not be cancelled at the email provider.", Date.now(), row.id).run();
+        continue;
+      }
+    }
+    await env.DB.prepare(
+      `UPDATE email_messages SET status='cancelled',last_error=NULL,updated_at=? WHERE id=?`,
+    ).bind(Date.now(), row.id).run();
+    cancelled += 1;
+  }
+  return { cancelled, failed };
+}
+
+export function cancelEmailsByIdempotencyPrefix(prefix: string) {
+  return cancelEmailsByIdempotencyPattern(`${prefix}%`);
 }
 
 export async function queueEnrollmentEmail(input: {

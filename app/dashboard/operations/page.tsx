@@ -12,6 +12,7 @@ type EmailMessage = {
   status: string;
   attemptCount: number;
   lastError: string | null;
+  scheduledAt: number | null;
   sentAt: number | null;
   createdAt: number;
 };
@@ -117,7 +118,7 @@ export default function OperationsPage() {
     const messages = data?.messages || [];
     return {
       sent: messages.filter((item) => item.status === "sent").length,
-      queued: messages.filter((item) => ["pending", "retrying"].includes(item.status)).length,
+      queued: messages.filter((item) => ["pending", "retrying", "scheduled"].includes(item.status)).length,
       attention: messages.filter((item) => ["failed", "configuration_required"].includes(item.status)).length,
     };
   }, [data]);
@@ -170,12 +171,12 @@ export default function OperationsPage() {
         <div className="operations-heading"><div><p className="sys-kicker">DELIVERY LOG</p><h2>Every platform email</h2></div><span>{data.messages.length} recent messages</span></div>
         <div className="delivery-list">
           {data.messages.length ? data.messages.map((item) => <div className="delivery-row" key={item.id}>
-            <div><b>{item.subject}</b><small>{item.recipientEmail} · {new Date(item.createdAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</small></div>
+            <div><b>{item.subject}</b><small>{item.recipientEmail} · {item.scheduledAt && item.status === "scheduled" ? `scheduled for ${new Date(item.scheduledAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}` : new Date(item.createdAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</small></div>
             <span className={`delivery-status ${item.status}`}>{item.status.replaceAll("_", " ")}</span>
             <small>{item.attemptCount} {item.attemptCount === 1 ? "attempt" : "attempts"}</small>
-            {item.status !== "sent" && <button disabled={Boolean(busy)} onClick={() => act("retry", { messageId: item.id })}>Retry</button>}
+            {!["sent", "scheduled", "cancelled"].includes(item.status) && <button disabled={Boolean(busy)} onClick={() => act("retry", { messageId: item.id })}>Retry</button>}
             {item.lastError && <p>{item.lastError}</p>}
-          </div>) : <div className="empty-activity"><strong>No messages yet</strong><p>Invitations, enrolments, certificates, and reports will appear here.</p></div>}
+          </div>) : <div className="empty-activity"><strong>No messages yet</strong><p>Invitations, enrolments, live-session reminders, certificates, and reports will appear here.</p></div>}
         </div>
       </article>
 

@@ -3,6 +3,7 @@ import { DM_Sans, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import "./system.css";
 import "./builder.css";
+import "./search-landing.css";
 import { PwaRegister } from "./pwa-register";
 
 const display = Space_Grotesk({ variable: "--font-display", subsets: ["latin"] });

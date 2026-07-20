@@ -69,13 +69,14 @@ test("isolates creator schools, memberships, courses, and communities", async ()
   assert.doesNotMatch(community, /northstar-circle/);
 });
 
-test("ships a real starter catalogue without placeholder proof", async () => {
-  const [home, catalog, courseData, migration, collectionMigration] = await Promise.all([
+test("ships a real signature catalogue without placeholder proof", async () => {
+  const [home, catalog, courseData, migration, collectionMigration, signatureMigration] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/courses/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/starter-courses.ts", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0005_starter_course_catalog.sql", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0017_free_course_collection.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0025_signature_course_studio.sql", import.meta.url), "utf8"),
   ]);
   assert.doesNotMatch(home, /href="#"/);
   assert.doesNotMatch(home, /32k\+|\$1\.4B|96M|4\.8\/5|Avery Lin|21% less/);
@@ -83,12 +84,9 @@ test("ships a real starter catalogue without placeholder proof", async () => {
   assert.match(home, /One place to find what to learn, who can help, and what to do next/);
   assert.match(home, /Frequently asked questions/i);
   assert.match(catalog, /NORTHSTARLABS ORIGINALS/);
-  assert.match(courseData, /Launch Your First Online Course/);
-  assert.match(courseData, /Price Your Expertise/);
-  assert.match(courseData, /Build a Learning Community/);
-  assert.match(courseData, /Design Lessons People Remember/);
-  assert.match(courseData, /Build a Trusted Tutoring Practice/);
-  assert.match(courseData, /Teach With AI Responsibly/);
+  assert.match(courseData, /AI Command Studio/);
+  assert.match(courseData, /Bitcoin Intelligence/);
+  assert.match(courseData, /Web3 Product Lab/);
   assert.match(migration, /launch-your-first-online-course/);
   assert.match(migration, /starter-community-06/);
   assert.match(collectionMigration, /remember-course-quiz/);
@@ -97,6 +95,8 @@ test("ships a real starter catalogue without placeholder proof", async () => {
   assert.match(collectionMigration, /CAST Universal Design for Learning Guidelines/);
   assert.match(collectionMigration, /NSPCC safeguarding guidance for tutors/);
   assert.match(collectionMigration, /UNESCO AI Competency Framework for Teachers/);
+  assert.match(signatureMigration, /SET `status`='archived'/);
+  assert.match(signatureMigration, /northstar-ai-command-studio/);
 });
 
 test("ships Stefan's source-grounded Web3 course production draft", async () => {
@@ -755,6 +755,86 @@ test("makes NorthstarLabs clear, memorable, discoverable, and responsive to unme
   assert.match(navigator, /LearningRequestForm/);
   assert.match(catalogue, /GOAL-MATCHED RESULTS/);
   assert.match(catalogue, /No forced matches/i);
+});
+
+test("publishes high-intent solution guides with crawlable internal routes", async () => {
+  const [home, hub, guide, content, sitemap, robots, llms, styles] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/solutions/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/solutions/[slug]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/search-landing-pages.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/sitemap.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/robots.ts", import.meta.url), "utf8"),
+    readFile(new URL("../public/llms.txt", import.meta.url), "utf8"),
+    readFile(new URL("../app/search-landing.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(home, /POPULAR NORTHSTAR ROUTES/);
+  assert.match(home, /\/solutions\/\$\{page\.slug\}/);
+  assert.match(hub, /CollectionPage/);
+  assert.match(hub, /ItemList/);
+  assert.match(guide, /FAQPage/);
+  assert.match(guide, /BreadcrumbList/);
+  assert.match(guide, /generateStaticParams/);
+  for (const slug of [
+    "online-courses-south-africa",
+    "find-business-coach-south-africa",
+    "bitcoin-web3-courses",
+    "become-a-coach",
+    "create-and-sell-online-course",
+    "corporate-training-platform",
+  ]) {
+    assert.match(content, new RegExp(slug));
+  }
+  assert.match(sitemap, /searchLandingPages/);
+  assert.match(robots, /\/solutions/);
+  assert.match(llms, /Learning, coaching, and training guides/);
+  assert.match(styles, /\.search-hub-grid/);
+  assert.match(styles, /\.search-hero/);
+});
+
+test("schedules opt-out live-session reminders and calendar alarms", async () => {
+  const [migration, reminders, email, liveApi, calendar, notifications, account, maintenance] = await Promise.all([
+    readFile(new URL("../drizzle/0024_volatile_mattie_franklin.sql", import.meta.url), "utf8"),
+    readFile(new URL("../lib/live-session-reminders.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/email-service.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/live-sessions/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/live-sessions/[sessionId]/calendar/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/notifications/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/account/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/platform/maintenance/route.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(migration, /ADD `scheduled_at`/);
+  assert.match(migration, /ADD `live_session_reminders`/);
+  assert.match(reminders, /24h/);
+  assert.match(reminders, /1h/);
+  assert.match(reminders, /capacity === 1 \? "1:1 coaching" : "group learning"/);
+  assert.match(reminders, /cancelLiveSessionReminders/);
+  assert.match(email, /scheduled_at/);
+  assert.match(email, /\/cancel/);
+  assert.match(email, /live_session_reminder/);
+  assert.match(liveApi, /queueLiveSessionReminders/);
+  assert.match(liveApi, /cancelLiveSessionReminders/);
+  assert.match(calendar, /BEGIN:VALARM/);
+  assert.match(calendar, /TRIGGER:-PT1H/);
+  assert.match(calendar, /TRIGGER:-PT15M/);
+  assert.match(notifications, /liveSessionReminders/);
+  assert.match(notifications, /cancelUserLiveSessionReminders/);
+  assert.match(notifications, /queueUserLiveSessionReminders/);
+  assert.match(account, /Live session reminders/);
+  assert.match(maintenance, /backfillLiveSessionReminders/);
+});
+
+test("replaces the starter shelf with three substantive signature programmes", async () => {
+  const [catalogue, migration] = await Promise.all([
+    readFile(new URL("../lib/starter-courses.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0025_signature_course_studio.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(catalogue, /AI Command Studio/);
+  assert.match(catalogue, /Bitcoin Intelligence/);
+  assert.match(catalogue, /Web3 Product Lab/);
+  assert.match(migration, /SET `status`='archived'/);
+  assert.match(migration, /northstar-ai-command-studio/);
+  assert.match(migration, /NorthstarLabs Distinction/);
 });
 
 test("parses browser byte ranges safely", async () => {

@@ -87,7 +87,7 @@ export async function GET(request: Request) {
     env.DB.prepare(
       `SELECT id,recipient_email AS recipientEmail,template_key AS templateKey,
         subject,status,attempt_count AS attemptCount,last_error AS lastError,
-        sent_at AS sentAt,created_at AS createdAt
+        scheduled_at AS scheduledAt,sent_at AS sentAt,created_at AS createdAt
        FROM email_messages WHERE school_id=?
        ORDER BY created_at DESC LIMIT 80`,
     ).bind(school.id).all(),

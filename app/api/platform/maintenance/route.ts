@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { createPlatformBackup } from "../../../../lib/platform-backup";
+import { backfillLiveSessionReminders } from "../../../../lib/live-session-reminders";
 import { revokeProductAccess } from "../../../../lib/product-access";
 import { recordSystemEvent } from "../../../../lib/system-monitor";
 
@@ -44,6 +45,9 @@ export async function POST(request: Request) {
       "DELETE FROM system_events WHERE status='resolved' AND resolved_at<?",
     ).bind(now - 90 * 24 * 60 * 60_000),
   ]);
+  const reminders = await backfillLiveSessionReminders(
+    process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin,
+  );
   await recordSystemEvent(env.DB, {
     severity: "info",
     source: "maintenance",
@@ -55,6 +59,8 @@ export async function POST(request: Request) {
       playbackGrants: cleanup[1].meta.changes,
       resolvedEvents: cleanup[2].meta.changes,
       expiredEntitlements: expired.results.length,
+      reminderSessions: reminders.sessions.length,
+      reminderDispatches: reminders.dispatched.length,
     },
   });
   return Response.json({
@@ -66,5 +72,6 @@ export async function POST(request: Request) {
       resolvedEvents: cleanup[2].meta.changes,
       expiredEntitlements: expired.results.length,
     },
+    reminders,
   });
 }
