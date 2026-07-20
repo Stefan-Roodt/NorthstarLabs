@@ -12,7 +12,7 @@ type Source = {
   rightsBasis: "owned" | "licensed" | "public_domain" | "permission";
   citationLabel?: string;
 };
-type Question = { prompt: string; options: string[]; correctIndex: number };
+type Question = { prompt: string; options: string[]; correctIndex: number; explanation?: string };
 type Lesson = {
   title: string; lessonType: string; durationMinutes: number; outcome: string;
   content: string; transcript: string; citations: string[]; questions: Question[];
@@ -68,6 +68,16 @@ export default function CreatorStudioPage() {
     return () => { active = false; };
   }, [token]);
   const selected = useMemo(() => projects.find((project) => project.id === selectedId) || null, [projects, selectedId]);
+  const sourcesReady = sources.length > 0 &&
+    sources.every((source) => source.title.trim() && source.sourceText.trim());
+  const buildReadiness = [
+    Boolean(title.trim()),
+    Boolean(audience.trim()),
+    Boolean(outcome.trim()),
+    sourcesReady,
+    rightsConfirmed,
+    aiDisclosure,
+  ].filter(Boolean).length;
 
   async function post(body: object) {
     const response = await fetch("/api/creator-studio", {
@@ -82,18 +92,33 @@ export default function CreatorStudioPage() {
 
   async function createProject(event: FormEvent) {
     event.preventDefault(); setBusy("create"); setMessage("");
+    let sourcePackSaved = false;
     try {
       const result = await post({
         action: "create", title, audience, outcome, lessonMinutes, sources, rightsConfirmed, aiDisclosure,
       });
       if (result.project) {
-        setProjects((current) => [result.project!, ...current]);
-        setSelectedId(result.project.id);
+        sourcePackSaved = true;
+        const savedProject = result.project;
+        setProjects((current) => [savedProject!, ...current]);
+        setSelectedId(savedProject.id);
         setTitle(""); setAudience(""); setOutcome(""); setSources([blankSource()]);
         setRightsConfirmed(false); setReviewConfirmed(false);
-        setMessage("Source pack saved. Generate the grounded draft when the provider is connected.");
+        setMessage("Sources saved. Northstar is building the structured draft now…");
+        const generated = await post({ action: "generate", projectId: savedProject.id });
+        if (generated.project) {
+          setProjects((current) => current.map((project) =>
+            project.id === generated.project!.id ? generated.project! : project
+          ));
+          setMessage("Draft built automatically. Review the structure, claims, citations and checks before exporting.");
+        }
       }
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Project creation failed."); }
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Automatic drafting could not finish.";
+      setMessage(sourcePackSaved
+        ? `Your source pack is safe. Automatic drafting needs attention: ${detail}`
+        : detail);
+    }
     setBusy("");
   }
 
@@ -141,15 +166,24 @@ export default function CreatorStudioPage() {
     </header>
 
     <section className="studio-hero">
-      <div><p className="sys-kicker">NORTHSTAR CREATOR STUDIO</p><h1>Turn trusted sources into a course draft worth reviewing.</h1></div>
-      <p>Structure lessons, citations, checks and narration scripts without surrendering judgement. Nothing is published automatically.</p>
+      <div><p className="sys-kicker">NORTHSTAR CREATOR STUDIO</p><h1>Bring the expertise. Leave with a course draft.</h1></div>
+      <p>Add the outcome and material you are allowed to use. Northstar builds the structure, lessons and checks automatically—then keeps a human in control.</p>
     </section>
 
     <section className="studio-capabilities" aria-label="Creator Studio capabilities">
-      <div className={capabilities?.blueprint ? "ready" : "blocked"}><button type="button" onClick={() => openCapability(Boolean(capabilities?.blueprint), "Grounded course drafting")}><b>01</b><span>Grounded course draft</span><small>{capabilities?.blueprint ? "Connected" : "Provider key required"}</small><em>{capabilities?.blueprint ? "Open workspace →" : "Set up provider →"}</em></button></div>
-      <div className={capabilities?.quizzes ? "ready" : "blocked"}><button type="button" onClick={() => openCapability(Boolean(capabilities?.quizzes), "Quizzes and checks")}><b>02</b><span>Quizzes and checks</span><small>{capabilities?.quizzes ? "Connected" : "Provider key required"}</small><em>{capabilities?.quizzes ? "Open workspace →" : "Set up provider →"}</em></button></div>
-      <div className={capabilities?.narration ? "ready" : "blocked"}><button type="button" onClick={() => openCapability(Boolean(capabilities?.narration), "AI narration")}><b>03</b><span>AI narration</span><small>{capabilities?.narration ? "Available after review" : "Provider key required"}</small><em>{capabilities?.narration ? "Open workspace →" : "Set up provider →"}</em></button></div>
-      <div className={capabilities?.videoClips ? "ready" : "planned"}><button type="button" onClick={() => openCapability(Boolean(capabilities?.videoClips), "Cinematic clips")}><b>04</b><span>Cinematic clips</span><small>{capabilities?.videoClips ? "Model configured" : "Optional model not configured"}</small><em>{capabilities?.videoClips ? "Open workspace →" : "Set up provider →"}</em></button></div>
+      <div className="ready"><button type="button" onClick={() => openCapability(true, "Grounded course drafting")}><b>01</b><span>Course structure</span><small>Built in and ready</small><em>Start building →</em></button></div>
+      <div className="ready"><button type="button" onClick={() => openCapability(true, "Quizzes and checks")}><b>02</b><span>Checks with feedback</span><small>Built in and ready</small><em>Start building →</em></button></div>
+      <div className={capabilities?.narration ? "ready" : "planned"}><button type="button" onClick={() => openCapability(Boolean(capabilities?.narration), "AI narration")}><b>03</b><span>AI narration</span><small>{capabilities?.narration ? "Connected upgrade" : "Optional upgrade"}</small><em>{capabilities?.narration ? "Open workspace →" : "Connect when needed →"}</em></button></div>
+      <div className={capabilities?.videoClips ? "ready" : "planned"}><button type="button" onClick={() => openCapability(Boolean(capabilities?.videoClips), "Cinematic clips")}><b>04</b><span>Cinematic clips</span><small>{capabilities?.videoClips ? "Connected upgrade" : "Optional upgrade"}</small><em>{capabilities?.videoClips ? "Open workspace →" : "Connect when needed →"}</em></button></div>
+    </section>
+
+    <section className="studio-automation-flow" aria-label="Automated course-building workflow">
+      <header><p className="sys-kicker">ONE GUIDED RUN</p><h2>From source pack to editable course—without the blank-page problem.</h2></header>
+      <ol>
+        <li><b>1</b><div><strong>Define the result</strong><span>Tell Northstar who the course serves and what learners must be able to do.</span></div></li>
+        <li><b>2</b><div><strong>Add approved material</strong><span>Paste your notes or licensed text. The native builder keeps it inside Northstar.</span></div></li>
+        <li><b>3</b><div><strong>Review the build</strong><span>Northstar creates sections, lessons, activities and checks, then exports only after your approval.</span></div></li>
+      </ol>
     </section>
 
     <div className="studio-grid">
@@ -168,7 +202,7 @@ export default function CreatorStudioPage() {
             <div><b>Rights recorded</b><span>Every source carries an explicit usage basis.</span></div>
             <div><b>Grounding enforced</b><span>The drafting prompt may use only the supplied source text.</span></div>
             <div><b>Human gate active</b><span>Generated material stays in review and exports only as a draft.</span></div>
-            <button className="sys-primary" disabled={busy === "generate" || !capabilities?.blueprint} onClick={generate}>{busy === "generate" ? "Generating…" : capabilities?.blueprint ? "Generate grounded draft →" : "Connect Google Gemini to generate"}</button>
+            <button className="sys-primary" disabled={busy === "generate"} onClick={generate}>{busy === "generate" ? "Building your draft…" : "Build grounded draft →"}</button>
           </div> : <>
             <div className="studio-blueprint-summary"><div><b>{selected.blueprint.sections.length}</b><span>sections</span></div><div><b>{lessonCount}</b><span>lessons</span></div><div><b>{productionCount}</b><span>need media production</span></div><p>{selected.blueprint.sourceNote}</p></div>
             <div className="studio-blueprint">
@@ -184,7 +218,8 @@ export default function CreatorStudioPage() {
             <button className="sys-primary" disabled={!reviewConfirmed || busy === "export"} onClick={exportCourse}>{busy === "export" ? "Creating draft…" : selected.courseId ? "Already exported" : "Export to course editor →"}</button>
           </>}
         </> : <form className="studio-new-project" onSubmit={createProject}>
-          <p className="sys-kicker">NEW SOURCE-GROUNDED PROJECT</p><h2>Start with the learning outcome—not the AI.</h2>
+          <p className="sys-kicker">NEW AUTOMATED COURSE BUILD</p><h2>Give Northstar the goal and the evidence.</h2>
+          <p className="studio-form-intro">One submission creates the governed source pack and builds the first structured draft automatically.</p>
           <div className="studio-form-row"><label>Working title<input required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Bitcoin decisions for business leaders"/></label><label>Lesson length<select value={lessonMinutes} onChange={(event) => setLessonMinutes(Number(event.target.value))}><option value={4}>4 minutes</option><option value={6}>6 minutes</option><option value={8}>8 minutes</option><option value={10}>10 minutes</option></select></label></div>
           <label>Who is this for?<textarea required value={audience} onChange={(event) => setAudience(event.target.value)} placeholder="Describe what learners already know, their context, and the decisions they face."/></label>
           <label>What should they be able to do?<textarea required value={outcome} onChange={(event) => setOutcome(event.target.value)} placeholder="Use one observable, useful outcome—not a vague promise."/></label>
@@ -197,8 +232,12 @@ export default function CreatorStudioPage() {
             </article>)}
           </div>
           <label className="studio-review-check"><input type="checkbox" checked={rightsConfirmed} onChange={(event) => setRightsConfirmed(event.target.checked)}/><span><b>I own, licensed, or have permission to use every source.</b><small>Educational purpose alone does not grant permission to copy protected work.</small></span></label>
-          <label className="studio-review-check"><input type="checkbox" checked={aiDisclosure} onChange={(event) => setAiDisclosure(event.target.checked)}/><span><b>Keep AI assistance disclosed and require human approval.</b><small>Northstar records the provider and review gate for accountability.</small></span></label>
-          <button className="sys-primary" disabled={busy === "create"}>{busy === "create" ? "Saving…" : "Save governed source pack →"}</button>
+          <label className="studio-review-check"><input type="checkbox" checked={aiDisclosure} onChange={(event) => setAiDisclosure(event.target.checked)}/><span><b>Record automated assistance and require human approval.</b><small>Northstar records the engine, source declaration and review gate for accountability.</small></span></label>
+          <div className="studio-build-readiness">
+            <div><b>{buildReadiness}/6</b><span>build requirements ready</span></div>
+            <p>{buildReadiness === 6 ? "Ready. Northstar will save the sources and build the draft in one run." : "Complete the outcome, audience, source and governance details above."}</p>
+          </div>
+          <button className="sys-primary" disabled={busy === "create" || buildReadiness < 6}>{busy === "create" ? "Building your course…" : "Build my course draft →"}</button>
         </form>}
         {message && <div className="studio-message">{message}</div>}
       </section>

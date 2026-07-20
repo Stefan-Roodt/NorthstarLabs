@@ -109,7 +109,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Confirm that you have the rights to use every source." }, { status: 400 });
     }
     if (!body?.aiDisclosure) {
-      return Response.json({ error: "AI-assisted material must remain disclosed to reviewers and learners." }, { status: 400 });
+      return Response.json({ error: "Automated or AI-assisted material must remain disclosed to reviewers and learners." }, { status: 400 });
     }
     if (!sources.length || sources.some((source) => !source.title?.trim() || !source.sourceText?.trim() || !source.rightsBasis)) {
       return Response.json({ error: "Add at least one titled source with usable source text and a rights basis." }, { status: 400 });
@@ -124,7 +124,7 @@ export async function POST(request: Request) {
       `INSERT INTO creator_studio_projects
        (id,school_id,owner_id,title,audience,outcome,lesson_minutes,source_declaration,
         ai_disclosure,status,provider,created_at,updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,'sources','google_gemini',?,?)`,
+       VALUES (?,?,?,?,?,?,?,?,?,'sources','northstar_native',?,?)`,
     ).bind(id, school.id, user.id, title, audience, outcome, lessonMinutes, 1, 1, now, now)];
     sources.forEach((source, index) => {
       statements.push(env.DB.prepare(
@@ -156,11 +156,12 @@ export async function POST(request: Request) {
     const sources = await projectSources(project.id, school.id);
     const generationId = crypto.randomUUID();
     const startedAt = Date.now();
+    const generationProvider = process.env.GEMINI_API_KEY ? "google_gemini" : "northstar_native";
     await env.DB.prepare(
       `INSERT INTO creator_studio_generations
        (id,project_id,school_id,requested_by,generation_type,provider,model,status,created_at)
-       VALUES (?,?,?,?,?,'google_gemini','','processing',?)`,
-    ).bind(generationId, project.id, school.id, user.id, "course_blueprint", startedAt).run();
+       VALUES (?,?,?,?,?,?,'','processing',?)`,
+    ).bind(generationId, project.id, school.id, user.id, "course_blueprint", generationProvider, startedAt).run();
     try {
       const result = await generateCourseBlueprint({
         title: project.title, audience: project.audience, outcome: project.outcome,
@@ -170,8 +171,8 @@ export async function POST(request: Request) {
       const completedAt = Date.now();
       await env.DB.batch([
         env.DB.prepare(
-          `UPDATE creator_studio_projects SET blueprint_json=?,model=?,status='review',updated_at=? WHERE id=?`,
-        ).bind(blueprintJson, result.model, completedAt, project.id),
+          `UPDATE creator_studio_projects SET blueprint_json=?,provider=?,model=?,status='review',updated_at=? WHERE id=?`,
+        ).bind(blueprintJson, result.provider, result.model, completedAt, project.id),
         env.DB.prepare(
           `UPDATE creator_studio_generations
            SET model=?,status='completed',output_json=?,completed_at=? WHERE id=?`,
@@ -181,7 +182,7 @@ export async function POST(request: Request) {
       await writeAuditLog({
         actorId: user.id, schoolId: school.id, action: "creator_studio.blueprint_generated",
         targetType: "creator_studio_project", targetId: project.id,
-        detail: { model: result.model, sections: result.blueprint.sections.length },
+        detail: { provider: result.provider, model: result.model, sections: result.blueprint.sections.length },
       });
       return Response.json({ project: publicProject(updated!, sources) });
     } catch (error) {
@@ -217,6 +218,9 @@ export async function POST(request: Request) {
       section.lessons.forEach((lesson, lessonIndex) => {
         const lessonId = crypto.randomUUID();
         const plannedMedia = lesson.lessonType === "video" || lesson.lessonType === "audio";
+        const exportedLessonType = plannedMedia
+          ? lesson.lessonType
+          : lesson.lessonType === "quiz" ? "quiz" : "text";
         const productionNotice = plannedMedia
           ? `\n\n> **Production check:** This lesson includes an approved narration script, but no playable ${lesson.lessonType} has been attached yet. It must remain unpublished until media review is complete.`
           : "";
@@ -226,7 +230,7 @@ export async function POST(request: Request) {
             required_watch_percent,transcript,position,updated_at)
            VALUES (?,?,?,?,? ,?,'markdown',?,0,?,?,?)`,
         ).bind(
-          lessonId, courseId, lesson.title, sectionId, plannedMedia ? lesson.lessonType : "text",
+          lessonId, courseId, lesson.title, sectionId, exportedLessonType,
           `${lesson.content}${productionNotice}`, lesson.durationMinutes, lesson.transcript,
           lessonIndex, now,
         ));
@@ -236,11 +240,14 @@ export async function POST(request: Request) {
             "INSERT INTO quizzes (id,lesson_id,title,passing_score,max_attempts) VALUES (?,?,?,80,0)",
           ).bind(quizId, lessonId, `${lesson.title} check`));
           lesson.questions.forEach((question, questionIndex) => statements.push(env.DB.prepare(
-            `INSERT INTO quiz_questions (id,quiz_id,prompt,options_json,correct_index,position)
-             VALUES (?,?,?,?,?,?)`,
+            `INSERT INTO quiz_questions
+             (id,quiz_id,prompt,options_json,correct_index,explanation,position)
+             VALUES (?,?,?,?,?,?,?)`,
           ).bind(
             crypto.randomUUID(), quizId, question.prompt, JSON.stringify(question.options),
-            question.correctIndex, questionIndex,
+            question.correctIndex,
+            question.explanation?.trim() || "Review the approved source and lesson reasoning before retrying.",
+            questionIndex,
           )));
         }
       });

@@ -904,15 +904,21 @@ test("integrates a governed, source-grounded Creator Studio without auto-publish
   ]);
   assert.match(page, /NORTHSTAR CREATOR STUDIO/);
   assert.match(page, /URLs are recorded for citation; they are not silently scraped/);
-  assert.match(page, /Nothing is published automatically/);
+  assert.match(page, /Build my course draft/);
+  assert.match(page, /Draft built automatically/);
+  assert.match(page, /ONE GUIDED RUN/);
   assert.match(route, /rightsConfirmed/);
   assert.match(route, /reviewConfirmed/);
+  assert.match(route, /northstar_native/);
   assert.match(route, /'draft'/);
   assert.doesNotMatch(route, /status='published'/);
   assert.match(route, /requiresHumanReview: true/);
   assert.match(provider, /must remain grounded in supplied sources/);
   assert.match(provider, /GEMINI_API_KEY/);
-  assert.match(provider, /provider: gemini \? "Google Gemini" : "Not connected"/);
+  assert.match(provider, /generateNativeCourseBlueprint/);
+  assert.match(provider, /provider: gemini \? "Northstar Native \+ Google Gemini" : "Northstar Native"/);
+  assert.match(provider, /blueprint: true/);
+  assert.match(provider, /quizzes: true/);
   assert.match(schema, /export const creatorStudioProjects/);
   assert.match(schema, /export const creatorStudioSources/);
   assert.match(schema, /export const creatorStudioGenerations/);
@@ -965,6 +971,8 @@ test("supports separate academies, professional addresses, and field-level store
   assert.match(styles, /\.studio-new-project \.studio-review-check\{[^}]*grid-template-columns:18px minmax\(0,1fr\)/);
   assert.match(styles, /\.studio-new-project \.studio-review-check input\{width:18px!important/);
   assert.match(styles, /\.studio-capabilities button\{width:100%/);
+  assert.match(styles, /\.studio-automation-flow/);
+  assert.match(styles, /\.studio-build-readiness/);
   assert.match(styles, /\.creator-provider-summary/);
 });
 

@@ -204,10 +204,10 @@ export default function IntegrationsPage() {
       </section>
 
       <section className="panel creator-provider-panel" id="creator-studio-providers">
-        <div className="product-section-heading"><span>CREATOR AI</span><div><h2>Creator Studio providers</h2><p>See what is genuinely connected before promising AI-assisted production.</p></div></div>
+        <div className="product-section-heading"><span>CREATOR AUTOMATION</span><div><h2>Creator Studio engines</h2><p>Core course drafting works inside Northstar. Connect optional providers only when you need generated narration or cinematic media.</p></div></div>
         <div className="creator-provider-summary">
-          <div><span>Current provider</span><b>{studioCapabilities?.provider || "Checking connection..."}</b><small>One governed provider currently powers course drafting, checks and narration.</small></div>
-          <div><span>Course drafts & checks</span><b>{studioCapabilities?.blueprint && studioCapabilities?.quizzes ? "Connected" : "Setup required"}</b><small>Required for grounded structures and generated assessments.</small></div>
+          <div><span>Current engine</span><b>{studioCapabilities?.provider || "Checking connection..."}</b><small>The native engine keeps approved source text inside Northstar.</small></div>
+          <div><span>Course drafts & checks</span><b>{studioCapabilities?.blueprint && studioCapabilities?.quizzes ? "Ready" : "Setup required"}</b><small>Built-in structures, activities and assessment feedback need no external key.</small></div>
           <div><span>Narration</span><b>{studioCapabilities?.narration ? "Connected" : "Setup required"}</b><small>Used only after the creator has reviewed the course structure.</small></div>
           <div><span>Cinematic clips</span><b>{studioCapabilities?.videoClips ? "Connected" : "Optional model required"}</b><small>Separate from ordinary protected video uploads and never required to publish.</small></div>
         </div>

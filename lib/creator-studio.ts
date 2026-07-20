@@ -11,6 +11,7 @@ export type StudioQuestion = {
   prompt: string;
   options: string[];
   correctIndex: number;
+  explanation?: string;
 };
 
 export type StudioLesson = {
@@ -57,6 +58,382 @@ function cleanText(value: unknown, max = 12_000) {
   return String(value || "").replace(/\u0000/g, "").trim().slice(0, max);
 }
 
+function sourcePassages(source: StudioSource) {
+  const blocks = source.sourceText
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}/)
+    .map((block) => cleanText(block, 1_600))
+    .filter((block) => block.length >= 40);
+  if (blocks.length) return blocks.slice(0, 4);
+  const fallback = cleanText(source.sourceText, 4_800);
+  return fallback ? [fallback] : [];
+}
+
+function shortTitle(value: string) {
+  const title = cleanText(value, 90);
+  return title.length > 62 ? `${title.slice(0, 59).trim()}…` : title;
+}
+
+function sourceLesson(source: StudioSource, input: GenerateBlueprintInput): StudioLesson {
+  const passages = sourcePassages(source);
+  const evidence = passages
+    .map((passage) => `> ${passage.replace(/\n+/g, "\n> ")}`)
+    .join("\n\n");
+  return {
+    title: `Read the evidence: ${shortTitle(source.title)}`,
+    lessonType: "text",
+    durationMinutes: input.lessonMinutes,
+    outcome: `Identify the central ideas in ${source.title} and relate them to the course outcome.`,
+    content: `## Your outcome
+
+Identify the central ideas in ${source.title} and relate them to the promised course outcome.
+
+## Source-led briefing
+
+The extracts below come directly from the creator-approved source ${source.citationLabel}. Read them before drawing a conclusion.
+
+${evidence}
+
+## Evidence check
+
+- What does the source state directly?
+- What conclusion can reasonably be drawn from it?
+- What remains unanswered or would need another approved source?
+
+## Apply it
+
+Write a short explanation for ${input.audience}. Support every factual statement with ${source.citationLabel} and clearly label any open question.
+
+## Sources
+
+- ${source.citationLabel} ${source.title}${source.sourceUrl ? ` — ${source.sourceUrl}` : ""}`,
+    transcript: "",
+    citations: [source.citationLabel],
+    questions: [],
+  };
+}
+
+function practiceLesson(source: StudioSource, input: GenerateBlueprintInput): StudioLesson {
+  return {
+    title: `Apply the source: ${shortTitle(source.title)}`,
+    lessonType: "text",
+    durationMinutes: input.lessonMinutes,
+    outcome: `Use ${source.citationLabel} to produce a defensible explanation or decision.`,
+    content: `## Your outcome
+
+Use ${source.citationLabel} to produce a defensible explanation or decision connected to this course outcome:
+
+> ${input.outcome}
+
+## Practical task
+
+1. Select three statements from ${source.citationLabel} that matter to the outcome.
+2. For each statement, record the exact evidence and its context.
+3. Separate what the source proves from what you infer.
+4. Turn the evidence into one useful explanation, recommendation, or worked example for ${input.audience}.
+5. Add one limitation or unanswered question that a reviewer should see.
+
+## Quality check
+
+- Every factual claim points back to ${source.citationLabel}.
+- The conclusion does not go beyond the approved evidence.
+- The language is clear enough for the stated audience.
+- A human reviewer could trace how the conclusion was reached.
+
+## Sources
+
+- ${source.citationLabel} ${source.title}${source.sourceUrl ? ` — ${source.sourceUrl}` : ""}`,
+    transcript: "",
+    citations: [source.citationLabel],
+    questions: [],
+  };
+}
+
+function sourceCheck(source: StudioSource, input: GenerateBlueprintInput): StudioLesson {
+  const excerpt = sourcePassages(source)[0]?.replace(/\s+/g, " ").slice(0, 360) ||
+    "No usable source extract was supplied.";
+  return {
+    title: `Check your use of ${shortTitle(source.title)}`,
+    lessonType: "quiz",
+    durationMinutes: Math.max(3, Math.min(input.lessonMinutes, 8)),
+    outcome: `Confirm that you can use ${source.citationLabel} without inventing or overstating evidence.`,
+    content: `## Your outcome
+
+Confirm that you can use ${source.citationLabel} without inventing or overstating evidence.
+
+## Evidence reminder
+
+> ${excerpt}
+
+Answer the questions, then use the feedback to correct any weak reasoning.`,
+    transcript: "",
+    citations: [source.citationLabel],
+    questions: [
+      {
+        prompt: `Which approved source supports the learning in this section?`,
+        options: [source.title, "An unattributed internet summary", "A claim recalled from memory", "No source is required"],
+        correctIndex: 0,
+        explanation: `${source.citationLabel} ${source.title} is the recorded, rights-checked source for this section.`,
+      },
+      {
+        prompt: "What should you do when the approved source does not support a claim?",
+        options: [
+          "Exclude the claim or label it as an unanswered question",
+          "Add a plausible detail so the lesson feels complete",
+          "Repeat the claim without a citation",
+          "Present the claim as established fact",
+        ],
+        correctIndex: 0,
+        explanation: "Grounded course material must stay within the supplied evidence and make uncertainty visible.",
+      },
+      {
+        prompt: "Which action best demonstrates careful use of evidence?",
+        options: [
+          `Trace the conclusion back to ${source.citationLabel} and state its limits`,
+          "Copy the source without explaining its relevance",
+          "Remove the citation after drafting",
+          "Publish before a human review",
+        ],
+        correctIndex: 0,
+        explanation: "Traceable evidence, context, limitations, and human review make an automated draft defensible.",
+      },
+    ],
+  };
+}
+
+export function generateNativeCourseBlueprint(input: GenerateBlueprintInput): StudioBlueprint {
+  const selectedSources = input.sources.slice(0, 6);
+  if (!selectedSources.length) throw new Error("Add at least one approved source before building the course.");
+  const sourceList = selectedSources
+    .map((source) => `- ${source.citationLabel} ${source.title}${source.sourceUrl ? ` — ${source.sourceUrl}` : ""}`)
+    .join("\n");
+  const sections: StudioSection[] = [
+    {
+      title: "1. Outcome, audience, and evidence",
+      lessons: [
+        {
+          title: "Know what this course must achieve",
+          lessonType: "text",
+          durationMinutes: input.lessonMinutes,
+          outcome: `Explain the promised result and how the course will prove it.`,
+          content: `## Your outcome
+
+Explain the promised result and how the course will prove it.
+
+## Course promise
+
+> ${input.outcome}
+
+## Who this is for
+
+${input.audience}
+
+## Approved evidence
+
+${sourceList}
+
+## Your learning contract
+
+Work from the approved evidence, make your reasoning visible, complete the practical activities, and use assessment feedback to improve the final result.`,
+          transcript: "",
+          citations: selectedSources.map((source) => source.citationLabel),
+          questions: [],
+        },
+        {
+          title: "Use sources without overstating them",
+          lessonType: "text",
+          durationMinutes: input.lessonMinutes,
+          outcome: "Separate direct evidence, reasonable inference, and unanswered questions.",
+          content: `## Your outcome
+
+Separate direct evidence, reasonable inference, and unanswered questions.
+
+## Three evidence labels
+
+- **Supported:** the approved source states or demonstrates it directly.
+- **Inferred:** the conclusion is reasonable, but the source does not state it directly.
+- **Unanswered:** another source, test, or expert review is needed.
+
+## Practice
+
+Choose one statement from each approved source. Label it supported, inferred, or unanswered, and record why. This habit prevents a polished draft from creating false confidence.`,
+          transcript: "",
+          citations: selectedSources.map((source) => source.citationLabel),
+          questions: [],
+        },
+        {
+          title: "Check the evidence rules",
+          lessonType: "quiz",
+          durationMinutes: Math.max(3, Math.min(input.lessonMinutes, 8)),
+          outcome: "Confirm that you can distinguish evidence, inference, and an unanswered question.",
+          content: `## Your outcome
+
+Confirm that you can distinguish evidence, inference, and an unanswered question.
+
+Use the answer feedback to correct your evidence labels before starting the source-led sections.`,
+          transcript: "",
+          citations: selectedSources.map((source) => source.citationLabel),
+          questions: [
+            {
+              prompt: "When should a statement be labelled supported?",
+              options: [
+                "When an approved source states or demonstrates it directly",
+                "When it sounds plausible",
+                "When the creator remembers reading it elsewhere",
+                "When it makes the course more persuasive",
+              ],
+              correctIndex: 0,
+              explanation: "Supported claims have a traceable basis in the approved source material.",
+            },
+            {
+              prompt: "What is an inference?",
+              options: [
+                "A reasoned conclusion that the source does not state directly",
+                "A direct quotation",
+                "A fact that needs no source",
+                "A claim that has already passed human review",
+              ],
+              correctIndex: 0,
+              explanation: "An inference can be useful, but it must be distinguished from what the source directly establishes.",
+            },
+            {
+              prompt: "What should happen to an important unanswered question?",
+              options: [
+                "Make it visible and identify the additional evidence or review needed",
+                "Replace it with a confident assumption",
+                "Remove it from the reviewer notes",
+                "Present it as settled",
+              ],
+              correctIndex: 0,
+              explanation: "Visible uncertainty helps learners and reviewers understand the limits of the current evidence.",
+            },
+          ],
+        },
+      ],
+    },
+    ...selectedSources.map((source, index) => ({
+      title: `${index + 2}. ${shortTitle(source.title)}`,
+      lessons: [
+        sourceLesson(source, input),
+        practiceLesson(source, input),
+        sourceCheck(source, input),
+      ],
+    })),
+    {
+      title: `${selectedSources.length + 2}. Synthesis and proof`,
+      lessons: [
+        {
+          title: "Connect the evidence",
+          lessonType: "text",
+          durationMinutes: input.lessonMinutes,
+          outcome: "Combine the approved sources into one coherent, traceable conclusion.",
+          content: `## Your outcome
+
+Combine the approved sources into one coherent, traceable conclusion.
+
+## Synthesis task
+
+1. Restate the promised outcome in your own words.
+2. Select the strongest evidence from every source.
+3. Identify where sources agree, differ, or answer different parts of the problem.
+4. Build a conclusion that a reviewer can trace back to the source labels.
+5. State at least one limitation and one next question.
+
+## Approved sources
+
+${sourceList}`,
+          transcript: "",
+          citations: selectedSources.map((source) => source.citationLabel),
+          questions: [],
+        },
+        {
+          title: "Produce the final evidence",
+          lessonType: "text",
+          durationMinutes: input.lessonMinutes,
+          outcome: input.outcome,
+          content: `## Your outcome
+
+${input.outcome}
+
+## Final deliverable
+
+Create one useful piece of evidence for ${input.audience}: a briefing, worked example, recommendation, demonstration, or decision record.
+
+Your submission must include:
+
+- the decision or result;
+- the evidence used, labelled with the approved source references;
+- the reasoning that connects evidence to the result;
+- limitations and unanswered questions;
+- a short note explaining what changed after review.
+
+## Human review gate
+
+Ask a reviewer to check factual accuracy, citation fit, audience clarity, and whether the deliverable genuinely demonstrates the promised outcome.`,
+          transcript: "",
+          citations: selectedSources.map((source) => source.citationLabel),
+          questions: [],
+        },
+        {
+          title: "Final readiness check",
+          lessonType: "quiz",
+          durationMinutes: Math.max(3, Math.min(input.lessonMinutes, 8)),
+          outcome: "Confirm that the final work is traceable, honest, and ready for human review.",
+          content: `## Your outcome
+
+Confirm that the final work is traceable, honest, and ready for human review.
+
+Use the feedback to correct the final submission before it is shared.`,
+          transcript: "",
+          citations: selectedSources.map((source) => source.citationLabel),
+          questions: [
+            {
+              prompt: "What makes the final conclusion defensible?",
+              options: [
+                "A clear chain from approved evidence to reasoning, conclusion, and limitations",
+                "Confident language without citations",
+                "The number of pages in the submission",
+                "Publishing before review",
+              ],
+              correctIndex: 0,
+              explanation: "A reviewer must be able to trace the result back to approved evidence and see where uncertainty remains.",
+            },
+            {
+              prompt: "When is the automated draft ready to publish?",
+              options: [
+                "After a human has reviewed the claims, citations, assessments, and learner experience",
+                "Immediately after generation",
+                "When the title sounds persuasive",
+                "As soon as one source has been added",
+              ],
+              correctIndex: 0,
+              explanation: "Automation accelerates drafting; it does not replace subject-matter, rights, or learner-experience review.",
+            },
+            {
+              prompt: "What should the final deliverable include?",
+              options: [
+                "Evidence, reasoning, result, limitations, and a review note",
+                "Only the final answer",
+                "Unverified claims added for completeness",
+                "No record of the sources used",
+              ],
+              correctIndex: 0,
+              explanation: "The final evidence should show both the result and the disciplined process used to reach it.",
+            },
+          ],
+        },
+      ],
+    },
+  ];
+  return {
+    title: input.title,
+    promise: input.outcome,
+    audience: input.audience,
+    sourceNote: "Built locally by Northstar Native from the creator-approved source text. No source material was sent to an external AI provider.",
+    sections,
+  };
+}
+
 function validateBlueprint(raw: unknown, input: GenerateBlueprintInput): StudioBlueprint {
   const value = raw as Partial<StudioBlueprint>;
   const sections = Array.isArray(value.sections) ? value.sections.slice(0, 12) : [];
@@ -86,6 +463,7 @@ function validateBlueprint(raw: unknown, input: GenerateBlueprintInput): StudioB
                 correctIndex: Number.isInteger(correctIndex) && correctIndex >= 0 && correctIndex < options.length
                   ? correctIndex
                   : 0,
+                explanation: cleanText(question.explanation, 1_000),
               };
             }).filter((question) => question.prompt && question.options.length >= 2)
           : [];
@@ -114,17 +492,23 @@ function validateBlueprint(raw: unknown, input: GenerateBlueprintInput): StudioB
 export function configuredStudioCapabilities() {
   const gemini = Boolean(process.env.GEMINI_API_KEY);
   return {
-    blueprint: gemini,
-    quizzes: gemini,
+    blueprint: true,
+    quizzes: true,
     narration: gemini,
     videoClips: gemini && Boolean(process.env.GEMINI_VIDEO_MODEL),
-    provider: gemini ? "Google Gemini" : "Not connected",
+    provider: gemini ? "Northstar Native + Google Gemini" : "Northstar Native",
   };
 }
 
 export async function generateCourseBlueprint(input: GenerateBlueprintInput) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("Google Gemini is not connected. Add GEMINI_API_KEY to enable generation.");
+  if (!apiKey) {
+    return {
+      blueprint: generateNativeCourseBlueprint(input),
+      model: "northstar-native-1",
+      provider: "northstar_native",
+    };
+  }
   const model = process.env.GEMINI_COURSE_MODEL || "gemini-2.5-flash";
   const sources = input.sources.map((source, index) => [
     `${source.citationLabel || `[S${index + 1}]`} ${source.title}`,
@@ -159,7 +543,7 @@ Return JSON only with this exact shape:
       "content":"Complete learner-facing Markdown with a Sources section at the end",
       "transcript":"Complete narration for audio/video, otherwise empty",
       "citations":["[S1]"],
-      "questions":[{"prompt":"...","options":["..."],"correctIndex":0}]
+      "questions":[{"prompt":"...","options":["..."],"correctIndex":0,"explanation":"Why the correct answer is right"}]
     }]
   }]
 }`;
@@ -180,7 +564,7 @@ Return JSON only with this exact shape:
     throw new Error(message || "Google Gemini could not create the course draft.");
   }
   const blueprint = validateBlueprint(parseModelJson(textPart(body)), input);
-  return { blueprint, model };
+  return { blueprint, model, provider: "google_gemini" };
 }
 
 function wavFromPcm(pcm: Uint8Array, sampleRate = 24_000) {
