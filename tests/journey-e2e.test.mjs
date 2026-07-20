@@ -102,12 +102,12 @@ test("publishes Stefan's video-first Web3 course as a NorthstarLabs signature pr
   assert.deepEqual({ ...curriculum }, {
     sections: 6,
     lessons: 24,
-    videos: 14,
+    videos: 1,
     quizzes: 6,
     questions: 33,
     shortest: 6,
     longest: 6,
-    scriptedVideos: 13,
+    scriptedVideos: 0,
   });
 
   const orphans = db.prepare(`
@@ -154,12 +154,12 @@ test("publishes Stefan's evidence-led Bitcoin deep dive as a NorthstarLabs signa
   assert.deepEqual({ ...curriculum }, {
     sections: 7,
     lessons: 35,
-    videos: 21,
+    videos: 1,
     quizzes: 7,
     questions: 42,
     shortest: 6,
     longest: 6,
-    scriptedVideos: 20,
+    scriptedVideos: 0,
   });
 
   const sourceCoverage = db.prepare(`

@@ -911,8 +911,9 @@ test("supports separate academies, professional addresses, and field-level store
 });
 
 test("ships real Northstar-produced faculty videos and attaches them behind lesson grants", async () => {
-  const [migration, playback, stream, worker] = await Promise.all([
+  const [migration, honestLabels, playback, stream, worker] = await Promise.all([
     readFile(new URL("../drizzle/0028_northstar_faculty_media.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0029_honest_media_labels.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/api/media/playback/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/media/stream/[token]/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
@@ -932,6 +933,8 @@ test("ships real Northstar-produced faculty videos and attaches them behind less
   assert.match(migration, /Bitcoin Research Faculty/);
   assert.match(migration, /Web3 Product Faculty/);
   assert.match(migration, /required_watch_percent`=85/);
+  assert.match(honestLabels, /A script is not a playable video/);
+  assert.match(honestLabels, /primary_asset_id` IS NULL/);
   assert.match(playback, /static:/);
   assert.match(stream, /env\.ASSETS\.fetch/);
   assert.match(worker, /Media access requires a current lesson grant/);
