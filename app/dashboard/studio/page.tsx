@@ -119,6 +119,15 @@ export default function CreatorStudioPage() {
     setSources((current) => current.map((source, sourceIndex) => sourceIndex === index ? { ...source, ...patch } : source));
   }
 
+  function openCapability(available: boolean, capability: string) {
+    if (!available) {
+      location.href = "/dashboard/integrations?setup=creator-studio#creator-studio-providers";
+      return;
+    }
+    document.getElementById("studio-workspace")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setMessage(`${capability} is ready. Start a new governed project or open an existing one below.`);
+  }
+
   const lessonCount = selected?.blueprint?.sections.reduce((sum, section) => sum + section.lessons.length, 0) || 0;
   const productionCount = selected?.blueprint?.sections.reduce(
     (sum, section) => sum + section.lessons.filter((lesson) => ["audio", "video"].includes(lesson.lessonType)).length, 0,
@@ -137,10 +146,10 @@ export default function CreatorStudioPage() {
     </section>
 
     <section className="studio-capabilities" aria-label="Creator Studio capabilities">
-      <div className={capabilities?.blueprint ? "ready" : "blocked"}><b>01</b><span>Grounded course draft</span><small>{capabilities?.blueprint ? "Connected" : "Provider key required"}</small></div>
-      <div className={capabilities?.quizzes ? "ready" : "blocked"}><b>02</b><span>Quizzes and checks</span><small>{capabilities?.quizzes ? "Connected" : "Provider key required"}</small></div>
-      <div className={capabilities?.narration ? "ready" : "blocked"}><b>03</b><span>AI narration</span><small>{capabilities?.narration ? "Available after review" : "Provider key required"}</small></div>
-      <div className={capabilities?.videoClips ? "ready" : "planned"}><b>04</b><span>Cinematic clips</span><small>{capabilities?.videoClips ? "Model configured" : "Optional model not configured"}</small></div>
+      <div className={capabilities?.blueprint ? "ready" : "blocked"}><button type="button" onClick={() => openCapability(Boolean(capabilities?.blueprint), "Grounded course drafting")}><b>01</b><span>Grounded course draft</span><small>{capabilities?.blueprint ? "Connected" : "Provider key required"}</small><em>{capabilities?.blueprint ? "Open workspace →" : "Set up provider →"}</em></button></div>
+      <div className={capabilities?.quizzes ? "ready" : "blocked"}><button type="button" onClick={() => openCapability(Boolean(capabilities?.quizzes), "Quizzes and checks")}><b>02</b><span>Quizzes and checks</span><small>{capabilities?.quizzes ? "Connected" : "Provider key required"}</small><em>{capabilities?.quizzes ? "Open workspace →" : "Set up provider →"}</em></button></div>
+      <div className={capabilities?.narration ? "ready" : "blocked"}><button type="button" onClick={() => openCapability(Boolean(capabilities?.narration), "AI narration")}><b>03</b><span>AI narration</span><small>{capabilities?.narration ? "Available after review" : "Provider key required"}</small><em>{capabilities?.narration ? "Open workspace →" : "Set up provider →"}</em></button></div>
+      <div className={capabilities?.videoClips ? "ready" : "planned"}><button type="button" onClick={() => openCapability(Boolean(capabilities?.videoClips), "Cinematic clips")}><b>04</b><span>Cinematic clips</span><small>{capabilities?.videoClips ? "Model configured" : "Optional model not configured"}</small><em>{capabilities?.videoClips ? "Open workspace →" : "Set up provider →"}</em></button></div>
     </section>
 
     <div className="studio-grid">
@@ -152,7 +161,7 @@ export default function CreatorStudioPage() {
         </button>) : <p className="studio-empty">Your first governed draft will appear here.</p>}
       </aside>
 
-      <section className="studio-workspace">
+      <section className="studio-workspace" id="studio-workspace">
         {selected ? <>
           <header className="studio-project-head"><div><p className="sys-kicker">{selected.status.toUpperCase()}</p><h2>{selected.title}</h2><p>{selected.outcome}</p></div><div><b>{selected.sources.length}</b><span>approved sources</span></div></header>
           {!selected.blueprint ? <div className="studio-generate-card">

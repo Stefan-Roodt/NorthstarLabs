@@ -933,7 +933,10 @@ test("supports separate academies, professional addresses, and field-level store
   assert.match(styles, /\.dashboard-community-actions a\{min-height:50px/);
   assert.match(styles, /\.empty-dashboard \.dashboard-community-actions \.sys-primary\{margin-top:0\}/);
   assert.match(styles, /\.studio-capabilities\{margin-bottom:18px\}/);
-  assert.match(styles, /\.studio-new-project \.studio-review-check input\{width:18px/);
+  assert.match(styles, /\.studio-new-project \.studio-review-check\{[^}]*grid-template-columns:18px minmax\(0,1fr\)/);
+  assert.match(styles, /\.studio-new-project \.studio-review-check input\{width:18px!important/);
+  assert.match(styles, /\.studio-capabilities button\{width:100%/);
+  assert.match(styles, /\.creator-provider-summary/);
 });
 
 test("ships real Northstar-produced faculty videos and attaches them behind lesson grants", async () => {

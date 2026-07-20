@@ -29,6 +29,13 @@ type IntegrationData = {
   deliveries: Delivery[];
   supportedEvents: string[];
 };
+type StudioCapabilities = {
+  blueprint: boolean;
+  quizzes: boolean;
+  narration: boolean;
+  videoClips: boolean;
+  provider: string;
+};
 
 const eventLabels: Record<string, string> = {
   "product.published": "Product published",
@@ -44,6 +51,7 @@ const eventLabels: Record<string, string> = {
 export default function IntegrationsPage() {
   const supabase = getSupabaseBrowser();
   const [data, setData] = useState<IntegrationData | null>(null);
+  const [studioCapabilities, setStudioCapabilities] = useState<StudioCapabilities | null>(null);
   const [name, setName] = useState("");
   const [endpointUrl, setEndpointUrl] = useState("");
   const [selectedEvents, setSelectedEvents] = useState<string[]>(["*"]);
@@ -69,12 +77,19 @@ export default function IntegrationsPage() {
       location.href = "/login?next=/dashboard/integrations";
       return;
     }
-    const response = await authed("/api/integrations");
+    const [response, studioResponse] = await Promise.all([
+      authed("/api/integrations"),
+      authed("/api/creator-studio"),
+    ]);
     if (!response.ok) {
       setMessage("Integrations could not be loaded.");
       return;
     }
     setData(await response.json());
+    if (studioResponse.ok) {
+      const studio = await studioResponse.json() as { capabilities: StudioCapabilities };
+      setStudioCapabilities(studio.capabilities);
+    }
     setMessage("");
   }, [authed, supabase]);
 
@@ -186,6 +201,20 @@ export default function IntegrationsPage() {
         <article className="panel native-integration-card"><span>01</span><div><p className="sys-kicker">CALENDAR</p><h2>Apple, Google & Outlook</h2><p>Every eligible live session can be downloaded as a standards-based calendar file with its secure meeting link.</p><b>READY</b></div></article>
         <article className="panel native-integration-card"><span>02</span><div><p className="sys-kicker">MEETINGS</p><h2>Zoom, Meet & Teams</h2><p>Creators attach their secure provider link. NorthStarLabs reveals it only to staff and eligible signed-in learners.</p><b>READY</b></div></article>
         <article className="panel native-integration-card"><span>03</span><div><p className="sys-kicker">MOBILE</p><h2>Installable learning app</h2><p>Phones and tablets can install NorthStarLabs from the browser, launch full-screen and keep the learning shell available during brief network interruptions.</p><b>READY</b></div></article>
+      </section>
+
+      <section className="panel creator-provider-panel" id="creator-studio-providers">
+        <div className="product-section-heading"><span>CREATOR AI</span><div><h2>Creator Studio providers</h2><p>See what is genuinely connected before promising AI-assisted production.</p></div></div>
+        <div className="creator-provider-summary">
+          <div><span>Current provider</span><b>{studioCapabilities?.provider || "Checking connection..."}</b><small>One governed provider currently powers course drafting, checks and narration.</small></div>
+          <div><span>Course drafts & checks</span><b>{studioCapabilities?.blueprint && studioCapabilities?.quizzes ? "Connected" : "Setup required"}</b><small>Required for grounded structures and generated assessments.</small></div>
+          <div><span>Narration</span><b>{studioCapabilities?.narration ? "Connected" : "Setup required"}</b><small>Used only after the creator has reviewed the course structure.</small></div>
+          <div><span>Cinematic clips</span><b>{studioCapabilities?.videoClips ? "Connected" : "Optional model required"}</b><small>Separate from ordinary protected video uploads and never required to publish.</small></div>
+        </div>
+        <div className="creator-provider-actions">
+          <Link className="sys-primary" href="/dashboard/studio#studio-workspace">Return to Creator Studio</Link>
+          <Link href="/admin">Open platform administration</Link>
+        </div>
       </section>
 
       <form className="panel webhook-editor" onSubmit={createWebhook}>
