@@ -1053,3 +1053,70 @@ test("makes assessments teach with explanations, answer feedback, and guided ret
   assert.match(styles, /\.quiz-answer-feedback/);
   assert.match(migration, /ADD `explanation`/);
 });
+
+test("gives creators an honest, actionable learner-quality review", async () => {
+  const [editor, readinessSource, styles, courseApi] = await Promise.all([
+    readFile(new URL("../app/dashboard/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/course-readiness.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/builder.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/courses/[courseId]/route.ts", import.meta.url), "utf8"),
+  ]);
+  const { getCourseReadiness } = await import("../lib/course-readiness.ts");
+  const review = getCourseReadiness({
+    title: "Practical Research",
+    description: "A practical programme for people who want to test claims, compare evidence, and make better decisions in real work.",
+    certificateTitle: "Certificate of completion",
+    sections: [{ id: "section-1", title: "Test the evidence" }],
+    lessons: [
+      {
+        id: "lesson-1",
+        sectionId: "section-1",
+        title: "Recognise a useful claim",
+        lessonType: "video",
+        content: "Read the explanation and compare the examples.",
+        primaryAssetId: "asset-1",
+        primaryAsset: { kind: "video", altText: "" },
+        durationMinutes: 6,
+        transcript: "",
+        resources: [],
+        quiz: null,
+      },
+      {
+        id: "lesson-2",
+        sectionId: "section-1",
+        title: "Check your understanding",
+        lessonType: "quiz",
+        content: "Complete the knowledge check.",
+        primaryAssetId: null,
+        primaryAsset: null,
+        durationMinutes: 4,
+        transcript: "",
+        resources: [],
+        quiz: {
+          questions: [{
+            prompt: "What should you check first?",
+            options: ["Evidence", "Popularity"],
+            explanation: "",
+          }],
+        },
+      },
+    ],
+  });
+
+  assert.equal(review.blockers.length, 0);
+  assert.ok(review.score < 90);
+  assert.ok(review.improvements.some((issue) => issue.id === "lesson-1-transcript"));
+  assert.ok(review.improvements.some((issue) => issue.id === "lesson-2-quiz-depth"));
+  assert.ok(review.improvements.some((issue) => issue.id === "lesson-2-quiz-feedback"));
+  assert.match(editor, /COURSE QUALITY REVIEW/);
+  assert.match(editor, /See the course a learner will experience/);
+  assert.match(editor, /Preview as learner/);
+  assert.match(editor, /This score is guidance, not accreditation/);
+  assert.match(readinessSource, /Add a learner outcome/);
+  assert.match(readinessSource, /transcript improves accessibility/);
+  assert.match(readinessSource, /quiz teaches as well as scores/);
+  assert.match(styles, /\.quality-score-card/);
+  assert.match(styles, /\.lesson-quality-signal/);
+  assert.match(courseApi, /Attach playable media to every video or audio lesson/);
+  assert.match(courseApi, /Add assessment questions to every quiz lesson/);
+});

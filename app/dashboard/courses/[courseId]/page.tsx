@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getCourseReadiness, type CourseReadinessIssue } from "../../../../lib/course-readiness";
 import { LessonContent } from "../../../../lib/lesson-content";
 import { getSupabaseBrowser } from "../../../../lib/supabase-client";
 
@@ -119,7 +120,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [mediaFilter, setMediaFilter] = useState("all");
-  const [workspaceTab, setWorkspaceTab] = useState<"lesson" | "media" | "settings">("lesson");
+  const [workspaceTab, setWorkspaceTab] = useState<"lesson" | "media" | "settings" | "review">("lesson");
   const [contentMode, setContentMode] = useState<"write" | "preview">("write");
   const [draggedLessonId, setDraggedLessonId] = useState("");
   const [publishingErrors, setPublishingErrors] = useState<string[]>([]);
@@ -132,6 +133,10 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   const selected = useMemo(
     () => course?.lessons.find((lesson) => lesson.id === selectedId) || null,
     [course, selectedId],
+  );
+  const readiness = useMemo(
+    () => course ? getCourseReadiness(course) : null,
+    [course],
   );
 
   const token = useCallback(async () => {
@@ -278,6 +283,17 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     const question = selected.quiz.questions[questionIndex];
     editQuestion(questionIndex, {
       options: question.options.map((option, index) => index === optionIndex ? value : option),
+    });
+  }
+
+  function openQualityIssue(issue: CourseReadinessIssue) {
+    if (issue.lessonId) setSelectedId(issue.lessonId);
+    setWorkspaceTab(issue.tab);
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(".lesson-editor")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     });
   }
 
@@ -750,6 +766,12 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
         </span>
       </div>
       <div>
+        <button
+          className={`builder-tool quality-review-button${readiness && readiness.blockers.length ? " has-blockers" : ""}`}
+          onClick={() => setWorkspaceTab("review")}
+        >
+          Quality {readiness?.score || 0}%
+        </button>
         <button className="builder-tool" onClick={() => setWorkspaceTab("settings")}>Course settings</button>
         <Link className="builder-preview" href={`/learn/${course.id}?preview=1`}>Learner preview</Link>
         <button className="builder-tool" onClick={() => saveCourse(course.status === "published" ? "draft" : "published")}>
@@ -805,7 +827,15 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                     >
                       <button className="lesson-select" onClick={() => chooseLesson(lesson.id)}>
                         <span>{assetIcon(lesson.primaryAsset?.kind || lesson.lessonType)}</span>
-                        <div><b>{lesson.title}</b><small>{lesson.lessonType}{lesson.quiz ? " · quiz" : ""}</small></div>
+                        <div>
+                          <b>{lesson.title}</b>
+                          <small>{lesson.lessonType}{lesson.quiz ? " · quiz" : ""}</small>
+                          <em className={readiness?.lessonIssueCounts[lesson.id] ? "lesson-quality-signal needs-work" : "lesson-quality-signal"}>
+                            {readiness?.lessonIssueCounts[lesson.id]
+                              ? `${readiness.lessonIssueCounts[lesson.id]} quality fix${readiness.lessonIssueCounts[lesson.id] === 1 ? "" : "es"}`
+                              : "Quality ready"}
+                          </em>
+                        </div>
                       </button>
                       <div className="lesson-order-controls">
                         <button disabled={lessonIndex === 0} onClick={() => moveLesson(lesson.id, -1)}>↑</button>
@@ -828,6 +858,87 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       </aside>
 
       <section className="lesson-editor">
+        {workspaceTab === "review" && readiness && <div className="course-quality-review">
+          <div className="editor-heading quality-review-heading">
+            <div>
+              <p className="sys-kicker">COURSE QUALITY REVIEW</p>
+              <h1>See the course a learner will experience.</h1>
+              <p>Fix what weakens trust, learning, accessibility, or completion before you invite people in.</p>
+            </div>
+            <Link className="builder-preview" href={`/learn/${course.id}?preview=1`}>Preview as learner</Link>
+          </div>
+
+          <section className="quality-score-card">
+            <div className="quality-score">
+              <strong>{readiness.score}</strong><span>/100</span>
+            </div>
+            <div>
+              <p className="sys-kicker">CURRENT STANDARD</p>
+              <h2>{readiness.label}</h2>
+              <p>{readiness.blockers.length
+                ? `${readiness.blockers.length} publishing blocker${readiness.blockers.length === 1 ? "" : "s"} must be fixed.`
+                : readiness.improvements.length
+                  ? `${readiness.improvements.length} improvement${readiness.improvements.length === 1 ? "" : "s"} would make the learner experience stronger.`
+                  : "Every quality signal in this review is covered."}</p>
+              <div className="quality-progress" aria-label={`Course quality ${readiness.score}%`}>
+                <i style={{ width: `${readiness.score}%` }} />
+              </div>
+            </div>
+            <dl>
+              <div><dt>Lessons</dt><dd>{course.lessons.length}</dd></div>
+              <div><dt>Blockers</dt><dd>{readiness.blockers.length}</dd></div>
+              <div><dt>Improvements</dt><dd>{readiness.improvements.length}</dd></div>
+            </dl>
+          </section>
+
+          {readiness.blockers.length > 0 && <section className="quality-issue-section blockers">
+            <div>
+              <p className="sys-kicker">FIX BEFORE PUBLISHING</p>
+              <h2>These gaps break the learning journey.</h2>
+            </div>
+            <div className="quality-issue-list">
+              {readiness.blockers.map((issue, index) => <article key={issue.id}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  {issue.lessonTitle && <small>{issue.lessonTitle}</small>}
+                  <h3>{issue.title}</h3>
+                  <p>{issue.detail}</p>
+                </div>
+                <button onClick={() => openQualityIssue(issue)}>{issue.action} →</button>
+              </article>)}
+            </div>
+          </section>}
+
+          {readiness.improvements.length > 0 && <section className="quality-issue-section improvements">
+            <div>
+              <p className="sys-kicker">MAKE IT WORTH RECOMMENDING</p>
+              <h2>Turn a functional course into a credible one.</h2>
+            </div>
+            <div className="quality-issue-list">
+              {readiness.improvements.map((issue, index) => <article key={issue.id}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  {issue.lessonTitle && <small>{issue.lessonTitle}</small>}
+                  <h3>{issue.title}</h3>
+                  <p>{issue.detail}</p>
+                </div>
+                <button onClick={() => openQualityIssue(issue)}>{issue.action} →</button>
+              </article>)}
+            </div>
+          </section>}
+
+          {!readiness.issues.length && <section className="quality-complete">
+            <span>✓</span>
+            <div><p className="sys-kicker">QUALITY REVIEW COMPLETE</p><h2>The course is ready for a real learner.</h2><p>Preview the full journey once, then publish with confidence.</p></div>
+            <Link className="sys-primary" href={`/learn/${course.id}?preview=1`}>Run final preview</Link>
+          </section>}
+
+          <footer className="quality-review-note">
+            <b>This score is guidance, not accreditation.</b>
+            <span>It checks completeness, clarity, accessibility, assessment feedback, and learner navigation. Human subject-matter review still matters.</span>
+          </footer>
+        </div>}
+
         {workspaceTab === "settings" && <div className="course-settings-editor">
           <div className="editor-heading">
             <div><p className="sys-kicker">COURSE SETTINGS</p><h1>Describe and publish your course.</h1></div>
@@ -870,7 +981,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
             <label>Valid for days<input type="number" min="0" max="3650" value={course.certificateValidDays} onChange={(event) => setCourse({ ...course, certificateValidDays: Math.max(0, Number(event.target.value || 0)) })} /><small>Use 0 for a certificate that does not expire.</small></label>
           </section>
           <div className="publishing-checklist">
-            <p className="sys-kicker">PUBLISHING CHECKLIST</p>
+            <p className="sys-kicker">MINIMUM PUBLISHING CHECKS</p>
             <ul>
               <li className={course.title.trim().length >= 3 ? "done" : ""}>Clear course title</li>
               <li className={course.description.trim().length >= 20 ? "done" : ""}>Useful course description</li>
@@ -878,6 +989,9 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               <li className={course.sections.length && course.sections.every((section) => section.title.trim()) ? "done" : ""}>Curriculum organised into named sections</li>
             </ul>
             {!!publishingErrors.length && <div className="publishing-errors">{publishingErrors.map((error) => <p key={error}>{error}</p>)}</div>}
+            <button className="quality-review-cta" onClick={() => setWorkspaceTab("review")}>
+              Open the full learner-quality review <b>{readiness?.score || 0}%</b> →
+            </button>
           </div>
           <div className="editor-save-row">
             <button className="builder-tool" onClick={() => setWorkspaceTab("lesson")}>Back to lessons</button>

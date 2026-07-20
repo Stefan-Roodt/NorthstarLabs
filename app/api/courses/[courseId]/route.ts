@@ -213,9 +213,27 @@ export async function PATCH(
               SELECT 1 FROM lesson_resources lr WHERE lr.lesson_id=lessons.id
             ) THEN 1
           ELSE 0
-        END) AS incomplete
+        END) AS incomplete,
+        SUM(CASE
+          WHEN lesson_type IN ('video','audio') AND primary_asset_id IS NULL
+            AND (video_key IS NULL OR trim(video_key)='') THEN 1
+          ELSE 0
+        END) AS missingMedia,
+        SUM(CASE
+          WHEN lesson_type='quiz' AND NOT EXISTS (
+            SELECT 1 FROM quizzes q
+            JOIN quiz_questions qq ON qq.quiz_id=q.id
+            WHERE q.lesson_id=lessons.id
+          ) THEN 1
+          ELSE 0
+        END) AS missingQuiz
        FROM lessons WHERE course_id=?`,
-    ).bind(courseId).first<{ total: number; incomplete: number | null }>();
+    ).bind(courseId).first<{
+      total: number;
+      incomplete: number | null;
+      missingMedia: number | null;
+      missingQuiz: number | null;
+    }>();
     const sectionStats = await env.DB.prepare(
       `SELECT COUNT(*) AS total,
         SUM(CASE WHEN trim(title)='' THEN 1 ELSE 0 END) AS incomplete
@@ -231,6 +249,12 @@ export async function PATCH(
     }
     if (Number(lessonStats?.incomplete || 0) > 0) {
       errors.push("Finish every lesson title and add content or media.");
+    }
+    if (Number(lessonStats?.missingMedia || 0) > 0) {
+      errors.push("Attach playable media to every video or audio lesson.");
+    }
+    if (Number(lessonStats?.missingQuiz || 0) > 0) {
+      errors.push("Add assessment questions to every quiz lesson.");
     }
     if (errors.length) {
       return Response.json(
