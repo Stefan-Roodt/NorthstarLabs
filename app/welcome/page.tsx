@@ -14,6 +14,7 @@ export default function WelcomePage() {
   const preferredPath = typeof window === "undefined"
     ? ""
     : new URLSearchParams(location.search).get("path") || "";
+  const focusedPath = preferredPath === "creator" || preferredPath === "learner" || preferredPath === "coach" ? preferredPath : "";
 
   useEffect(() => {
     if (!supabase) {
@@ -74,7 +75,7 @@ export default function WelcomePage() {
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (!token) {
-      location.href = `/login?next=/welcome?path=${role}`;
+      location.href = `/login?next=${encodeURIComponent(`/welcome?path=${role}`)}`;
       return;
     }
     const response = await fetch("/api/profile", {
@@ -112,16 +113,16 @@ export default function WelcomePage() {
 
       <section className="welcome-hero">
         <p className="sys-kicker">YOUR ACCOUNT IS READY</p>
-        <h1>Welcome, {name}. What do you want to do first?</h1>
-        <p>Choose one path now. Your account includes creating, coaching, and learning, so you can switch whenever you like.</p>
+        <h1>{focusedPath === "creator" ? `Welcome, ${name}. Create your academy.` : focusedPath === "learner" ? `Welcome, ${name}. Choose a module.` : focusedPath === "coach" ? `Welcome, ${name}. Set up your coaching.` : `Welcome, ${name}. What do you want to do first?`}</h1>
+        <p>{focusedPath ? "You have already chosen your route. Finish this one simple step; you can add the other roles later from your account." : "Choose one path now. Your account includes creating, coaching, and learning, so you can switch whenever you like."}</p>
       </section>
 
-      <section className="welcome-paths" aria-label="Choose how to start">
+      <section className={`welcome-paths${focusedPath ? ` focused-${focusedPath}` : ""}`} aria-label="Choose how to start">
         <article className={preferredPath === "creator" ? "welcome-path preferred" : "welcome-path"}>
           <div className="welcome-path-number">01</div>
           <p className="sys-kicker">I WANT TO CREATE</p>
-          <h2>Build my first course.</h2>
-          <p>Open your creator workspace, name your course, and start shaping the curriculum. Your first draft can begin with a single idea.</p>
+          <h2>Create my academy and first module.</h2>
+          <p>Name your academy now. Next you will create a module and shape its syllabus; you are not enrolling as a learner.</p>
           <ul>
             <li>Create your own separate academy</li>
             <li>Add text, video, and quizzes</li>

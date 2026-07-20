@@ -153,7 +153,7 @@ test("guides new members into creating or learning with a low-friction join flow
   assert.match(home, /Build my academy free/);
   assert.match(login, /No payment details/);
   assert.match(login, /emailRedirectTo: new URL\(destination/);
-  assert.match(welcome, /Build my first course/);
+  assert.match(welcome, /Create my academy and first module/);
   assert.match(welcome, /Start a practical free course/);
   assert.match(course, /enrol=1/);
   assert.match(course, /Joining your course/);
