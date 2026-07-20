@@ -23,18 +23,17 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [joiningCourseDetail, setJoiningCourseDetail] = useState<JoiningCourse | null>(null);
   const supabase = getSupabaseBrowser();
-  const requestedDestination = typeof window === "undefined"
-    ? "/welcome"
-    : safeDestination(new URLSearchParams(location.search).get("next"));
+  const requestedDestination = safeDestination(searchParams.get("next"));
   const [joiningAs, setJoiningAs] = useState<"learner" | "coach" | "creator" | "">(() => onboardingPathFrom(requestedDestination) || (requestedDestination === "/welcome" ? "learner" : ""));
+  const directedRole = onboardingPathFrom(requestedDestination);
+  const selectedRole = directedRole || joiningAs;
   // A role describes the account; it must never discard the page the person was trying to reach.
-  const destination = requestedDestination === "/welcome" && joiningAs ? `/welcome?path=${joiningAs}` : requestedDestination;
+  const destination = requestedDestination === "/welcome" && selectedRole ? `/welcome?path=${selectedRole}` : requestedDestination;
   const joiningCourse = destination.startsWith("/courses/");
   const joiningCourseId = joiningCourse
     ? destination.split("?")[0].split("/").filter(Boolean)[1] || ""
     : "";
   const onboardingPath = onboardingPathFrom(destination);
-  const directedRole = onboardingPathFrom(requestedDestination);
 
   useEffect(() => {
     if (!supabase) return;
@@ -71,7 +70,7 @@ export default function LoginPage() {
           password,
           options: {
             emailRedirectTo: new URL(destination, location.origin).toString(),
-            data: joiningAs || onboardingPath ? { onboarding_path: joiningAs || onboardingPath } : undefined,
+            data: selectedRole || onboardingPath ? { onboarding_path: selectedRole || onboardingPath } : undefined,
           },
         });
 
@@ -124,8 +123,8 @@ export default function LoginPage() {
       <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
       <div className="auth-layout">
         <aside className="auth-promise">
-          <p className="sys-kicker">{joiningCourse ? "YOUR COURSE IS READY" : "START WITH A CLEAR NEXT STEP"}</p>
-          <h1>{joiningCourse ? "Join once. Start learning next." : "Turn your knowledge into useful progress."}</h1>
+          <p className="sys-kicker">{joiningCourse ? "YOUR COURSE IS READY" : directedRole === "creator" ? "CREATE YOUR ACADEMY" : directedRole === "coach" ? "SET UP YOUR TUTOR PROFILE" : "START WITH A CLEAR NEXT STEP"}</p>
+          <h1>{joiningCourse ? "Join once. Start learning next." : directedRole === "creator" ? "Build under your own academy name." : directedRole === "coach" ? "Make your expertise available." : "Turn your knowledge into useful progress."}</h1>
           <p>{joiningCourse
             ? "Create your free account and we will enrol you in the course automatically."
             : "One free account lets you build a course, advertise coaching, or start learning."}</p>
@@ -139,8 +138,8 @@ export default function LoginPage() {
           </div>}
           <ul>
             <li><span>01</span><div><b>Create one free account</b><small>Use Google or email. No payment details.</small></div></li>
-            <li><span>02</span><div><b>Choose your path</b><small>Create, advertise your coaching, or start learning immediately.</small></div></li>
-            <li><span>03</span><div><b>Keep everything together</b><small>Your courses, progress, and community stay in one place.</small></div></li>
+            <li><span>02</span><div><b>{directedRole === "creator" ? "Create your academy" : "Choose your path"}</b><small>{directedRole === "creator" ? "Name your academy, build its modules, and teach under your own brand." : "Build and teach modules, offer tutoring, or start learning immediately."}</small></div></li>
+            <li><span>03</span><div><b>{directedRole === "creator" ? "Build a learning movement" : "Belong to something that grows"}</b><small>{directedRole === "creator" ? "Bring your teaching, learners, live sessions, progress, and community into one academy people want to belong to." : "Your modules, achievements, conversations, and people grow together in one learning home."}</small></div></li>
           </ul>
           <p className="auth-reassurance">Free starter access · No credit card · Switch paths anytime</p>
         </aside>
@@ -152,7 +151,11 @@ export default function LoginPage() {
           <p>{mode === "signup"
             ? joiningCourse
               ? "You are one short step away from starting this course."
-              : "Start creating or learning. You can decide after joining."
+              : directedRole === "creator"
+                ? "Create the account that owns your academy. After Google or email, you will name the academy and enter its workspace."
+                : directedRole === "coach"
+                  ? "Create the account behind your public tutor profile and session enquiries."
+                  : "Start learning. You can add creator or tutor access later."
             : "Return to your courses, learning, and community."}</p>
 
           {!joiningCourse && !directedRole && <fieldset className="auth-role-picker">
