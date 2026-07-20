@@ -679,6 +679,65 @@ test("publishes academy tutors and protects learner enquiry details", async () =
   );
 });
 
+test("protects two-way session ratings until the blind reveal condition is met", async () => {
+  const db = await migratedDatabase();
+  const now = Date.now();
+  db.exec(`
+    INSERT INTO learner_session_ratings
+      (id,inquiry_id,tutor_id,school_id,learner_id,rated_by,rating,tags_json,
+       private_note,status,visible_after,created_at,updated_at)
+    VALUES
+      ('lr-one','session-one','coach-one','school-one','learner-one','owner-one',
+       3,'["needs_preparation"]','Private operational context','pending',
+       ${now + 604800000},${now},${now}),
+      ('lr-two','session-two','coach-two','school-two','learner-one','owner-two',
+       4,'["engaged"]','','published',${now},${now},${now}),
+      ('lr-three','session-three','coach-three','school-three','learner-one','owner-three',
+       5,'["prepared","respectful"]','','pending',${now - 1},${now},${now});
+  `);
+  const beforeReveal = db.prepare(`
+    SELECT COUNT(*) AS count,ROUND(AVG(rating),1) AS averageRating
+    FROM learner_session_ratings
+    WHERE learner_id='learner-one'
+      AND (status='published' OR (status='pending' AND visible_after<=?))
+  `).get(now);
+  assert.deepEqual({ ...beforeReveal }, { count: 2, averageRating: 4.5 });
+
+  db.exec(`
+    INSERT INTO tutor_reviews
+      (id,inquiry_id,tutor_id,school_id,learner_id,rating,tags_json,comment,
+       status,visible_after,created_at,updated_at)
+    VALUES
+      ('tr-one','session-one','coach-one','school-one','learner-one',4,
+       '["supportive"]','Helpful session.','pending',${now + 604800000},${now},${now});
+    UPDATE learner_session_ratings
+      SET status='published',visible_after=${now},updated_at=${now}
+      WHERE inquiry_id='session-one' AND status='pending';
+    UPDATE tutor_reviews
+      SET status='published',visible_after=${now},updated_at=${now}
+      WHERE inquiry_id='session-one' AND status='pending';
+  `);
+  const afterReveal = db.prepare(`
+    SELECT COUNT(*) AS count,ROUND(AVG(rating),1) AS averageRating
+    FROM learner_session_ratings
+    WHERE learner_id='learner-one'
+      AND (status='published' OR (status='pending' AND visible_after<=?))
+  `).get(now);
+  assert.deepEqual({ ...afterReveal }, { count: 3, averageRating: 4 });
+  assert.equal(
+    db.prepare("SELECT status FROM tutor_reviews WHERE inquiry_id='session-one'").get().status,
+    "published",
+  );
+  assert.throws(() => db.exec(`
+    INSERT INTO learner_session_ratings
+      (id,inquiry_id,tutor_id,school_id,learner_id,rated_by,rating,
+       status,visible_after,created_at,updated_at)
+    VALUES
+      ('lr-duplicate','session-one','coach-one','school-one','learner-one',
+       'owner-one',5,'published',${now},${now},${now});
+  `), /UNIQUE constraint failed/);
+});
+
 test("security policy limits abusive writes and rejects oversized JSON", async () => {
   assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/uploads", { method: "POST" })),
@@ -695,6 +754,10 @@ test("security policy limits abusive writes and rejects oversized JSON", async (
   assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/tutor-reviews", { method: "POST" })),
     { scope: "tutor_review", limit: 5, windowMs: 86_400_000 },
+  );
+  assert.deepEqual(
+    rateLimitPolicy(new Request("https://northstarlabs.co.za/api/learner-ratings", { method: "POST" })),
+    { scope: "learner_rating", limit: 10, windowMs: 86_400_000 },
   );
   assert.equal(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/catalog")),

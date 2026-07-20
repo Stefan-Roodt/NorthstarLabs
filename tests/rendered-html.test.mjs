@@ -649,10 +649,38 @@ test("ships independent coach verification and completed-session learner proof",
   assert.match(admin, /Coach trust/);
   assert.match(coachDesk, /Profile strength/);
   assert.match(coachDesk, /Submit for verification/);
-  assert.match(learnerDesk, /Publish verified review/);
+  assert.match(learnerDesk, /Submit anonymous rating/);
   assert.match(publicProfile, /VERIFIED LEARNER PROOF/);
   assert.match(tutorHelper, /tutorProfileCompleteness/);
   assert.match(email, /tutor_review_request/);
+});
+
+test("ships protected two-way ratings after completed coaching sessions", async () => {
+  const [migration, learnerRatingsApi, tutorReviewsApi, inquiriesApi, policy, coachDesk, learnerDesk, admin] = await Promise.all([
+    readFile(new URL("../drizzle/0022_good_microbe.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/learner-ratings/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/tutor-reviews/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/tutor-inquiries/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/tutor-rating-policy.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/tutors/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/tutoring/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(migration, /CREATE TABLE `learner_session_ratings`/);
+  assert.match(migration, /learner_session_ratings_inquiry_unique/);
+  assert.match(migration, /`visible_after` integer/);
+  assert.match(learnerRatingsApi, /inquiry\.status !== "completed"/);
+  assert.match(learnerRatingsApi, /The 14-day rating window/);
+  assert.match(learnerRatingsApi, /UPDATE tutor_reviews/);
+  assert.match(tutorReviewsApi, /UPDATE learner_session_ratings/);
+  assert.match(tutorReviewsApi, /reviewerName: "Verified learner"/);
+  assert.match(inquiriesApi, /learnerAverageRating/);
+  assert.match(policy, /BLIND_RATING_PERIOD_MS = 7/);
+  assert.match(policy, /MINIMUM_LEARNER_RATINGS = 3/);
+  assert.match(coachDesk, /Submit private rating/);
+  assert.match(learnerDesk, /PRIVATE LEARNER REPUTATION/);
+  assert.match(learnerDesk, /seven-day blind period/);
+  assert.match(admin, /Private reputation safeguards/);
 });
 
 test("parses browser byte ranges safely", async () => {

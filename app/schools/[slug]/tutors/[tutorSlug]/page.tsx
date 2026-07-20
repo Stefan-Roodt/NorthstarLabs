@@ -57,10 +57,24 @@ type AvailableSlot = {
 type TutorReview = {
   id: string;
   rating: number;
+  tags: string[];
   comment: string;
   reviewerName: string;
   createdAt: number;
   verifiedSession: boolean;
+};
+
+const reviewTagLabels: Record<string, string> = {
+  clear_explanations: "Clear explanations",
+  knowledgeable: "Knowledgeable",
+  supportive: "Supportive",
+  prepared: "Prepared",
+  punctual: "On time",
+  needs_clearer_explanations: "Explanations need work",
+  knowledge_gap: "Knowledge gap",
+  limited_support: "Limited support",
+  unprepared: "Unprepared",
+  late: "Late",
 };
 
 function whatsappLink(number: string) {
@@ -214,6 +228,7 @@ export default function TutorDetailPage({ params }: {
           <div><p className="sys-kicker">VERIFIED LEARNER PROOF</p><h2>{reviews.length ? "What learners experienced." : "Reviews will appear after completed sessions."}</h2><p>Only learners connected to a completed NorthstarLabs session can publish a review.</p></div>
           {reviews.length > 0 && <div>{reviews.map((review) => <article key={review.id}>
             <header><strong>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</strong><span>✓ VERIFIED SESSION</span></header>
+            {review.tags.length > 0 && <div className="tutor-review-tags">{review.tags.map((tag) => <span key={tag}>{reviewTagLabels[tag] || tag.replaceAll("_", " ")}</span>)}</div>}
             {review.comment && <blockquote>{review.comment}</blockquote>}
             <footer><b>{review.reviewerName}</b><time>{new Date(review.createdAt).toLocaleDateString("en-ZA", { month: "short", year: "numeric" })}</time></footer>
           </article>)}</div>}

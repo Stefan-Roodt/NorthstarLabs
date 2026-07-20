@@ -4,6 +4,11 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { coachListingPlans } from "../../../lib/coach-listing-plans";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
+import {
+  learnerImprovementTags,
+  learnerPraiseTags,
+  RATING_WINDOW_MS,
+} from "../../../lib/tutor-rating-policy";
 
 type Tutor = {
   id: string;
@@ -56,12 +61,16 @@ type Inquiry = {
   status: string;
   creatorNote: string;
   createdAt: number;
+  updatedAt: number;
   startsAt: number | null;
   endsAt: number | null;
   timezone: string | null;
   sessionMode: string | null;
   meetingDetails: string | null;
   slotStatus: string | null;
+  learnerRatingId: string | null;
+  learnerRatingCount: number;
+  learnerAverageRating: number | null;
 };
 
 type TutorSlot = {
@@ -144,6 +153,19 @@ const emptyDraft: TutorDraft = {
   showDirectContact: false,
 };
 
+const learnerRatingTagLabels: Record<string, string> = {
+  prepared: "Prepared",
+  engaged: "Engaged",
+  punctual: "On time",
+  communicative: "Communicative",
+  respectful: "Respectful",
+  needs_preparation: "Needs preparation",
+  low_engagement: "Low engagement",
+  late: "Late",
+  communication_issue: "Communication issue",
+  conduct_concern: "Conduct concern",
+};
+
 function list(value: string) {
   return value.split(",").map((item) => item.trim()).filter(Boolean);
 }
@@ -157,6 +179,9 @@ export default function TutorAdminPage() {
   const [editingId, setEditingId] = useState("");
   const [draft, setDraft] = useState<TutorDraft>(emptyDraft);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [learnerRatings, setLearnerRatings] = useState<Record<string, number>>({});
+  const [learnerRatingTags, setLearnerRatingTags] = useState<Record<string, string[]>>({});
+  const [learnerRatingNotes, setLearnerRatingNotes] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("Opening your tutor desk…");
   const [busy, setBusy] = useState("");
   const [slotTutorId, setSlotTutorId] = useState("");
@@ -358,6 +383,45 @@ export default function TutorAdminPage() {
     const result = await response.json();
     setMessage(response.ok ? `Enquiry marked ${status}.` : result.error || "The enquiry could not be updated.");
     await load();
+    setBusy("");
+  }
+
+  function chooseLearnerRating(inquiryId: string, rating: number) {
+    setLearnerRatings((current) => ({ ...current, [inquiryId]: rating }));
+    setLearnerRatingTags((current) => ({ ...current, [inquiryId]: [] }));
+  }
+
+  function toggleLearnerRatingTag(inquiryId: string, tag: string) {
+    setLearnerRatingTags((current) => {
+      const tags = current[inquiryId] || [];
+      return {
+        ...current,
+        [inquiryId]: tags.includes(tag)
+          ? tags.filter((item) => item !== tag)
+          : [...tags, tag],
+      };
+    });
+  }
+
+  async function submitLearnerRating(inquiry: Inquiry) {
+    setBusy(`learner-rating-${inquiry.id}`);
+    setMessage("");
+    const response = await authed("/api/learner-ratings", {
+      method: "POST",
+      body: JSON.stringify({
+        inquiryId: inquiry.id,
+        rating: learnerRatings[inquiry.id] || 0,
+        tags: learnerRatingTags[inquiry.id] || [],
+        privateNote: learnerRatingNotes[inquiry.id] || "",
+      }),
+    });
+    const result = await response.json();
+    setMessage(response.ok
+      ? result.status === "published"
+        ? `Both sides have rated this session. ${inquiry.learnerName}'s private aggregate has been updated.`
+        : `Rating saved. It stays sealed until the learner responds or the seven-day blind period ends.`
+      : result.error || "The learner rating could not be saved.");
+    if (response.ok) await load();
     setBusy("");
   }
 
@@ -649,7 +713,33 @@ export default function TutorAdminPage() {
                 : inquiry.preferredTimes || "Not supplied"}</dd></div>
             </dl>
             {inquiry.startsAt && <p className="tutor-booking-note"><b>{inquiry.slotStatus === "booked" ? "Confirmed" : "Reserved while you decide"}:</b> {inquiry.timezone}{inquiry.status === "booked" && inquiry.meetingDetails ? ` · ${inquiry.meetingDetails}` : ""}</p>}
+            {Number(inquiry.learnerRatingCount || 0) > 0 && <div className="learner-reputation-summary">
+              <span>Private learner reputation</span>
+              {inquiry.learnerAverageRating === null
+                ? <b>{inquiry.learnerRatingCount} of 3 verified ratings</b>
+                : <b>{inquiry.learnerAverageRating} ★ · {inquiry.learnerRatingCount} verified sessions</b>}
+              <small>{inquiry.learnerAverageRating === null
+                ? "The score stays hidden until three ratings protect individual coach anonymity."
+                : "Use this as context, never as an automatic reason to reject a learner."}</small>
+            </div>}
             <label>Private team note<textarea value={notes[inquiry.id] || ""} onChange={(event) => setNotes((current) => ({ ...current, [inquiry.id]: event.target.value }))} maxLength={1000} placeholder="What was agreed, follow-up date, or booking details." /></label>
+            {inquiry.status === "completed" && !inquiry.learnerRatingId && inquiry.updatedAt + RATING_WINDOW_MS >= Date.now() && <section className="coach-rates-learner">
+              <p className="sys-kicker">PRIVATE TWO-WAY RATING</p>
+              <h4>How did {inquiry.learnerName} participate?</h4>
+              <div className="coach-rating-stars" aria-label="Choose a learner rating">{[1, 2, 3, 4, 5].map((value) =>
+                <button aria-label={`${value} star${value === 1 ? "" : "s"}`} aria-pressed={learnerRatings[inquiry.id] === value} key={value} onClick={() => chooseLearnerRating(inquiry.id, value)} type="button">★</button>
+              )}</div>
+              {Number(learnerRatings[inquiry.id] || 0) > 0 && <div className="rating-tag-picker">
+                {(learnerRatings[inquiry.id] === 5 ? learnerPraiseTags : learnerImprovementTags).map((tag) =>
+                  <button aria-pressed={(learnerRatingTags[inquiry.id] || []).includes(tag)} key={tag} onClick={() => toggleLearnerRatingTag(inquiry.id, tag)} type="button">{learnerRatingTagLabels[tag]}</button>
+                )}
+              </div>}
+              <label>Private academy note (optional)<textarea value={learnerRatingNotes[inquiry.id] || ""} onChange={(event) => setLearnerRatingNotes((current) => ({ ...current, [inquiry.id]: event.target.value }))} maxLength={600} placeholder="Operational context for the academy team. This is never shown publicly or to other coaches." /></label>
+              <button className="sys-primary" disabled={busy === `learner-rating-${inquiry.id}` || !learnerRatings[inquiry.id] || (learnerRatings[inquiry.id] < 5 && !(learnerRatingTags[inquiry.id] || []).length)} onClick={() => submitLearnerRating(inquiry)} type="button">{busy === `learner-rating-${inquiry.id}` ? "Saving…" : "Submit private rating"}</button>
+              <small>The rating stays sealed until both sides submit or seven days pass. Learners see only an aggregate after three ratings.</small>
+            </section>}
+            {inquiry.status === "completed" && !inquiry.learnerRatingId && inquiry.updatedAt + RATING_WINDOW_MS < Date.now() && <p className="tutoring-rating-closed">The 14-day rating window for this session has closed.</p>}
+            {inquiry.learnerRatingId && <p className="tutoring-reviewed">✓ Your private learner rating has been submitted.</p>}
             <div className="tutor-inquiry-actions">
               <a href={`mailto:${inquiry.learnerEmail}?subject=${encodeURIComponent(`Tutoring: ${inquiry.subject}`)}`}>Reply by email</a>
               {inquiry.phoneNumber && <a href={`tel:${inquiry.phoneNumber}`}>Call learner</a>}

@@ -77,6 +77,7 @@ type TutorTrustData = {
     verifiedCredentials: number;
     verifiedProfiles: number;
     publishedReviews: number;
+    learnerRatings: number;
   };
   credentials: Array<{
     id: string;
@@ -107,12 +108,40 @@ type TutorTrustData = {
     schoolName: string;
     reviewerName: string;
   }>;
+  learnerRatings: Array<{
+    id: string;
+    inquiryId: string;
+    tutorId: string;
+    schoolId: string;
+    learnerId: string;
+    rating: number;
+    tagsJson: string;
+    privateNote: string;
+    status: string;
+    visibleAfter: number;
+    createdAt: number;
+    tutorName: string;
+    schoolName: string;
+    learnerName: string;
+    ratedBy: string;
+  }>;
 };
 
 function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(0, Math.round(bytes / 1024))} KB`;
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
+function ratingTags(value: string) {
+  try {
+    const tags = JSON.parse(value);
+    return Array.isArray(tags)
+      ? tags.filter((tag): tag is string => typeof tag === "string")
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 export default function PlatformAdministration() {
@@ -281,6 +310,29 @@ export default function PlatformAdministration() {
     setBusy("");
   }
 
+  async function moderateLearnerRating(
+    learnerRatingId: string,
+    status: "hidden" | "published",
+  ) {
+    setBusy(learnerRatingId);
+    const response = await fetch("/api/platform/tutor-trust", {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${await token()}`,
+      },
+      body: JSON.stringify({ learnerRatingId, status }),
+    });
+    const result = await response.json();
+    setMessage(response.ok
+      ? status === "hidden"
+        ? "Learner rating removed from the private aggregate."
+        : "Learner rating restored to the private aggregate."
+      : result.error || "Learner-rating moderation failed.");
+    if (response.ok) await loadTutorTrust();
+    setBusy("");
+  }
+
   if (!data) return <main className="system-loading"><div><b>Platform administration</b><p>{message}</p>{message.includes("required") && <Link href="/">Return home</Link>}</div></main>;
 
   return <main className="platform-admin">
@@ -347,6 +399,7 @@ export default function PlatformAdministration() {
             <div><span>Verified credentials</span><strong>{tutorTrust.metrics.verifiedCredentials || 0}</strong><small>Across all coach profiles</small></div>
             <div><span>Verified profiles</span><strong>{tutorTrust.metrics.verifiedProfiles || 0}</strong><small>At least one approved credential</small></div>
             <div><span>Verified reviews</span><strong>{tutorTrust.metrics.publishedReviews || 0}</strong><small>From completed sessions</small></div>
+            <div><span>Private learner ratings</span><strong>{tutorTrust.metrics.learnerRatings || 0}</strong><small>Eligible for protected aggregates</small></div>
           </div>
           <div className="tutor-trust-list">
             {tutorTrust.credentials.length ? tutorTrust.credentials.map((credential) => <section key={credential.id}>
@@ -370,6 +423,15 @@ export default function PlatformAdministration() {
               <p>{review.comment || "Rating submitted without a written comment."}</p>
               <button disabled={busy === review.id} onClick={() => moderateTutorReview(review.id, review.status === "published" ? "hidden" : "published")}>{review.status === "published" ? "Hide review" : "Republish review"}</button>
             </article>) : <p>No completed-session reviews have been published yet.</p>}</div>
+          </section>
+          <section className="tutor-review-moderation">
+            <div className="operations-heading"><div><p className="sys-kicker">COACH-TO-LEARNER RATINGS</p><h2>Private reputation safeguards</h2><p>These ratings are never public. Moderate only abuse or demonstrably unfair feedback; private notes must not be shared with other coaches.</p></div><span>{tutorTrust.learnerRatings.length} submitted</span></div>
+            <div>{tutorTrust.learnerRatings.length ? tutorTrust.learnerRatings.map((rating) => <article key={rating.id}>
+              <header><div><b>{rating.rating} ★ · {rating.learnerName}</b><small>{rating.schoolName} · Coach: {rating.tutorName} · Rated by {rating.ratedBy} · {new Date(rating.createdAt).toLocaleDateString("en-ZA")}</small></div><span className={`delivery-status ${rating.status}`}>{rating.status}</span></header>
+              {ratingTags(rating.tagsJson).length > 0 && <p>{ratingTags(rating.tagsJson).map((tag) => tag.replaceAll("_", " ")).join(" · ")}</p>}
+              {rating.privateNote && <blockquote><b>Private academy note:</b> {rating.privateNote}</blockquote>}
+              <button disabled={busy === rating.id} onClick={() => moderateLearnerRating(rating.id, rating.status === "hidden" ? "published" : "hidden")}>{rating.status === "hidden" ? "Restore rating" : "Remove from aggregate"}</button>
+            </article>) : <p>No coach-to-learner ratings have been submitted yet.</p>}</div>
           </section>
         </>}
       </article>}

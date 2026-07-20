@@ -8,6 +8,10 @@ import {
   requireCreatorSchool,
 } from "../../../lib/school-access";
 import { requireApiUser } from "../../../lib/server-auth";
+import {
+  MINIMUM_LEARNER_RATINGS,
+  visibleLearnerRatingSql,
+} from "../../../lib/tutor-rating-policy";
 
 const inquiryStatuses = new Set(["new", "contacted", "booked", "completed", "closed", "declined"]);
 const contactPreferences = new Set(["email", "phone", "whatsapp"]);
@@ -37,7 +41,11 @@ export async function GET(request: Request) {
         ts.starts_at AS startsAt,ts.ends_at AS endsAt,ts.timezone,
         ts.session_mode AS sessionMode,
         CASE WHEN ti.status IN ('booked','completed') THEN ts.meeting_details ELSE '' END AS meetingDetails,
-        (SELECT tr.id FROM tutor_reviews tr WHERE tr.inquiry_id=ti.id LIMIT 1) AS reviewId
+        (SELECT tr.id FROM tutor_reviews tr WHERE tr.inquiry_id=ti.id LIMIT 1) AS reviewId,
+        (SELECT tr.status FROM tutor_reviews tr WHERE tr.inquiry_id=ti.id LIMIT 1) AS reviewStatus,
+        (SELECT tr.visible_after FROM tutor_reviews tr WHERE tr.inquiry_id=ti.id LIMIT 1) AS reviewVisibleAfter,
+        (SELECT lr.id FROM learner_session_ratings lr
+          WHERE lr.inquiry_id=ti.id LIMIT 1) AS coachRatingId
        FROM tutor_inquiries ti
        JOIN tutors t ON t.id=ti.tutor_id
        JOIN schools s ON s.id=ti.school_id
@@ -60,7 +68,15 @@ export async function GET(request: Request) {
       ti.updated_at AS updatedAt,t.display_name AS tutorName,
       t.slug AS tutorSlug,ts.starts_at AS startsAt,ts.ends_at AS endsAt,
       ts.timezone,ts.session_mode AS sessionMode,
-      ts.meeting_details AS meetingDetails,ts.status AS slotStatus
+      ts.meeting_details AS meetingDetails,ts.status AS slotStatus,
+      (SELECT lr.id FROM learner_session_ratings lr
+        WHERE lr.inquiry_id=ti.id LIMIT 1) AS learnerRatingId,
+      (SELECT COUNT(*) FROM learner_session_ratings lr
+        WHERE lr.learner_id=ti.learner_id AND ${visibleLearnerRatingSql}) AS learnerRatingCount,
+      (SELECT CASE WHEN COUNT(*)>=${MINIMUM_LEARNER_RATINGS}
+        THEN ROUND(AVG(lr.rating),1) ELSE NULL END
+       FROM learner_session_ratings lr
+       WHERE lr.learner_id=ti.learner_id AND ${visibleLearnerRatingSql}) AS learnerAverageRating
      FROM tutor_inquiries ti
      JOIN tutors t ON t.id=ti.tutor_id
      LEFT JOIN tutor_slots ts ON ts.id=ti.slot_id
@@ -342,8 +358,10 @@ export async function PATCH(request: Request) {
     `SELECT ti.id,ti.status,ti.slot_id AS slotId,
       ti.learner_id AS learnerId,ti.learner_name AS learnerName,
       ti.learner_email AS learnerEmail,
-      t.display_name AS tutorName,t.id AS tutorId,
+      t.display_name AS tutorName,t.id AS tutorId,t.user_id AS tutorUserId,
+      t.contact_email AS tutorEmail,
       s.name AS schoolName,s.primary_color AS primaryColor,
+      s.support_email AS supportEmail,
       ts.starts_at AS startsAt,ts.ends_at AS endsAt,ts.timezone,
       ts.meeting_details AS meetingDetails,ts.status AS slotStatus
      FROM tutor_inquiries ti
@@ -360,8 +378,11 @@ export async function PATCH(request: Request) {
     learnerEmail: string;
     tutorName: string;
     tutorId: string;
+    tutorUserId: string | null;
+    tutorEmail: string;
     schoolName: string;
     primaryColor: string;
+    supportEmail: string;
     startsAt: number | null;
     endsAt: number | null;
     timezone: string | null;
@@ -444,6 +465,23 @@ export async function PATCH(request: Request) {
       },
       idempotencyKey: `tutor-review-request:${inquiry.id}`,
     }).catch(() => ({ id: "", status: "pending" }));
+    const coachRecipient = inquiry.tutorEmail || inquiry.supportEmail;
+    if (coachRecipient) {
+      await queueEmail({
+        schoolId: school.id,
+        recipientUserId: inquiry.tutorUserId,
+        recipientEmail: coachRecipient,
+        templateKey: "learner_rating_request",
+        variables: {
+          academy: inquiry.schoolName,
+          learner: inquiry.learnerName,
+          tutor: inquiry.tutorName,
+          primaryColor: inquiry.primaryColor,
+          actionUrl: `${new URL(request.url).origin}/dashboard/tutors?inquiry=${inquiry.id}`,
+        },
+        idempotencyKey: `learner-rating-request:${inquiry.id}`,
+      }).catch(() => ({ id: "", status: "pending" }));
+    }
   }
   await writeAuditLog({
     actorId: user.id,

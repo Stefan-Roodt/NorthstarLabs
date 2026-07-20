@@ -37,6 +37,9 @@ export type TutorRow = {
   averageRating?: number | null;
 };
 
+const visibleTutorReviewSql =
+  "(tr.status='published' OR (tr.status='pending' AND tr.visible_after<=CAST(strftime('%s','now') AS INTEGER)*1000))";
+
 export const tutorColumns = `t.id,t.school_id AS schoolId,t.user_id AS userId,
   t.created_by AS createdBy,t.slug,t.display_name AS displayName,
   t.headline,t.bio,t.service_type AS serviceType,t.subjects_json AS subjectsJson,
@@ -53,9 +56,9 @@ export const tutorColumns = `t.id,t.school_id AS schoolId,t.user_id AS userId,
   (SELECT COUNT(*) FROM tutor_credentials tc
     WHERE tc.tutor_id=t.id AND tc.status='verified') AS verifiedCredentialCount,
   (SELECT COUNT(*) FROM tutor_reviews tr
-    WHERE tr.tutor_id=t.id AND tr.status='published') AS reviewCount,
+    WHERE tr.tutor_id=t.id AND ${visibleTutorReviewSql}) AS reviewCount,
   (SELECT ROUND(AVG(tr.rating),1) FROM tutor_reviews tr
-    WHERE tr.tutor_id=t.id AND tr.status='published') AS averageRating`;
+    WHERE tr.tutor_id=t.id AND ${visibleTutorReviewSql}) AS averageRating`;
 
 function parseList(value: string) {
   try {

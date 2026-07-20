@@ -8,6 +8,7 @@ export type EmailTemplateKey =
   | "tutor_enquiry"
   | "tutor_booking_update"
   | "tutor_review_request"
+  | "learner_rating_request"
   | "tutor_booking_cancelled"
   | "creator_summary"
   | "test";
@@ -124,6 +125,16 @@ function templateContent(templateKey: EmailTemplateKey, values: EmailVariables) 
       detail: "Only learners from completed NorthstarLabs sessions can publish a verified-session review.",
     };
   }
+  if (templateKey === "learner_rating_request") {
+    return {
+      subject: `Rate your completed session with ${values.learner || "your learner"}`,
+      heading: "Complete the two-way session rating",
+      intro: `Your session with ${values.learner || "the learner"} is complete. Add a private rating while the details are still fresh.`,
+      actionLabel: "Rate completed session",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: "The learner sees only a protected aggregate after at least three ratings. Private academy notes are never shared publicly or with other coaches.",
+    };
+  }
   if (templateKey === "tutor_booking_cancelled") {
     return {
       subject: `Tutoring appointment cancelled by ${values.learner || "a learner"}`,
@@ -198,6 +209,7 @@ async function emailAllowed(userId: string | null | undefined, templateKey: Emai
   if (templateKey === "tutor_enquiry") return true;
   if (templateKey === "tutor_booking_update") return true;
   if (templateKey === "tutor_review_request") return true;
+  if (templateKey === "learner_rating_request") return true;
   if (templateKey === "tutor_booking_cancelled") return true;
   if (templateKey === "creator_summary") return Boolean(preferences.creatorSummaries);
   return true;

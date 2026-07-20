@@ -416,14 +416,43 @@ export const tutorReviews = sqliteTable("tutor_reviews", {
   schoolId: text("school_id").notNull(),
   learnerId: text("learner_id").notNull(),
   rating: integer("rating").notNull(),
+  tagsJson: text("tags_json").notNull().default("[]"),
   comment: text("comment").notNull().default(""),
-  status: text("status").notNull().default("published"),
+  status: text("status").notNull().default("pending"),
+  visibleAfter: integer("visible_after").notNull().default(0),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 }, (table) => [
   uniqueIndex("tutor_reviews_inquiry_unique").on(table.inquiryId),
   index("tutor_reviews_tutor_status_created_idx").on(table.tutorId, table.status, table.createdAt),
   index("tutor_reviews_learner_created_idx").on(table.learnerId, table.createdAt),
+]);
+export const learnerSessionRatings = sqliteTable("learner_session_ratings", {
+  id: text("id").primaryKey(),
+  inquiryId: text("inquiry_id").notNull(),
+  tutorId: text("tutor_id").notNull(),
+  schoolId: text("school_id").notNull(),
+  learnerId: text("learner_id").notNull(),
+  ratedBy: text("rated_by").notNull(),
+  rating: integer("rating").notNull(),
+  tagsJson: text("tags_json").notNull().default("[]"),
+  privateNote: text("private_note").notNull().default(""),
+  status: text("status").notNull().default("pending"),
+  visibleAfter: integer("visible_after").notNull().default(0),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("learner_session_ratings_inquiry_unique").on(table.inquiryId),
+  index("learner_session_ratings_learner_status_created_idx").on(
+    table.learnerId,
+    table.status,
+    table.createdAt,
+  ),
+  index("learner_session_ratings_school_status_created_idx").on(
+    table.schoolId,
+    table.status,
+    table.createdAt,
+  ),
 ]);
 export const integrations = sqliteTable("integrations", {
   id: text("id").primaryKey(),
