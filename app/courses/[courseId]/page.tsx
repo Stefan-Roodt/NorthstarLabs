@@ -81,10 +81,13 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
       },
       body: JSON.stringify({ courseId: id }),
     });
+    const result = await response.json().catch(() => ({
+      error: "We could not enrol you. Please try again.",
+      newEnrollment: false,
+    }));
     if (response.ok) {
-      location.href = `/learn/${id}`;
+      location.href = `/learn/${id}${result.newEnrollment ? "?welcome=1" : ""}`;
     } else {
-      const result = await response.json().catch(() => ({ error: "We could not enrol you. Please try again." }));
       setMessage(result.error || "We could not enrol you. Please try again.");
       setEnrolling(false);
     }

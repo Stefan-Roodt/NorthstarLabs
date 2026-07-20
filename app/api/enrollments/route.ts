@@ -53,6 +53,7 @@ export async function POST(request: Request) {
   });
   return Response.json({
     enrolled: true,
+    newEnrollment: !existing,
     courseId,
     schoolId: course.schoolId,
     emailStatus: emailDelivery.status,

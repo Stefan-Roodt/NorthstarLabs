@@ -958,3 +958,23 @@ test("shows prospective learners the real curriculum, faculty, assessments, and 
   assert.match(styles, /\.course-module-list/);
   assert.match(styles, /\.course-completion-standard/);
 });
+
+test("keeps course context through registration and welcomes new enrolments into lesson one", async () => {
+  const [login, course, enrolments, learn, styles] = await Promise.all([
+    readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/enrollments/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/system.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(login, /YOU ARE JOINING/);
+  assert.match(login, /joiningCourseDetail\.title/);
+  assert.match(login, /assessmentCount/);
+  assert.match(enrolments, /newEnrollment: !existing/);
+  assert.match(course, /newEnrollment \? "\?welcome=1"/);
+  assert.match(learn, /YOU ARE ENROLLED/);
+  assert.match(learn, /Start my first lesson/);
+  assert.match(learn, /history\.replaceState/);
+  assert.match(styles, /\.auth-course-context/);
+  assert.match(styles, /\.first-lesson-welcome/);
+});

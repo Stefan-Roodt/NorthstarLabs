@@ -5,6 +5,13 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { getSupabaseBrowser } from "../../lib/supabase-client";
 
+type JoiningCourse = {
+  title: string;
+  lessonCount: number;
+  assessmentCount?: number;
+  schoolName?: string;
+};
+
 export default function LoginPage() {
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<"login" | "signup">(
@@ -14,11 +21,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [joiningCourseDetail, setJoiningCourseDetail] = useState<JoiningCourse | null>(null);
   const supabase = getSupabaseBrowser();
   const destination = typeof window === "undefined"
     ? "/welcome"
     : safeDestination(new URLSearchParams(location.search).get("next"));
   const joiningCourse = destination.startsWith("/courses/");
+  const joiningCourseId = joiningCourse
+    ? destination.split("?")[0].split("/").filter(Boolean)[1] || ""
+    : "";
   const onboardingPath = onboardingPathFrom(destination);
 
   useEffect(() => {
@@ -27,6 +38,17 @@ export default function LoginPage() {
       if (data.session) location.href = destination;
     });
   }, [destination, supabase]);
+
+  useEffect(() => {
+    if (!joiningCourseId) return;
+    fetch(`/api/catalog/${encodeURIComponent(joiningCourseId)}`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Course unavailable.");
+        return response.json() as Promise<JoiningCourse>;
+      })
+      .then(setJoiningCourseDetail)
+      .catch(() => setJoiningCourseDetail(null));
+  }, [joiningCourseId]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -102,6 +124,14 @@ export default function LoginPage() {
           <p>{joiningCourse
             ? "Create your free account and we will enrol you in the course automatically."
             : "One free account lets you build a course, advertise coaching, or start learning."}</p>
+          {joiningCourseDetail && <div className="auth-course-context">
+            <span>YOU ARE JOINING</span>
+            <b>{joiningCourseDetail.title}</b>
+            <small>
+              {joiningCourseDetail.schoolName || "NorthstarLabs"} · {joiningCourseDetail.lessonCount} lessons
+              {joiningCourseDetail.assessmentCount ? ` · ${joiningCourseDetail.assessmentCount} assessments` : ""}
+            </small>
+          </div>}
           <ul>
             <li><span>01</span><div><b>Create one free account</b><small>Use Google or email. No payment details.</small></div></li>
             <li><span>02</span><div><b>Choose your path</b><small>Create, advertise your coaching, or start learning immediately.</small></div></li>
@@ -113,7 +143,7 @@ export default function LoginPage() {
         <section className="auth-card">
           <Link className="auth-back" href="/">← Back to NorthstarLabs</Link>
           <p className="sys-kicker">{mode === "signup" ? "FREE ACCOUNT" : "WELCOME BACK"}</p>
-          <h2>{mode === "signup" ? "Create your account." : "Sign in and continue."}</h2>
+          <h2>{mode === "signup" ? joiningCourseDetail ? "Create your account to start." : "Create your account." : "Sign in and continue."}</h2>
           <p>{mode === "signup"
             ? joiningCourse
               ? "You are one short step away from starting this course."

@@ -184,10 +184,12 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
   const [quizResult, setQuizResult] = useState("");
   const [resourceMessage, setResourceMessage] = useState("");
   const [learnerMessage, setLearnerMessage] = useState("");
+  const [orientationDismissed, setOrientationDismissed] = useState(false);
   const [search, setSearch] = useState("");
   const [certificate, setCertificate] = useState<Certificate | null>(null);
   const searchParams = useSearchParams();
   const preview = searchParams.get("preview") === "1";
+  const showOrientation = !preview && searchParams.get("welcome") === "1" && !orientationDismissed;
   const supabase = getSupabaseBrowser();
 
   const token = useCallback(async () => {
@@ -478,6 +480,15 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
     "--acid": school.accentColor,
   } as CSSProperties : undefined;
 
+  function beginLearning() {
+    setOrientationDismissed(true);
+    history.replaceState({}, "", `/learn/${id}`);
+    document.querySelector<HTMLElement>(".learn-layout > section")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
+
   return <main className="learn-page" style={schoolStyle}>
     <header>
       <Link className="learner-school-brand" href={school ? `/schools/${school.slug}` : "/"}>
@@ -497,6 +508,19 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
           <Link href="/learn">My learning</Link>
         </div>}
     </header>
+    {showOrientation && <section className="first-lesson-welcome" aria-labelledby="first-lesson-title">
+      <div>
+        <p className="sys-kicker">YOU ARE ENROLLED</p>
+        <h2 id="first-lesson-title">Welcome to {title}.</h2>
+        <p>Your first lesson is open below. Progress saves automatically, so you can stop and return at any time.</p>
+      </div>
+      <ol>
+        <li><span>01</span><b>Start the lesson already open</b></li>
+        <li><span>02</span><b>Complete each required activity</b></li>
+        <li><span>03</span><b>Earn your verifiable certificate</b></li>
+      </ol>
+      <button className="sys-primary" onClick={beginLearning}>Start my first lesson →</button>
+    </section>}
     {!preview && certificate?.status === "active" && <div className="certificate-ready">
       <div><b>Course completed</b><span>Your verified NorthStarLabs certificate is ready.</span></div>
       <div><Link href={`/certificates/${certificate.code}`}>View certificate</Link><a href={`/api/certificates/${certificate.code}/pdf`}>Download PDF</a></div>
