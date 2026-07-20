@@ -6,6 +6,7 @@ type QuizQuestionInput = {
   prompt?: string;
   options?: string[];
   correctIndex?: number;
+  explanation?: string;
 };
 
 export async function POST(request: Request) {
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
     prompt: question.prompt?.trim() || "",
     options: (question.options || []).map((option) => option.trim()),
     correctIndex: Number(question.correctIndex || 0),
+    explanation: question.explanation?.trim().slice(0, 1200) || "",
   }));
   for (const question of questions) {
     if (
@@ -79,13 +81,14 @@ export async function POST(request: Request) {
     env.DB.prepare("DELETE FROM quiz_questions WHERE quiz_id=?").bind(quizId),
     ...questions.map((question, index) =>
       env.DB.prepare(
-        "INSERT INTO quiz_questions (id,quiz_id,prompt,options_json,correct_index,position) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO quiz_questions (id,quiz_id,prompt,options_json,correct_index,explanation,position) VALUES (?,?,?,?,?,?,?)",
       ).bind(
         crypto.randomUUID(),
         quizId,
         question.prompt,
         JSON.stringify(question.options),
         question.correctIndex,
+        question.explanation,
         index,
       )
     ),

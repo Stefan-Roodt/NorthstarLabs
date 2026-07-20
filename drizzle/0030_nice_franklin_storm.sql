@@ -1,0 +1,1 @@
+ALTER TABLE `quiz_questions` ADD `explanation` text DEFAULT '' NOT NULL;

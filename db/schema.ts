@@ -587,7 +587,7 @@ export const quizzes = sqliteTable("quizzes", {
   uniqueIndex("quizzes_lesson_unique").on(table.lessonId),
 ]);
 export const quizQuestions = sqliteTable("quiz_questions", {
-  id: text("id").primaryKey(), quizId: text("quiz_id").notNull(), prompt: text("prompt").notNull(), optionsJson: text("options_json").notNull(), correctIndex: integer("correct_index").notNull(), position: integer("position").notNull().default(0),
+  id: text("id").primaryKey(), quizId: text("quiz_id").notNull(), prompt: text("prompt").notNull(), optionsJson: text("options_json").notNull(), correctIndex: integer("correct_index").notNull(), explanation: text("explanation").notNull().default(""), position: integer("position").notNull().default(0),
 }, (table) => [
   index("quiz_questions_quiz_position_idx").on(table.quizId, table.position),
 ]);

@@ -18,6 +18,13 @@ type Quiz = {
   attemptsRemaining: number | null;
   questions: Array<{ id: string; prompt: string; options: string[] }>;
 };
+type QuizAnswerFeedback = {
+  questionId: string;
+  correct: boolean;
+  selectedAnswer: string;
+  correctAnswer: string;
+  explanation: string;
+};
 type Asset = {
   id: string | null;
   key: string;
@@ -183,6 +190,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
   const [loaded, setLoaded] = useState(false);
   const [answers, setAnswers] = useState<number[]>([]);
   const [quizResult, setQuizResult] = useState("");
+  const [quizFeedback, setQuizFeedback] = useState<QuizAnswerFeedback[]>([]);
   const [resourceMessage, setResourceMessage] = useState("");
   const [learnerMessage, setLearnerMessage] = useState("");
   const [orientationDismissed, setOrientationDismissed] = useState(false);
@@ -267,6 +275,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
     setCurrent(index);
     setAnswers([]);
     setQuizResult("");
+    setQuizFeedback([]);
     setResourceMessage("");
     setLearnerMessage("");
   }
@@ -359,6 +368,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       setCurrent(current + 1);
       setAnswers([]);
       setQuizResult("");
+      setQuizFeedback([]);
       setLearnerMessage("");
     }
   }
@@ -371,6 +381,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       setQuizResult("Choose an answer for every question.");
       return;
     }
+    setQuizFeedback([]);
     setQuizResult("Checking your answers…");
     const response = await fetch(`/api/quizzes/${lesson.id}`, {
       method: "POST",
@@ -389,11 +400,13 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       attemptCount?: number;
       bestScore?: number;
       attemptsRemaining?: number | null;
+      feedback?: QuizAnswerFeedback[];
     };
     if (!response.ok) {
       setQuizResult(result.error || "The quiz could not be submitted.");
       return;
     }
+    setQuizFeedback(result.feedback || []);
     const updatedLessons = lessons.map((item, index) => {
       if (item.id === lesson.id) {
         return {
@@ -437,6 +450,23 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
           : ` ${result.attemptsRemaining} attempt${result.attemptsRemaining === 1 ? "" : "s"} remain.`;
       setQuizResult(`You scored ${result.score}%. You need ${result.passingScore}% to pass.${attempts}`);
     }
+  }
+
+  function retryQuiz() {
+    setAnswers([]);
+    setQuizFeedback([]);
+    setQuizResult("");
+    document.querySelector<HTMLElement>(".learner-quiz")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
+
+  function reviewLesson() {
+    document.querySelector<HTMLElement>(".lesson-brief")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   }
 
   async function downloadResource(resource: Resource) {
@@ -659,15 +689,22 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
               {lesson.quiz.bestScore !== null && <span>Best score: {lesson.quiz.bestScore}%</span>}
             </div>}
           </div>
-          {lesson.quiz.questions.map((question, questionIndex) =>
-            <fieldset key={question.id}>
+          {lesson.quiz.questions.map((question, questionIndex) => {
+            const feedback = quizFeedback.find((item) => item.questionId === question.id);
+            return <fieldset
+              className={feedback ? (feedback.correct ? "answered-correctly" : "answered-incorrectly") : ""}
+              key={question.id}
+            >
               <legend>{questionIndex + 1}. {question.prompt}</legend>
               {question.options.map((option, optionIndex) =>
                 <label key={optionIndex}>
                   <input
                     type="radio"
                     name={`question-${question.id}`}
-                    disabled={!preview && lesson.quiz?.attemptsRemaining === 0 && !lesson.completed}
+                    disabled={!preview && (
+                      quizFeedback.length > 0 ||
+                      (lesson.quiz?.attemptsRemaining === 0 && !lesson.completed)
+                    )}
                     checked={answers[questionIndex] === optionIndex}
                     onChange={() => {
                       const next = [...answers];
@@ -678,8 +715,13 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
                   <span>{option}</span>
                 </label>
               )}
-            </fieldset>
-          )}
+              {feedback && <div className={`quiz-answer-feedback ${feedback.correct ? "correct" : "incorrect"}`}>
+                <b>{feedback.correct ? "Correct" : "Not yet"}</b>
+                {!feedback.correct && <span>Correct answer: {feedback.correctAnswer}</span>}
+                <p>{feedback.explanation}</p>
+              </div>}
+            </fieldset>;
+          })}
           {quizResult && <p className="quiz-result" role="status">{quizResult}</p>}
           {preview
             ? <div className="preview-completion-note">Quiz submission is disabled in creator preview.</div>
@@ -687,13 +729,25 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
               ? <button className="sys-primary" onClick={continueToNext}>
                   {current === lessons.length - 1 ? "Lesson complete" : "Continue to next lesson →"}
                 </button>
-              : <button
-                  className="sys-primary"
-                  disabled={lesson.quiz.attemptsRemaining === 0}
-                  onClick={submitQuiz}
-                >
-                  {lesson.quiz.attemptsRemaining === 0 ? "No attempts remaining" : "Submit quiz"}
-                </button>}
+              : quizFeedback.length > 0
+                ? <div className="quiz-retry-actions">
+                    <button type="button" onClick={reviewLesson}>Review lesson</button>
+                    <button
+                      className="sys-primary"
+                      type="button"
+                      disabled={lesson.quiz.attemptsRemaining === 0}
+                      onClick={retryQuiz}
+                    >
+                      {lesson.quiz.attemptsRemaining === 0 ? "No attempts remaining" : "Try again"}
+                    </button>
+                  </div>
+                : <button
+                    className="sys-primary"
+                    disabled={lesson.quiz.attemptsRemaining === 0}
+                    onClick={submitQuiz}
+                  >
+                    {lesson.quiz.attemptsRemaining === 0 ? "No attempts remaining" : "Submit quiz"}
+                  </button>}
         </section>}
 
         {!preview && <section className="learner-tools">

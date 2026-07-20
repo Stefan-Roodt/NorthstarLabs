@@ -1010,3 +1010,46 @@ Apply it.`);
   assert.match(styles, /\.lesson-brief/);
   assert.match(styles, /\.learn-page\.focus-mode/);
 });
+
+test("makes assessments teach with explanations, answer feedback, and guided retries", async () => {
+  const [editor, authoringApi, submissionApi, learner, styles, migration] = await Promise.all([
+    readFile(new URL("../app/dashboard/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/quizzes/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/quizzes/[lessonId]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/system.css", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0030_nice_franklin_storm.sql", import.meta.url), "utf8"),
+  ]);
+  const { buildQuizFeedback } = await import("../lib/quiz-feedback.ts");
+  const result = buildQuizFeedback([
+    {
+      id: "q1",
+      options: ["Proof", "Opinion"],
+      correctIndex: 0,
+      explanation: "Proof can be independently checked against evidence.",
+    },
+    {
+      id: "q2",
+      options: ["Guess", "Verify"],
+      correctIndex: 1,
+      explanation: "",
+    },
+  ], [0, 0]);
+
+  assert.equal(result.correct, 1);
+  assert.equal(result.feedback[0].correct, true);
+  assert.equal(result.feedback[1].correct, false);
+  assert.equal(result.feedback[1].selectedAnswer, "Guess");
+  assert.equal(result.feedback[1].correctAnswer, "Verify");
+  assert.match(result.feedback[1].explanation, /Revisit the lesson/);
+  assert.match(editor, /Why is the correct answer right/);
+  assert.match(editor, /assessment teaches, not only scores/);
+  assert.match(authoringApi, /question\.explanation/);
+  assert.match(submissionApi, /buildQuizFeedback/);
+  assert.match(submissionApi, /Choose one valid answer for every question/);
+  assert.match(learner, /Correct answer:/);
+  assert.match(learner, /Review lesson/);
+  assert.match(learner, /Try again/);
+  assert.match(styles, /\.quiz-answer-feedback/);
+  assert.match(migration, /ADD `explanation`/);
+});

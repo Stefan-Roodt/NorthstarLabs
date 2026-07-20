@@ -3,6 +3,7 @@ import { requireApiUser } from "../../../../lib/server-auth";
 import { updateCourseProgress } from "../../../../lib/course-progress";
 import { getLessonGate } from "../../../../lib/learner-controls";
 import { queueCertificateEmail } from "../../../../lib/email-service";
+import { buildQuizFeedback } from "../../../../lib/quiz-feedback";
 
 export async function POST(
   request: Request,
@@ -53,17 +54,36 @@ export async function POST(
   }
 
   const questions = await env.DB.prepare(
-    "SELECT correct_index AS correctIndex FROM quiz_questions WHERE quiz_id=? ORDER BY position,id",
-  ).bind(quiz.id).all<{ correctIndex: number }>();
+    `SELECT id,options_json AS optionsJson,correct_index AS correctIndex,explanation
+     FROM quiz_questions WHERE quiz_id=? ORDER BY position,id`,
+  ).bind(quiz.id).all<{
+    id: string;
+    optionsJson: string;
+    correctIndex: number;
+    explanation: string;
+  }>();
   if (!questions.results.length) {
     return Response.json({ error: "This quiz has no questions." }, { status: 409 });
   }
 
   const submitted = Array.isArray(answers) ? answers : [];
-  const correct = questions.results.reduce(
-    (total, question, index) => total + (submitted[index] === question.correctIndex ? 1 : 0),
-    0,
-  );
+  const feedbackQuestions = questions.results.map((question) => ({
+    id: question.id,
+    options: JSON.parse(question.optionsJson) as string[],
+    correctIndex: Number(question.correctIndex),
+    explanation: question.explanation || "",
+  }));
+  if (
+    submitted.length !== feedbackQuestions.length ||
+    submitted.some((answer, index) =>
+      !Number.isInteger(answer) ||
+      answer < 0 ||
+      answer >= feedbackQuestions[index].options.length
+    )
+  ) {
+    return Response.json({ error: "Choose one valid answer for every question." }, { status: 400 });
+  }
+  const { correct, feedback } = buildQuizFeedback(feedbackQuestions, submitted);
   const score = Math.round((correct / questions.results.length) * 100);
   const passed = score >= quiz.passingScore;
   const submittedAt = Date.now();
@@ -110,6 +130,7 @@ export async function POST(
     attemptsRemaining: quiz.maxAttempts > 0
       ? Math.max(0, quiz.maxAttempts - nextAttemptCount)
       : null,
+    feedback,
     ...result,
   });
 }

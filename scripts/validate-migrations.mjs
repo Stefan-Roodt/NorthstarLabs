@@ -202,6 +202,12 @@ for (const table of [
 if (!tables.some((item) => item.name === "quiz_attempts")) {
   throw new Error("The quiz_attempts assessment table was not created.");
 }
+const quizQuestionColumns = database.prepare(
+  "PRAGMA table_info(quiz_questions)",
+).all();
+if (!quizQuestionColumns.some((item) => item.name === "explanation")) {
+  throw new Error("The quiz_questions.explanation feedback column was not created.");
+}
 const profileColumns = database.prepare(
   "PRAGMA table_info(profiles)",
 ).all();

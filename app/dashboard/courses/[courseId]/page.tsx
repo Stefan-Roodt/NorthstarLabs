@@ -10,6 +10,7 @@ type QuizQuestion = {
   prompt: string;
   options: string[];
   correctIndex: number;
+  explanation: string;
 };
 type Quiz = {
   id?: string;
@@ -86,6 +87,7 @@ const blankQuestion = (): QuizQuestion => ({
   prompt: "",
   options: ["", ""],
   correctIndex: 0,
+  explanation: "",
 });
 
 function formatBytes(bytes: number) {
@@ -1025,6 +1027,16 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                         <input value={option} onChange={(event) => editOption(questionIndex, optionIndex, event.target.value)} placeholder={`Answer ${optionIndex + 1}`} />
                       </label>
                     )}
+                    <label className="quiz-explanation-editor">
+                      Why is the correct answer right?
+                      <textarea
+                        maxLength={1200}
+                        value={question.explanation || ""}
+                        onChange={(event) => editQuestion(questionIndex, { explanation: event.target.value })}
+                        placeholder="Explain the principle, evidence, or example that makes this answer correct."
+                      />
+                      <small>Shown after submission so the assessment teaches, not only scores.</small>
+                    </label>
                     <button type="button" onClick={() => editQuestion(questionIndex, { options: [...question.options, ""] })}>＋ Add answer</button>
                   </article>
                 )}
