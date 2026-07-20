@@ -13,9 +13,16 @@ export async function GET(request: Request) {
     );
   }
   const rows = await env.DB.prepare(
-    `SELECT c.id, c.title, c.description, c.status, c.price_cents AS priceCents,
-      c.updated_at AS updatedAt, COUNT(e.id) AS students
-     FROM courses c LEFT JOIN enrollments e ON e.course_id = c.id AND e.status = 'active'
+    `SELECT c.id,c.title,c.description,c.status,c.price_cents AS priceCents,
+      c.updated_at AS updatedAt,
+      COUNT(DISTINCT e.id) AS students,
+      COUNT(DISTINCT l.id) AS lessonCount,
+      COUNT(DISTINCT CASE WHEN l.primary_asset_id IS NOT NULL THEN l.id END) AS mediaLessonCount,
+      COUNT(DISTINCT q.id) AS quizCount
+     FROM courses c
+     LEFT JOIN enrollments e ON e.course_id=c.id AND e.status='active'
+     LEFT JOIN lessons l ON l.course_id=c.id
+     LEFT JOIN quizzes q ON q.lesson_id=l.id
      WHERE c.school_id = ? GROUP BY c.id ORDER BY c.updated_at DESC`
   ).bind(school.id).all();
   return Response.json(rows.results);
@@ -51,6 +58,9 @@ export async function POST(request: Request) {
     students: 0,
     status: "draft",
     priceCents: 0,
+    lessonCount: 0,
+    mediaLessonCount: 0,
+    quizCount: 0,
     updatedAt: now,
   }, { status: 201 });
 }

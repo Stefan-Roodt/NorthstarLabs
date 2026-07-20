@@ -43,6 +43,14 @@ export const schools = sqliteTable("schools", {
 }, (table) => [
   uniqueIndex("schools_slug_unique").on(table.slug),
   index("schools_owner_idx").on(table.ownerId),
+  ]);
+
+export const schoolSlugAliases = sqliteTable("school_slug_aliases", {
+  slug: text("slug").primaryKey(),
+  schoolId: text("school_id").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  index("school_slug_aliases_school_idx").on(table.schoolId),
 ]);
 
 export const schoolMembers = sqliteTable("school_members", {

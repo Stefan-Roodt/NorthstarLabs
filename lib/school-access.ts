@@ -115,8 +115,11 @@ async function availableSlug(name: string) {
   let candidate = base;
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const existing = await env.DB.prepare(
-      "SELECT id FROM schools WHERE slug=?",
-    ).bind(candidate).first();
+      `SELECT id FROM schools WHERE slug=?
+       UNION ALL
+       SELECT school_id AS id FROM school_slug_aliases WHERE slug=?
+       LIMIT 1`,
+    ).bind(candidate, candidate).first();
     if (!existing) return candidate;
     candidate = `${base.slice(0, 44)}-${crypto.randomUUID().slice(0, 5)}`;
   }
@@ -197,11 +200,12 @@ export async function createCreatorSchool(
   user: ApiUser,
   rawName?: string,
   onboardingPath: "creator" | "coach" = "creator",
+  allowAdditional = false,
 ) {
   const profile = await ensureProfile(user);
   if (!profile) throw new Error("Profile could not be initialized.");
   const current = await getActiveSchool(user.id, CREATOR_ROLES);
-  if (current) {
+  if (current && !allowAdditional) {
     await env.DB.prepare(
       `UPDATE profiles SET role='creator',active_school_id=?,
        onboarding_path=?,onboarding_completed=1,

@@ -39,8 +39,20 @@ export async function PATCH(request: Request) {
     onboardingPath?: string;
     schoolName?: string;
     activeSchoolId?: string;
+    createSchoolName?: string;
   };
   await ensureProfile(user);
+
+  if (body.createSchoolName !== undefined) {
+    const schoolName = body.createSchoolName.trim();
+    if (schoolName.length < 2 || schoolName.length > 80) {
+      return Response.json(
+        { error: "Academy name must be between 2 and 80 characters." },
+        { status: 400 },
+      );
+    }
+    await createCreatorSchool(user, schoolName, "creator", true);
+  }
 
   if (body.onboardingPath !== undefined) {
     if (!["creator", "learner", "coach"].includes(body.onboardingPath)) {

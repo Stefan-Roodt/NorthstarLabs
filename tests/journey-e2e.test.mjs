@@ -84,7 +84,7 @@ test("publishes Stefan's video-first Web3 course as a NorthstarLabs signature pr
     priceCents: 0,
     enforceLessonOrder: 1,
     certificateTitle: "NorthstarLabs Distinction: Responsible Web3 Product Design",
-    ownerId: "northstarlabs-studio",
+    ownerId: "northstar-web3-faculty",
     schoolId: "northstarlabs",
   });
 
@@ -107,7 +107,7 @@ test("publishes Stefan's video-first Web3 course as a NorthstarLabs signature pr
     questions: 33,
     shortest: 6,
     longest: 6,
-    scriptedVideos: 14,
+    scriptedVideos: 13,
   });
 
   const orphans = db.prepare(`
@@ -136,7 +136,7 @@ test("publishes Stefan's evidence-led Bitcoin deep dive as a NorthstarLabs signa
     priceCents: 0,
     enforceLessonOrder: 1,
     certificateTitle: "NorthstarLabs Distinction: Bitcoin Intelligence",
-    ownerId: "northstarlabs-studio",
+    ownerId: "northstar-bitcoin-faculty",
     schoolId: "northstarlabs",
   });
 
@@ -159,7 +159,7 @@ test("publishes Stefan's evidence-led Bitcoin deep dive as a NorthstarLabs signa
     questions: 42,
     shortest: 6,
     longest: 6,
-    scriptedVideos: 21,
+    scriptedVideos: 20,
   });
 
   const sourceCoverage = db.prepare(`

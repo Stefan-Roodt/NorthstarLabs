@@ -42,6 +42,17 @@ const worker = {
     const currentRequestId = requestId(request);
 
     try {
+      if (url.hostname === "northstar-learning-platform.pikster.chatgpt.site") {
+        url.hostname = "northstarlabs.co.za";
+        return Response.redirect(url.toString(), 308);
+      }
+      if (url.pathname.startsWith("/media/faculty/")) {
+        return withSecurityHeaders(
+          Response.json({ error: "Media access requires a current lesson grant." }, { status: 404 }),
+          url,
+          currentRequestId,
+        );
+      }
       if (oversizedJsonRequest(request)) {
         return withSecurityHeaders(
           Response.json(

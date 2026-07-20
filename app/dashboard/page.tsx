@@ -10,9 +10,16 @@ type Profile = {
   role: string;
   hasCreatorSchool: boolean;
   isPlatformAdmin: boolean;
-  activeSchool: { id: string; slug: string; name: string; memberRole: string } | null;
+  activeSchool: {
+    id: string; slug: string; name: string; memberRole: string; description: string;
+    supportEmail: string; heroTitle: string; heroDescription: string; seoTitle: string; seoDescription: string;
+  } | null;
+  schools: Array<{ id: string; slug: string; name: string; memberRole: string }>;
 };
-type Course = { id: string; title: string; students: number; status: string; priceCents: number };
+type Course = {
+  id: string; title: string; students: number; status: string; priceCents: number;
+  lessonCount: number; mediaLessonCount: number; quizCount: number;
+};
 
 export default function Dashboard() {
   const [tab, setTab] = useState("Overview");
@@ -22,6 +29,9 @@ export default function Dashboard() {
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [academyName, setAcademyName] = useState("");
+  const [academyBusy, setAcademyBusy] = useState(false);
+  const [showAcademyForm, setShowAcademyForm] = useState(false);
   const supabase = getSupabaseBrowser();
 
   useEffect(() => {
@@ -56,9 +66,21 @@ export default function Dashboard() {
 
   const learners = useMemo(() => courses.reduce((sum, course) => sum + Number(course.students || 0), 0), [courses]);
   const published = useMemo(() => courses.filter(course => course.status === "published").length, [courses]);
+  const identityReady = Boolean(
+    profile?.activeSchool?.description?.trim().length >= 40 &&
+    profile?.activeSchool?.supportEmail &&
+    profile?.activeSchool?.heroTitle &&
+    profile?.activeSchool?.heroDescription?.trim().length >= 40
+  );
+  const curriculumReady = courses.some((course) => Number(course.lessonCount || 0) >= 6);
+  const assessmentReady = courses.some((course) => Number(course.quizCount || 0) > 0);
+  const mediaReady = courses.some((course) => Number(course.mediaLessonCount || 0) > 0);
   const launchSteps = [
-    { label: "Academy created", detail: "Your branded creator workspace is ready.", done: true },
+    { label: "Identity complete", detail: "Name, promise, support and learner-facing description are ready.", done: identityReady },
     { label: "First course created", detail: "Shape your expertise into a clear learning path.", done: courses.length > 0 },
+    { label: "Real curriculum built", detail: "At least one course has six or more complete lessons.", done: curriculumReady },
+    { label: "Assessment included", detail: "Learners can test understanding, not merely consume content.", done: assessmentReady },
+    { label: "Playable media attached", detail: "At least one protected audio or video asset is attached and reviewable.", done: mediaReady },
     { label: "First course published", detail: "Preview the learner experience, then make it available.", done: published > 0 },
     { label: "First learner joined", detail: "Invite a learner and start building momentum.", done: learners > 0 },
   ];
@@ -122,12 +144,47 @@ export default function Dashboard() {
 
   async function signOut() { await supabase?.auth.signOut(); location.href = "/"; }
 
+  async function switchAcademy(activeSchoolId: string) {
+    if (!supabase || !activeSchoolId || activeSchoolId === profile?.activeSchool?.id) return;
+    setAcademyBusy(true);
+    const { data } = await supabase.auth.getSession();
+    const response = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json", authorization: `Bearer ${data.session?.access_token ?? ""}` },
+      body: JSON.stringify({ activeSchoolId }),
+    });
+    if (response.ok) location.reload();
+    else {
+      setNotice("That academy could not be opened. Check that your account still has access.");
+      setAcademyBusy(false);
+    }
+  }
+
+  async function createAcademy(event: FormEvent) {
+    event.preventDefault();
+    if (!supabase || academyBusy || academyName.trim().length < 2) return;
+    setAcademyBusy(true);
+    const { data } = await supabase.auth.getSession();
+    const response = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json", authorization: `Bearer ${data.session?.access_token ?? ""}` },
+      body: JSON.stringify({ createSchoolName: academyName.trim() }),
+    });
+    const result = await response.json() as { error?: string };
+    if (response.ok) location.href = "/dashboard/academy";
+    else {
+      setNotice(result.error || "The new academy could not be created.");
+      setAcademyBusy(false);
+    }
+  }
+
   if (loading) return <main className="system-loading"><div><b>✦ NORTHSTARLABS</b><p>Preparing your creator workspace…</p></div></main>;
 
   const email = profile?.email ?? "";
   const name = profile?.displayName ?? email.split("@")[0];
   const workspaceIdentity = profile?.activeSchool?.name || name;
-  return <main className="system-shell"><aside className="system-side"><Link className="system-brand" href="/">✦ NORTHSTARLABS</Link><nav>{["Overview","Courses","Learners","Community","Products","Live","Plan","Analytics"].map(item=><button key={item} className={tab===item?"active":""} onClick={()=>setTab(item)}><span>{item==="Overview"?"⌂":item==="Courses"?"▣":item==="Learners"?"♙":item==="Community"?"◎":item==="Products"?"◇":item==="Live"?"◉":item==="Plan"?"R":"↗"}</span>{item}</button>)}<Link className="side-nav-link" href="/dashboard/studio"><span>✺</span>Creator Studio</Link><Link className="side-nav-link" href="/dashboard/academy"><span>✦</span>Storefront</Link><Link className="side-nav-link" href="/dashboard/tutors"><span>◎</span>Tutors</Link><Link className="side-nav-link" href="/dashboard/integrations"><span>⇄</span>Integrations</Link><Link className="side-nav-link" href="/dashboard/operations"><span>⚙</span>Operations</Link></nav><div className="side-bottom"><Link href={profile?.activeSchool ? `/schools/${profile.activeSchool.slug}` : "/courses"}>{profile?.activeSchool ? "View my academy" : "View course marketplace"}</Link>{profile?.isPlatformAdmin&&<Link href="/admin">Platform administration</Link>}<a href="/account">Account settings</a><button onClick={signOut}>Sign out</button></div></aside><section className="system-main"><header className="system-top"><div><p className="sys-kicker">{profile?.activeSchool?.name || "YOUR ACADEMY"} · CREATOR WORKSPACE</p><h1>{tab}</h1></div><div className="user-chip"><span>{workspaceIdentity.slice(0,2).toUpperCase()}</span><div><b>{workspaceIdentity}</b><small>{name} · {profile?.activeSchool?.memberRole || "creator"} · {email}</small><Link href="/dashboard/academy#academy-identity">Edit identity</Link></div></div></header>
+  return <main className="system-shell"><aside className="system-side"><Link className="system-brand" href="/">✦ NORTHSTARLABS</Link><nav>{["Overview","Courses","Learners","Community","Products","Live","Plan","Analytics"].map(item=><button key={item} className={tab===item?"active":""} onClick={()=>setTab(item)}><span>{item==="Overview"?"⌂":item==="Courses"?"▣":item==="Learners"?"♙":item==="Community"?"◎":item==="Products"?"◇":item==="Live"?"◉":item==="Plan"?"R":"↗"}</span>{item}</button>)}<Link className="side-nav-link" href="/dashboard/studio"><span>✺</span>Creator Studio</Link><Link className="side-nav-link" href="/dashboard/academy"><span>✦</span>Storefront</Link><Link className="side-nav-link" href="/dashboard/tutors"><span>◎</span>Tutors</Link><Link className="side-nav-link" href="/dashboard/integrations"><span>⇄</span>Integrations</Link><Link className="side-nav-link" href="/dashboard/operations"><span>⚙</span>Operations</Link></nav><div className="side-bottom"><Link href={profile?.activeSchool ? `https://northstarlabs.co.za/schools/${profile.activeSchool.slug}` : "/courses"}>{profile?.activeSchool ? "View my academy" : "View course marketplace"}</Link>{profile?.isPlatformAdmin&&<Link href="/admin">Platform administration</Link>}<a href="/account">Account settings</a><button onClick={signOut}>Sign out</button></div></aside><section className="system-main"><header className="system-top"><div><p className="sys-kicker">{profile?.activeSchool?.name || "YOUR ACADEMY"} · CREATOR WORKSPACE</p><h1>{tab}</h1></div><div className="workspace-controls"><label><span>Working in</span><select aria-label="Switch academy" disabled={academyBusy} value={profile?.activeSchool?.id || ""} onChange={(event)=>switchAcademy(event.target.value)}>{profile?.schools?.map((academy)=><option key={academy.id} value={academy.id}>{academy.name}</option>)}</select></label><button type="button" onClick={()=>setShowAcademyForm((current)=>!current)}>+ New academy</button><div className="user-chip"><span>{workspaceIdentity.slice(0,2).toUpperCase()}</span><div><b>{workspaceIdentity}</b><small>{name} · {profile?.activeSchool?.memberRole || "creator"} · {email}</small><Link href="/dashboard/academy#academy-identity">Edit this academy</Link></div></div></div></header>
+  {showAcademyForm&&<form className="academy-quick-create" onSubmit={createAcademy}><div><b>Create a separate academy</b><small>It gets its own courses, learners, brand and public address. Nothing from {profile?.activeSchool?.name} is moved.</small></div><input autoFocus required minLength={2} maxLength={80} value={academyName} onChange={(event)=>setAcademyName(event.target.value)} placeholder="e.g. Stéfan Roodt Academy"/><button className="sys-primary" disabled={academyBusy||academyName.trim().length<2}>{academyBusy?"Creating…":"Create and open"}</button><button type="button" onClick={()=>setShowAcademyForm(false)}>Cancel</button></form>}
   {tab==="Overview"&&<>
     <div className="metric-row">
       <article><span>Courses</span><strong>{courses.length}</strong><small>{published} published</small></article>

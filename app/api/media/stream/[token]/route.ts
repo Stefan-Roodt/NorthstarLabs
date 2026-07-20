@@ -50,7 +50,34 @@ async function serveMedia(
        AND (e.id IS NOT NULL OR sm.id IS NOT NULL)
      LIMIT 1`,
   ).bind(tokenHash, Date.now()).first<PlaybackGrant>();
-  if (!grant?.assetKey.startsWith("r2:")) return missingMedia();
+  if (!grant?.assetKey) return missingMedia();
+
+  if (grant.assetKey.startsWith("static:")) {
+    const path = grant.assetKey.replace(/^static:/, "");
+    if (!path.startsWith("/media/faculty/") || path.includes("..")) return missingMedia();
+    const assetUrl = new URL(path, request.url);
+    const assetHeaders = new Headers();
+    const rangeHeader = request.headers.get("range");
+    if (rangeHeader) assetHeaders.set("range", rangeHeader);
+    const upstream = await env.ASSETS.fetch(new Request(assetUrl, {
+      method: headOnly ? "HEAD" : "GET",
+      headers: assetHeaders,
+    }));
+    if (!upstream.ok && upstream.status !== 206) return missingMedia();
+    const headers = new Headers(upstream.headers);
+    headers.set("cache-control", "private, no-store");
+    headers.set("content-disposition", `inline; filename="${safeMediaFilename(grant.filename)}"`);
+    headers.set("content-type", grant.contentType || "video/mp4");
+    headers.set("cross-origin-resource-policy", "same-origin");
+    headers.set("referrer-policy", "no-referrer");
+    headers.set("x-content-type-options", "nosniff");
+    return new Response(headOnly ? null : upstream.body, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers,
+    });
+  }
+  if (!grant.assetKey.startsWith("r2:")) return missingMedia();
 
   const objectKey = grant.assetKey.replace(/^r2:/, "");
   const metadata = await env.UPLOADS.head(objectKey);

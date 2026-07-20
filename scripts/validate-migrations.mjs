@@ -106,7 +106,7 @@ if (!tables.some((table) => table.name === "schools")) {
 }
 if (!stefanWeb3Course ||
     stefanWeb3Course.status !== "published" ||
-    stefanWeb3Course.ownerId !== "northstarlabs-studio" ||
+    stefanWeb3Course.ownerId !== "northstar-web3-faculty" ||
     stefanWeb3Course.schoolId !== "northstarlabs" ||
     stefanWeb3Course.sections !== 6 ||
     stefanWeb3Course.lessons !== 24 ||
@@ -115,7 +115,7 @@ if (!stefanWeb3Course ||
 }
 if (!stefanBitcoinCourse ||
     stefanBitcoinCourse.status !== "published" ||
-    stefanBitcoinCourse.ownerId !== "northstarlabs-studio" ||
+    stefanBitcoinCourse.ownerId !== "northstar-bitcoin-faculty" ||
     stefanBitcoinCourse.schoolId !== "northstarlabs" ||
     stefanBitcoinCourse.sections !== 7 ||
     stefanBitcoinCourse.lessons !== 35 ||
@@ -124,7 +124,7 @@ if (!stefanBitcoinCourse ||
 }
 if (!aiCommandCourse ||
     aiCommandCourse.status !== "published" ||
-    aiCommandCourse.ownerId !== "northstarlabs-studio" ||
+    aiCommandCourse.ownerId !== "northstar-ai-faculty" ||
     aiCommandCourse.schoolId !== "northstarlabs" ||
     aiCommandCourse.sections !== 4 ||
     aiCommandCourse.lessons !== 12 ||
@@ -136,6 +136,26 @@ if (!tables.some((table) => table.name === "school_members")) {
 }
 if (!tables.some((table) => table.name === "invitations")) {
   throw new Error("The invitations table was not created.");
+}
+const facultyMedia = database.prepare(
+  "SELECT COUNT(*) AS count FROM media_assets WHERE key LIKE 'static:/media/faculty/%'",
+).get();
+if (facultyMedia.count !== 3) {
+  throw new Error("The three playable faculty introductions were not registered.");
+}
+const facultyProfiles = database.prepare(
+  "SELECT COUNT(*) AS count FROM tutors WHERE school_id='northstarlabs' AND service_type='faculty' AND status='published'",
+).get();
+if (facultyProfiles.count !== 3) {
+  throw new Error("The NorthstarLabs faculty profiles were not published.");
+}
+const attachedFacultyMedia = database.prepare(
+  `SELECT COUNT(*) AS count FROM lessons
+   WHERE primary_asset_id IN ('faculty-media-ai-intro','faculty-media-bitcoin-intro','faculty-media-web3-intro')
+     AND lesson_type='video' AND required_watch_percent=85`,
+).get();
+if (attachedFacultyMedia.count !== 3) {
+  throw new Error("The playable faculty videos were not attached to their lessons.");
 }
 for (const table of ["course_sections", "media_assets", "lesson_resources"]) {
   if (!tables.some((item) => item.name === table)) {
@@ -150,6 +170,9 @@ for (const table of [
   if (!tables.some((item) => item.name === table)) {
     throw new Error(`The ${table} governed-creation table was not created.`);
   }
+}
+if (!tables.some((item) => item.name === "school_slug_aliases")) {
+  throw new Error("The school_slug_aliases professional-address table was not created.");
 }
 for (const table of [
   "rate_limit_buckets",

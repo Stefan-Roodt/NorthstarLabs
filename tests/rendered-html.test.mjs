@@ -747,7 +747,7 @@ test("makes NorthstarLabs clear, memorable, discoverable, and responsive to unme
   assert.match(llms, /NorthstarLabs/);
   assert.match(llms, /Courses for the path/);
   assert.match(dashboard, /workspaceIdentity/);
-  assert.match(dashboard, /Edit identity/);
+  assert.match(dashboard, /Edit this academy/);
   assert.match(academy, /id="academy-identity"/);
   assert.match(navigator, /Start with the result you want/);
   assert.match(navigator, /Show my best next step/);
@@ -880,4 +880,59 @@ test("integrates a governed, source-grounded Creator Studio without auto-publish
   assert.match(privacy, /AI-assisted creation/);
   assert.match(env, /GEMINI_COURSE_MODEL/);
   assert.match(env, /GEMINI_TTS_MODEL/);
+});
+
+test("supports separate academies, professional addresses, and field-level storefront guidance", async () => {
+  const [dashboard, academy, profile, schoolApi, access, worker, migration, styles] = await Promise.all([
+    readFile(new URL("../app/dashboard/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/academy/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/profile/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/schools/[slug]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/school-access.ts", import.meta.url), "utf8"),
+    readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0027_motionless_screwball.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/system.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(dashboard, /Switch academy/);
+  assert.match(dashboard, /Create a separate academy/);
+  assert.match(dashboard, /Nothing from .* is moved/);
+  assert.match(profile, /createSchoolName/);
+  assert.match(access, /allowAdditional/);
+  assert.match(academy, /YOUR COMPLETION GUIDE/);
+  assert.match(academy, /Each problem is marked below with exactly how to fix it/);
+  assert.match(academy, /northstarlabs\.co\.za\/schools/);
+  assert.match(schoolApi, /school_slug_aliases/);
+  assert.match(schoolApi, /previousSlug/);
+  assert.match(worker, /northstar-learning-platform\.pikster\.chatgpt\.site/);
+  assert.match(worker, /northstarlabs\.co\.za/);
+  assert.match(migration, /CREATE TABLE `school_slug_aliases`/);
+  assert.match(styles, /\.academy-completion/);
+  assert.match(styles, /\.workspace-controls/);
+});
+
+test("ships real Northstar-produced faculty videos and attaches them behind lesson grants", async () => {
+  const [migration, playback, stream, worker] = await Promise.all([
+    readFile(new URL("../drizzle/0028_northstar_faculty_media.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/media/playback/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/media/stream/[token]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
+  ]);
+  for (const file of [
+    "ai-workflow-introduction.mp4",
+    "bitcoin-intelligence-introduction.mp4",
+    "web3-product-introduction.mp4",
+  ]) {
+    const stat = await import("node:fs/promises").then(({ stat }) =>
+      stat(new URL(`../public/media/faculty/${file}`, import.meta.url))
+    );
+    assert.ok(stat.size > 500_000, `${file} must contain genuine audio and video data`);
+    assert.match(migration, new RegExp(file.replace(".", "\\.")));
+  }
+  assert.match(migration, /AI Workflow Faculty/);
+  assert.match(migration, /Bitcoin Research Faculty/);
+  assert.match(migration, /Web3 Product Faculty/);
+  assert.match(migration, /required_watch_percent`=85/);
+  assert.match(playback, /static:/);
+  assert.match(stream, /env\.ASSETS\.fetch/);
+  assert.match(worker, /Media access requires a current lesson grant/);
 });

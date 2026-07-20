@@ -52,7 +52,7 @@ export async function POST(request: Request) {
   if (!asset) {
     return Response.json({ error: "You do not have access to this lesson." }, { status: 403 });
   }
-  if (!asset.assetKey?.startsWith("r2:")) {
+  if (!asset.assetKey || (!asset.assetKey.startsWith("r2:") && !asset.assetKey.startsWith("static:"))) {
     return Response.json({ error: "This lesson does not use protected media." }, { status: 409 });
   }
   if (!["video", "audio", "image"].includes(asset.kind)) {

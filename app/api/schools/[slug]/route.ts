@@ -57,15 +57,31 @@ function cleanUrl(value: unknown, fallback: string | null) {
   }
 }
 
+function cleanSlug(value: unknown, fallback: string) {
+  if (value === undefined) return fallback;
+  return typeof value === "string" ? value.trim().toLowerCase().slice(0, 80) : fallback;
+}
+
+async function findSchool(slug: string) {
+  const direct = await env.DB.prepare(
+    `SELECT ${publicSchoolColumns} FROM schools WHERE slug=? AND status='active'`,
+  ).bind(slug).first<SchoolRow>();
+  if (direct) return direct;
+  const alias = await env.DB.prepare(
+    "SELECT school_id AS schoolId FROM school_slug_aliases WHERE slug=?",
+  ).bind(slug).first<{ schoolId: string }>();
+  if (!alias) return null;
+  return env.DB.prepare(
+    `SELECT ${publicSchoolColumns} FROM schools WHERE id=? AND status='active'`,
+  ).bind(alias.schoolId).first<SchoolRow>();
+}
+
 export async function GET(
   _request: Request,
   context: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await context.params;
-  const school = await env.DB.prepare(
-    `SELECT ${publicSchoolColumns}
-     FROM schools WHERE slug=? AND status='active'`,
-  ).bind(slug).first<SchoolRow>();
+  const school = await findSchool(slug);
   if (!school) return Response.json({ error: "School not found." }, { status: 404 });
 
   const courses = await env.DB.prepare(
@@ -127,10 +143,7 @@ export async function PATCH(
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
   const { slug } = await context.params;
-  const current = await env.DB.prepare(
-    `SELECT ${publicSchoolColumns}
-     FROM schools WHERE slug=? AND status='active'`,
-  ).bind(slug).first<SchoolRow>();
+  const current = await findSchool(slug);
   if (!current) return Response.json({ error: "School not found." }, { status: 404 });
   const membership = await env.DB.prepare(
     `SELECT role FROM school_members
@@ -144,6 +157,27 @@ export async function PATCH(
   const name = cleanText(body.name, current.name, 80);
   if (name.length < 2) {
     return Response.json({ error: "Academy name must be at least 2 characters." }, { status: 400 });
+  }
+  const nextSlug = cleanSlug(body.slug, current.slug);
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(nextSlug)) {
+    return Response.json({
+      error: "Public address must use lowercase words separated by single hyphens.",
+      field: "slug",
+    }, { status: 400 });
+  }
+  if (nextSlug !== current.slug) {
+    const existing = await env.DB.prepare(
+      `SELECT id FROM schools WHERE slug=? AND id<>?
+       UNION ALL
+       SELECT school_id AS id FROM school_slug_aliases WHERE slug=? AND school_id<>?
+       LIMIT 1`,
+    ).bind(nextSlug, current.id, nextSlug, current.id).first();
+    if (existing) {
+      return Response.json({
+        error: "That public academy address is already in use. Try a more specific name.",
+        field: "slug",
+      }, { status: 409 });
+    }
   }
   const next = {
     name,
@@ -171,14 +205,15 @@ export async function PATCH(
     return Response.json({ error: "Enter a valid support email." }, { status: 400 });
   }
 
-  await env.DB.prepare(
+  const updateSchool = env.DB.prepare(
     `UPDATE schools SET
-      name=?,description=?,logo_url=?,cover_image_url=?,
+      slug=?,name=?,description=?,logo_url=?,cover_image_url=?,
       primary_color=?,accent_color=?,hero_title=?,hero_description=?,
       font_theme=?,support_email=?,website_url=?,seo_title=?,
       seo_description=?,show_community=?,terms_url=?,privacy_url=?,updated_at=?
      WHERE id=?`,
   ).bind(
+    nextSlug,
     next.name,
     next.description,
     next.logoUrl,
@@ -197,7 +232,17 @@ export async function PATCH(
     next.privacyUrl,
     Date.now(),
     current.id,
-  ).run();
+  );
+  if (nextSlug !== current.slug) {
+    await env.DB.batch([
+      env.DB.prepare(
+        "INSERT OR IGNORE INTO school_slug_aliases (slug,school_id,created_at) VALUES (?,?,?)",
+      ).bind(current.slug, current.id, Date.now()),
+      updateSchool,
+    ]);
+  } else {
+    await updateSchool.run();
+  }
   await writeAuditLog({
     actorId: user.id,
     schoolId: current.id,
@@ -206,6 +251,8 @@ export async function PATCH(
     targetId: current.id,
     detail: {
       name: next.name,
+      slug: nextSlug,
+      previousSlug: current.slug,
       fontTheme: next.fontTheme,
       showCommunity: next.showCommunity,
     },
