@@ -23,9 +23,12 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [joiningCourseDetail, setJoiningCourseDetail] = useState<JoiningCourse | null>(null);
   const supabase = getSupabaseBrowser();
-  const destination = typeof window === "undefined"
+  const requestedDestination = typeof window === "undefined"
     ? "/welcome"
     : safeDestination(new URLSearchParams(location.search).get("next"));
+  const [joiningAs, setJoiningAs] = useState<"learner" | "coach" | "creator" | "">(() => onboardingPathFrom(requestedDestination) || (requestedDestination === "/welcome" ? "learner" : ""));
+  // A role describes the account; it must never discard the page the person was trying to reach.
+  const destination = requestedDestination === "/welcome" && joiningAs ? `/welcome?path=${joiningAs}` : requestedDestination;
   const joiningCourse = destination.startsWith("/courses/");
   const joiningCourseId = joiningCourse
     ? destination.split("?")[0].split("/").filter(Boolean)[1] || ""
@@ -67,7 +70,7 @@ export default function LoginPage() {
           password,
           options: {
             emailRedirectTo: new URL(destination, location.origin).toString(),
-            data: onboardingPath ? { onboarding_path: onboardingPath } : undefined,
+            data: joiningAs || onboardingPath ? { onboarding_path: joiningAs || onboardingPath } : undefined,
           },
         });
 
@@ -149,6 +152,16 @@ export default function LoginPage() {
               ? "You are one short step away from starting this course."
               : "Start creating or learning. You can decide after joining."
             : "Return to your courses, learning, and community."}</p>
+
+          {!joiningCourse && <fieldset className="auth-role-picker">
+            <legend>Who are you joining as?</legend>
+            <p>Your choice sends you to the right starting point. One account can hold more than one role later.</p>
+            <div>
+              <button className={joiningAs === "learner" ? "active" : ""} type="button" onClick={() => setJoiningAs("learner")}><b>I&apos;m a student</b><small>Join an academy and take modules</small></button>
+              <button className={joiningAs === "coach" ? "active" : ""} type="button" onClick={() => setJoiningAs("coach")}><b>I&apos;m a tutor</b><small>Set up a profile and offer sessions</small></button>
+              <button className={joiningAs === "creator" ? "active" : ""} type="button" onClick={() => setJoiningAs("creator")}><b>I run an academy</b><small>Create an academy and publish modules</small></button>
+            </div>
+          </fieldset>}
 
           <button className="google-btn" disabled={busy} type="button" onClick={continueWithGoogle}>
             G&nbsp;&nbsp; {mode === "signup" ? "Join with Google" : "Continue with Google"}
