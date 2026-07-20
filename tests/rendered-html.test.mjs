@@ -614,6 +614,11 @@ test("ships coach advertising plans, direct onboarding, hourly rates, and topic 
   assert.match(admin, /Your hourly rate in rand/);
   assert.match(admin, /Advertising billing is not active yet/);
   assert.match(marketplace, /EXPLORE BY TOPIC/);
+  assert.match(marketplace, /setSubject\(canonicalTopic\)/);
+  assert.match(marketplace, /scrollIntoView/);
+  assert.match(marketplace, /url\.searchParams\.set\("topic", topic\)/);
+  assert.match(marketplace, /Your \$\{selectedTopic\} selection worked/);
+  assert.match(marketplace, /Offer this topic/);
   assert.match(marketplace, /SPONSORED SPOTLIGHT/);
   assert.match(marketplace, /Verification is assessed separately/);
   assert.match(home, /Advertise my services/);

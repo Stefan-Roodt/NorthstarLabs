@@ -45,6 +45,7 @@ const topicGroups = [
   { name: "Learning", topics: ["Mathematics", "Study skills", "Exam preparation", "Physical Science"] },
   { name: "Technology", topics: ["Coding", "Artificial intelligence", "Data analysis", "Bitcoin"] },
 ] as const;
+const topicCatalog = topicGroups.flatMap((group) => [...group.topics]);
 
 function initials(name: string) {
   return name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
@@ -73,7 +74,13 @@ export default function TutorMarketplacePage() {
 
   useEffect(() => {
     const topic = new URLSearchParams(location.search).get("topic");
-    if (topic) setQuery(topic);
+    if (topic) {
+      const canonicalTopic = topicCatalog.find(
+        (item) => item.toLowerCase() === topic.toLowerCase(),
+      );
+      if (canonicalTopic) setSubject(canonicalTopic);
+      else setQuery(topic);
+    }
     fetch("/api/tutors?marketplace=1")
       .then((response) => {
         if (!response.ok) throw new Error("marketplace unavailable");
@@ -84,7 +91,10 @@ export default function TutorMarketplacePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const subjects = useMemo(() => [...new Set(tutors.flatMap((tutor) => tutor.subjects))]
+  const subjects = useMemo(() => [...new Set([
+    ...topicCatalog,
+    ...tutors.flatMap((tutor) => tutor.subjects),
+  ])]
     .sort((a, b) => a.localeCompare(b)), [tutors]);
 
   const filtered = useMemo(() => {
@@ -98,7 +108,9 @@ export default function TutorMarketplacePage() {
         ...tutor.subjects,
         ...tutor.languages,
       ].join(" ").toLowerCase();
-      const subjectMatch = subject === "all" || tutor.subjects.includes(subject);
+      const subjectMatch = subject === "all" || tutor.subjects.some(
+        (item) => item.toLowerCase() === subject.toLowerCase(),
+      );
       const modeMatch = mode === "all" || tutor.sessionMode === mode || tutor.sessionMode === "both";
       return (!keyword || searchable.includes(keyword)) && subjectMatch && modeMatch;
     });
@@ -126,6 +138,7 @@ export default function TutorMarketplacePage() {
   const compared = comparedIds
     .map((id) => tutors.find((tutor) => tutor.id === id))
     .filter((tutor): tutor is MarketplaceTutor => Boolean(tutor));
+  const selectedTopic = subject !== "all" ? subject : query.trim();
 
   function toggleCompare(tutor: MarketplaceTutor) {
     setComparedIds((current) => {
@@ -144,6 +157,33 @@ export default function TutorMarketplacePage() {
     setSubject("all");
     setMode("all");
     setSort("recommended");
+    const url = new URL(location.href);
+    url.searchParams.delete("topic");
+    history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  function chooseTopic(topic: string) {
+    setQuery("");
+    setSubject(topic);
+    setNotice("");
+    const url = new URL(location.href);
+    url.searchParams.set("topic", topic);
+    history.replaceState(null, "", `${url.pathname}${url.search}#tutor-results`);
+    window.requestAnimationFrame(() => {
+      document.getElementById("tutor-results")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }
+
+  function chooseSubject(value: string) {
+    setSubject(value);
+    setQuery("");
+    const url = new URL(location.href);
+    if (value === "all") url.searchParams.delete("topic");
+    else url.searchParams.set("topic", value);
+    history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   }
 
   return <main className="marketplace-page">
@@ -164,7 +204,7 @@ export default function TutorMarketplacePage() {
         <p>Search the topic you want to investigate, compare real expertise and self-set hourly rates, then request a time without sharing your details publicly.</p>
         <div className="marketplace-search">
           <label htmlFor="tutor-search">What do you need help with?</label>
-          <div><input id="tutor-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try career change, Bitcoin, mathematics or leadership…" /><a href="#tutor-results">Find my coach</a></div>
+          <div><input id="tutor-search" value={query} onChange={(event) => { setQuery(event.target.value); setSubject("all"); }} placeholder="Try career change, Bitcoin, mathematics or leadership…" /><a href="#tutor-results">Find my coach</a></div>
         </div>
       </div>
       <aside>
@@ -186,7 +226,7 @@ export default function TutorMarketplacePage() {
       </header>
       <div>{topicGroups.map((group) => <article key={group.name}>
         <h3>{group.name}</h3>
-        <div>{group.topics.map((topic) => <button className={query.toLowerCase() === topic.toLowerCase() ? "active" : ""} key={topic} onClick={() => setQuery(topic)}>{topic}<span>→</span></button>)}</div>
+        <div>{group.topics.map((topic) => <button className={subject.toLowerCase() === topic.toLowerCase() ? "active" : ""} key={topic} onClick={() => chooseTopic(topic)} type="button">{topic}<span>→</span></button>)}</div>
       </article>)}</div>
     </section>
 
@@ -195,7 +235,7 @@ export default function TutorMarketplacePage() {
         <div><p className="sys-kicker">REFINE YOUR MATCH</p><button onClick={clearFilters}>Reset</button></div>
         <fieldset>
           <legend>Topic</legend>
-          <select value={subject} onChange={(event) => setSubject(event.target.value)}>
+          <select value={subject} onChange={(event) => chooseSubject(event.target.value)}>
             <option value="all">All topics</option>
             {subjects.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
@@ -216,7 +256,7 @@ export default function TutorMarketplacePage() {
 
       <div className="marketplace-results">
         <header>
-          <div><p className="sys-kicker">YOUR MATCHES</p><h2>{loading ? "Finding people…" : `${filtered.length} ${filtered.length === 1 ? "coach or tutor" : "coaches and tutors"} to consider`}</h2></div>
+          <div><p className="sys-kicker">YOUR MATCHES</p><h2>{loading ? "Finding people…" : selectedTopic ? `${filtered.length} ${filtered.length === 1 ? "match" : "matches"} for “${selectedTopic}”` : `${filtered.length} ${filtered.length === 1 ? "coach or tutor" : "coaches and tutors"} to consider`}</h2></div>
           <label>Sort by<select value={sort} onChange={(event) => setSort(event.target.value as SortMode)}><option value="recommended">Recommended</option><option value="available">Available soonest</option><option value="experience">Most experienced</option><option value="price">Lowest hourly rate</option></select></label>
         </header>
         <p className="marketplace-placement-note">Featured placement is paid advertising. Verification is assessed separately and never purchased.</p>
@@ -254,7 +294,9 @@ export default function TutorMarketplacePage() {
             </div>
           </article>
         )}</div> : !loading && <article className="marketplace-empty">
-          <span>?</span><div><h2>No exact match yet.</h2><p>Try a broader topic, another format, or clear the filters to see every available coach and tutor.</p><button onClick={clearFilters}>Show everyone</button></div>
+          <span>?</span><div><h2>{selectedTopic ? `No ${selectedTopic} coach is published yet.` : "No coaches are published yet."}</h2><p>{selectedTopic
+            ? `Your ${selectedTopic} selection worked. NorthstarLabs does not currently have a published profile offering that topic, so we will not show you an unrelated coach.`
+            : "Published coach and tutor profiles will appear here as soon as they are available."}</p><div className="marketplace-empty-actions"><button onClick={clearFilters}>Show all available coaches</button><Link href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach">Offer this topic</Link></div></div>
         </article>}
       </div>
     </section>
