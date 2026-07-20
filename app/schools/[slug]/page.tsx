@@ -72,6 +72,7 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
   const [error, setError] = useState("");
   const [joining, setJoining] = useState("");
   const [notice, setNotice] = useState("");
+  const [signedIn, setSignedIn] = useState(false);
   const supabase = getSupabaseBrowser();
 
   useEffect(() => {
@@ -88,6 +89,13 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
       .then(setData)
       .catch((reason: Error) => setError(reason.message));
   }, [slug]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data: sessionData }) => setSignedIn(Boolean(sessionData.session)));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session)));
+    return () => listener.subscription.unsubscribe();
+  }, [supabase]);
 
   if (error) {
     return <main className="system-loading"><div>
@@ -154,6 +162,12 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
     window.location.assign(result.courseIds?.[0] ? `/learn/${result.courseIds[0]}` : "/live");
   }
 
+  async function signOut() {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    window.location.assign(`/schools/${school.slug}`);
+  }
+
   return <main className={`school-storefront font-${school.fontTheme}`} style={style}>
     <header className="school-storefront-nav">
       <Link className="school-brand" href={`/schools/${school.slug}`}>
@@ -165,7 +179,11 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
         {school.showCommunity && data.community &&
           <Link href={`/schools/${school.slug}/community`}>Community</Link>}
         {school.websiteUrl && <a href={school.websiteUrl}>Website</a>}
-        <Link className="school-sign-in" href={`/login?next=${encodeURIComponent(`/schools/${school.slug}`)}`}>Sign in</Link>
+        {signedIn ? <div className="school-account-actions">
+          <Link href="/learn">My learning</Link>
+          <Link href="/account">Account</Link>
+          <button type="button" onClick={signOut}>Sign out</button>
+        </div> : <Link className="school-sign-in" href={`/login?next=${encodeURIComponent(`/schools/${school.slug}`)}`}>Sign in</Link>}
       </nav>
     </header>
 

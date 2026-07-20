@@ -233,15 +233,20 @@ export async function PATCH(
     Date.now(),
     current.id,
   );
+  const updateDefaultCommunityName = env.DB.prepare(
+    `UPDATE communities SET name=?
+     WHERE school_id=? AND name=?`,
+  ).bind(`${next.name} Community`, current.id, `${current.name} Community`);
   if (nextSlug !== current.slug) {
     await env.DB.batch([
       env.DB.prepare(
         "INSERT OR IGNORE INTO school_slug_aliases (slug,school_id,created_at) VALUES (?,?,?)",
       ).bind(current.slug, current.id, Date.now()),
       updateSchool,
+      updateDefaultCommunityName,
     ]);
   } else {
-    await updateSchool.run();
+    await env.DB.batch([updateSchool, updateDefaultCommunityName]);
   }
   await writeAuditLog({
     actorId: user.id,

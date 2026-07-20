@@ -886,7 +886,7 @@ test("integrates a governed, source-grounded Creator Studio without auto-publish
 });
 
 test("supports separate academies, professional addresses, and field-level storefront guidance", async () => {
-  const [dashboard, academy, profile, schoolApi, access, worker, migration, styles] = await Promise.all([
+  const [dashboard, academy, profile, schoolApi, access, worker, migration, boundaryMigration, storefront, styles] = await Promise.all([
     readFile(new URL("../app/dashboard/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/dashboard/academy/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/profile/route.ts", import.meta.url), "utf8"),
@@ -894,6 +894,8 @@ test("supports separate academies, professional addresses, and field-level store
     readFile(new URL("../lib/school-access.ts", import.meta.url), "utf8"),
     readFile(new URL("../worker/index.ts", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0027_motionless_screwball.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0031_clear_academy_boundaries.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/schools/[slug]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/system.css", import.meta.url), "utf8"),
   ]);
   assert.match(dashboard, /Switch academy/);
@@ -906,11 +908,18 @@ test("supports separate academies, professional addresses, and field-level store
   assert.match(academy, /northstarlabs\.co\.za\/schools/);
   assert.match(schoolApi, /school_slug_aliases/);
   assert.match(schoolApi, /previousSlug/);
+  assert.match(schoolApi, /updateDefaultCommunityName/);
   assert.match(worker, /northstar-learning-platform\.pikster\.chatgpt\.site/);
   assert.match(worker, /northstarlabs\.co\.za/);
   assert.match(migration, /CREATE TABLE `school_slug_aliases`/);
+  assert.match(boundaryMigration, /`slug`='cognizen-consulting'/);
+  assert.match(boundaryMigration, /'Stéfan Roodt''s Academy'/);
+  assert.match(boundaryMigration, /'CogniZen Consulting Community'/);
+  assert.match(storefront, /school-account-actions/);
+  assert.match(storefront, />Sign out</);
   assert.match(styles, /\.academy-completion/);
   assert.match(styles, /\.workspace-controls/);
+  assert.match(styles, /\.school-account-actions/);
 });
 
 test("ships real Northstar-produced faculty videos and attaches them behind lesson grants", async () => {

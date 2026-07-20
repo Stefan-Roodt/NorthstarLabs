@@ -218,6 +218,13 @@
       "when": 1784560797182,
       "tag": "0030_nice_franklin_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1784570400000,
+      "tag": "0031_clear_academy_boundaries",
+      "breakpoints": true
     }
   ]
 }

@@ -67,6 +67,21 @@ const schools = database.prepare(
 const courseScopes = database.prepare(
   "SELECT school_id AS schoolId,COUNT(*) AS courses FROM courses GROUP BY school_id",
 ).all();
+const cognizenAcademy = database.prepare(`
+  SELECT s.id,s.name,s.slug,c.name AS communityName
+  FROM schools s
+  LEFT JOIN communities c ON c.school_id=s.id
+  WHERE s.slug='cognizen-consulting'
+`).get();
+const stefanAcademy = database.prepare(`
+  SELECT s.id,s.name,s.slug,c.name AS communityName,
+    sm.role AS ownerRole
+  FROM schools s
+  LEFT JOIN communities c ON c.school_id=s.id
+  LEFT JOIN school_members sm ON sm.school_id=s.id
+    AND sm.user_id=s.owner_id AND sm.status='active'
+  WHERE s.slug='stefan-roodt-s-academy'
+`).get();
 const stefanWeb3Course = database.prepare(`
   SELECT c.id,c.status,c.owner_id AS ownerId,c.school_id AS schoolId,
     COUNT(DISTINCT cs.id) AS sections,COUNT(DISTINCT l.id) AS lessons,
@@ -103,6 +118,18 @@ const aiCommandCourse = database.prepare(`
 
 if (!tables.some((table) => table.name === "schools")) {
   throw new Error("The schools table was not created.");
+}
+if (!cognizenAcademy ||
+    cognizenAcademy.name !== "CogniZen Consulting" ||
+    (cognizenAcademy.communityName !== null &&
+      cognizenAcademy.communityName !== "CogniZen Consulting Community")) {
+  throw new Error("CogniZen Consulting did not retain its own academy identity.");
+}
+if (!stefanAcademy ||
+    stefanAcademy.name !== "Stéfan Roodt's Academy" ||
+    stefanAcademy.communityName !== "Stéfan Roodt's Academy Community" ||
+    stefanAcademy.ownerRole !== "owner") {
+  throw new Error("Stéfan Roodt's Academy was not restored as a separate academy.");
 }
 if (!stefanWeb3Course ||
     stefanWeb3Course.status !== "published" ||
