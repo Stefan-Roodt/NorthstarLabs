@@ -44,7 +44,7 @@ export default function WelcomePage() {
           setName(profile.displayName.split(" ")[0]);
           setSchoolName(`${profile.displayName}'s Academy`);
         }
-        if (profile.onboardingCompleted) {
+        if (profile.onboardingCompleted && !(preferredPath === "creator" && !profile.hasCreatorSchool)) {
           location.href = preferredPath === "coach" || profile.onboardingPath === "coach"
             ? "/dashboard/tutors?setup=1"
             : profile.hasCreatorSchool ? "/dashboard" : "/courses";

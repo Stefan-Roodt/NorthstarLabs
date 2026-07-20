@@ -162,7 +162,6 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
       <nav>
         {data.products.length > 0 && <a href="#products">Products</a>}
         <a href="#courses">Courses</a>
-        {data.tutors.length > 0 && <a href="#tutors">Tutors</a>}
         {school.showCommunity && data.community &&
           <Link href={`/schools/${school.slug}/community`}>Community</Link>}
         {school.websiteUrl && <a href={school.websiteUrl}>Website</a>}
@@ -186,8 +185,8 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
         </div>
       </div>
       <aside>
-        <strong>{String(data.products.length + data.courses.length + data.tutors.length).padStart(2, "0")}</strong>
-        <span>ways to learn</span>
+        <strong>{String(data.products.length + data.courses.length).padStart(2, "0")}</strong>
+        <span>learning options</span>
       </aside>
     </section>
 
@@ -197,10 +196,9 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
       <span>Earn certificates</span>
       {hasLiveLearning && <span>Join live sessions</span>}
       {hasCommunity && <span>Learn with a community</span>}
-      {data.tutors.length > 0 && <span>Book personal support</span>}
     </section>
 
-    {(data.courses.length > 0 || data.products.length > 0 || data.tutors.length > 0) && <section className="school-learning-modes" aria-labelledby="learning-mode-title">
+    {(data.courses.length > 0 || data.products.length > 0) && <section className="school-learning-modes" aria-labelledby="learning-mode-title">
       <div className="school-mode-heading">
         <p className="sys-kicker">CHOOSE WHAT FITS YOU</p>
         <h2 id="learning-mode-title">How do you learn best?</h2>
@@ -221,15 +219,8 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
           <p>Join a bundle or membership designed around an outcome, not a collection of disconnected lessons.</p>
           <b>Explore programmes →</b>
         </a>}
-        {data.tutors.length > 0 && <a href="#tutors">
-          <span>03</span>
-          <small>PERSONAL</small>
-          <h3>Work with a tutor</h3>
-          <p>Book one-to-one help from a real person who understands the subject and your goals.</p>
-          <b>Find a tutor →</b>
-        </a>}
         {(hasLiveLearning || hasCommunity) && <a href={hasLiveLearning ? "#products" : `/schools/${school.slug}/community`}>
-          <span>{data.tutors.length > 0 ? "04" : "03"}</span>
+          <span>03</span>
           <small>SUPPORTED</small>
           <h3>Learn with people</h3>
           <p>Use live sessions and community support to ask questions, stay accountable and keep moving.</p>
