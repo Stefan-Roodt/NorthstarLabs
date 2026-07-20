@@ -749,14 +749,11 @@ test("makes NorthstarLabs clear, memorable, discoverable, and responsive to unme
   assert.match(dashboard, /workspaceIdentity/);
   assert.match(dashboard, /Edit this academy/);
   assert.match(academy, /id="academy-identity"/);
-  assert.match(navigator, /Choose a real course\. Start when it fits/);
-  assert.match(navigator, /There is no pretend personalisation here/);
-  assert.match(navigator, /Bitcoin Intelligence: From Genesis Block to Boardroom/);
-  assert.match(navigator, /Tell us what should exist/);
+  assert.match(navigator, /Choose an academy\. Then choose your module/);
+  assert.match(navigator, /Your academy\. Your modules/);
+  assert.match(navigator, /A coach is the tailored option/);
   assert.match(navigator, /fetch\("\/api\/catalog"\)/);
-  assert.match(navigator, /No questionnaire required/);
-  assert.match(navigator, /Pick the subject you came for/);
-  assert.match(navigator, /LearningRequestForm/);
+  assert.match(navigator, /\/schools\/\$\{academy\.slug\}/);
   assert.doesNotMatch(navigator, /Show my best next step/);
   assert.match(catalogue, /GOAL-MATCHED RESULTS/);
   assert.match(catalogue, /No forced matches/i);
