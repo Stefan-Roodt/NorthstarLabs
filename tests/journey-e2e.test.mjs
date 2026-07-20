@@ -604,6 +604,8 @@ test("publishes academy tutors and protects learner enquiry details", async () =
   assert.equal(publicTutor.serviceType, "coaching");
   assert.equal(publicTutor.listingTier, "listed");
   assert.equal(publicTutor.listingMonthlyCents, 14_900);
+  assert.equal(publicTutor.profileCompleteness, 20);
+  assert.equal(publicTutor.reviewCount, 0);
   assert.equal(publicTutor.phoneNumber, "");
   assert.equal(publicTutor.contactEmail, undefined);
 
@@ -643,6 +645,31 @@ test("publishes academy tutors and protects learner enquiry details", async () =
   assert.equal(booked.slotStatus, "booked");
   assert.equal(booked.meetingDetails, "https://meet.example/private");
   db.exec(`
+    UPDATE tutor_inquiries SET status='completed' WHERE id='tutor-inquiry';
+    UPDATE tutor_slots SET status='completed' WHERE id='tutor-slot';
+    INSERT INTO tutor_credentials
+      (id,tutor_id,school_id,submitted_by,title,issuer,status,reviewer_note,
+       reviewed_by,reviewed_at,created_at,updated_at)
+    VALUES
+      ('tutor-credential','tutor-profile','tutor-school','tutor-owner',
+       'Qualified Mathematics Educator','University of Namibia','verified',
+       'Issuer record checked.','platform-admin',${now},${now},${now});
+    INSERT INTO tutor_reviews
+      (id,inquiry_id,tutor_id,school_id,learner_id,rating,comment,status,created_at,updated_at)
+    VALUES
+      ('tutor-review','tutor-inquiry','tutor-profile','tutor-school','tutor-learner',
+       5,'Clear explanations and a useful plan.','published',${now},${now});
+    UPDATE tutors SET verified=1 WHERE id='tutor-profile';
+  `);
+  const trustedRow = db.prepare(
+    `SELECT ${tutorColumns} FROM tutors t WHERE t.id='tutor-profile'`,
+  ).get();
+  const trustedTutor = serializeTutor(trustedRow);
+  assert.equal(trustedTutor.verified, true);
+  assert.equal(trustedTutor.verifiedCredentialCount, 1);
+  assert.equal(trustedTutor.reviewCount, 1);
+  assert.equal(trustedTutor.averageRating, 5);
+  db.exec(`
     UPDATE tutor_slots SET status='open' WHERE id='tutor-slot';
     UPDATE tutor_inquiries SET status='closed' WHERE id='tutor-inquiry';
   `);
@@ -664,6 +691,10 @@ test("security policy limits abusive writes and rejects oversized JSON", async (
   assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/tutor-inquiries", { method: "POST" })),
     { scope: "tutor_inquiry", limit: 10, windowMs: 3_600_000 },
+  );
+  assert.deepEqual(
+    rateLimitPolicy(new Request("https://northstarlabs.co.za/api/tutor-reviews", { method: "POST" })),
+    { scope: "tutor_review", limit: 5, windowMs: 86_400_000 },
   );
   assert.equal(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/catalog")),

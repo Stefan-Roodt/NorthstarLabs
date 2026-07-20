@@ -619,6 +619,42 @@ test("ships coach advertising plans, direct onboarding, hourly rates, and topic 
   assert.match(home, /Advertise my services/);
 });
 
+test("ships independent coach verification and completed-session learner proof", async () => {
+  const [migration, credentialsApi, trustApi, reviewApi, inquiriesApi, admin, coachDesk, learnerDesk, publicProfile, tutorHelper, email] = await Promise.all([
+    readFile(new URL("../drizzle/0021_nasty_sally_floyd.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/tutor-credentials/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/platform/tutor-trust/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/tutor-reviews/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/tutor-inquiries/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/tutors/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/tutoring/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/schools/[slug]/tutors/[tutorSlug]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/tutors.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/email-service.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(migration, /CREATE TABLE `tutor_credentials`/);
+  assert.match(migration, /CREATE TABLE `tutor_reviews`/);
+  assert.match(migration, /tutor_reviews_inquiry_unique/);
+  assert.match(credentialsApi, /status<>'withdrawn'/);
+  assert.match(credentialsApi, /evidence_url AS evidenceUrl/);
+  assert.match(trustApi, /requirePlatformAdmin/);
+  assert.match(trustApi, /status='verified'/);
+  assert.match(trustApi, /UPDATE tutors SET verified=/);
+  assert.match(trustApi, /platform\.tutor_review/);
+  assert.match(reviewApi, /inquiry\.status !== "completed"/);
+  assert.match(reviewApi, /verifiedSession: true/);
+  assert.match(inquiriesApi, /"completed"/);
+  assert.match(inquiriesApi, /Confirm the booking before marking the session completed/);
+  assert.match(admin, /Coach trust/);
+  assert.match(coachDesk, /Profile strength/);
+  assert.match(coachDesk, /Submit for verification/);
+  assert.match(learnerDesk, /Publish verified review/);
+  assert.match(publicProfile, /VERIFIED LEARNER PROOF/);
+  assert.match(tutorHelper, /tutorProfileCompleteness/);
+  assert.match(email, /tutor_review_request/);
+});
+
 test("parses browser byte ranges safely", async () => {
   const { parseByteRange } = await import("../lib/media-stream.ts");
   assert.deepEqual(parseByteRange("bytes=10-19", 100), { start: 10, end: 19, length: 10 });

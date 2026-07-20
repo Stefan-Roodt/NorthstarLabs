@@ -31,6 +31,10 @@ type MarketplaceTutor = {
   schoolPrimaryColor: string;
   availableSlotCount: number;
   nextAvailableAt: number | null;
+  verifiedCredentialCount: number;
+  reviewCount: number;
+  averageRating: number | null;
+  profileCompleteness: number;
 };
 
 type SortMode = "recommended" | "available" | "experience" | "price";
@@ -110,6 +114,8 @@ export default function TutorMarketplacePage() {
         if (placement) return placement;
         const verification = Number(b.verified) - Number(a.verified);
         if (verification) return verification;
+        const learnerProof = Number(b.averageRating || 0) - Number(a.averageRating || 0);
+        if (learnerProof) return learnerProof;
       }
       const aTime = a.nextAvailableAt || Number.MAX_SAFE_INTEGER;
       const bTime = b.nextAvailableAt || Number.MAX_SAFE_INTEGER;
@@ -227,7 +233,7 @@ export default function TutorMarketplacePage() {
                 <p>{tutor.headline}</p>
               </div>
             </div>
-            <p className="marketplace-academy">From <Link href={`/schools/${tutor.schoolSlug}`}>{tutor.schoolName}</Link></p>
+            <p className="marketplace-academy">From <Link href={`/schools/${tutor.schoolSlug}`}>{tutor.schoolName}</Link>{tutor.reviewCount > 0 && <span><b>{tutor.averageRating} ★</b> {tutor.reviewCount} verified {tutor.reviewCount === 1 ? "review" : "reviews"}</span>}</p>
             <div className="marketplace-card-subjects">{tutor.subjects.slice(0, 4).map((item) => <span key={item}>{item}</span>)}</div>
             <dl>
               <div><dt>Experience</dt><dd>{tutor.experienceYears ? `${tutor.experienceYears} years` : "See profile"}</dd></div>
@@ -262,6 +268,7 @@ export default function TutorMarketplacePage() {
         <b>Coach or tutor</b>{compared.map((tutor) => <strong key={`name-${tutor.id}`}>{tutor.displayName}<small>{tutor.schoolName}</small></strong>)}
         <b>Topics</b>{compared.map((tutor) => <span key={`subject-${tutor.id}`}>{tutor.subjects.slice(0, 3).join(", ")}</span>)}
         <b>Experience</b>{compared.map((tutor) => <span key={`experience-${tutor.id}`}>{tutor.experienceYears ? `${tutor.experienceYears} years` : "See profile"}</span>)}
+        <b>Learner proof</b>{compared.map((tutor) => <span key={`reviews-${tutor.id}`}>{tutor.reviewCount ? `${tutor.averageRating} ★ from ${tutor.reviewCount}` : "No verified reviews yet"}</span>)}
         <b>Format</b>{compared.map((tutor) => <span key={`mode-${tutor.id}`}>{sessionLabel(tutor.sessionMode)}</span>)}
         <b>Price</b>{compared.map((tutor) => <span key={`price-${tutor.id}`}>{priceLabel(tutor)}</span>)}
         <b>Availability</b>{compared.map((tutor) => <span key={`availability-${tutor.id}`}>{tutor.availableSlotCount ? `${tutor.availableSlotCount} open times` : "Enquire directly"}</span>)}

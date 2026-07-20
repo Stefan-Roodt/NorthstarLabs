@@ -71,6 +71,43 @@ type ReliabilityData = {
     postBody: string;
   }>;
 };
+type TutorTrustData = {
+  metrics: {
+    pendingCredentials: number;
+    verifiedCredentials: number;
+    verifiedProfiles: number;
+    publishedReviews: number;
+  };
+  credentials: Array<{
+    id: string;
+    tutorId: string;
+    schoolId: string;
+    title: string;
+    issuer: string;
+    awardedYear: number | null;
+    evidenceUrl: string | null;
+    status: string;
+    reviewerNote: string;
+    createdAt: number;
+    reviewedAt: number | null;
+    tutorName: string;
+    headline: string;
+    schoolName: string;
+    submittedBy: string;
+  }>;
+  reviews: Array<{
+    id: string;
+    tutorId: string;
+    schoolId: string;
+    rating: number;
+    comment: string;
+    status: string;
+    createdAt: number;
+    tutorName: string;
+    schoolName: string;
+    reviewerName: string;
+  }>;
+};
 
 function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(0, Math.round(bytes / 1024))} KB`;
@@ -84,6 +121,8 @@ export default function PlatformAdministration() {
   const [message, setMessage] = useState("Checking administrator access...");
   const [busy, setBusy] = useState("");
   const [reliability, setReliability] = useState<ReliabilityData | null>(null);
+  const [tutorTrust, setTutorTrust] = useState<TutorTrustData | null>(null);
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const supabase = getSupabaseBrowser();
 
   const token = useCallback(async () => {
@@ -133,6 +172,29 @@ export default function PlatformAdministration() {
     return () => window.clearTimeout(timeout);
   }, [loadReliability, supabase, tab]);
 
+  const loadTutorTrust = useCallback(async () => {
+    const response = await fetch("/api/platform/tutor-trust", {
+      headers: { authorization: `Bearer ${await token()}` },
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      setMessage(result.error || "Coach trust information is unavailable.");
+      return;
+    }
+    setTutorTrust(result);
+    setReviewNotes(Object.fromEntries(result.credentials.map(
+      (credential: TutorTrustData["credentials"][number]) =>
+        [credential.id, credential.reviewerNote || ""],
+    )));
+    setMessage("");
+  }, [token]);
+
+  useEffect(() => {
+    if (tab !== "Coach trust" || !supabase) return;
+    const timeout = window.setTimeout(() => void loadTutorTrust(), 0);
+    return () => window.clearTimeout(timeout);
+  }, [loadTutorTrust, supabase, tab]);
+
   async function update(targetType: string, targetId: string, action: string) {
     const label = action === "suspend" ? "suspend" : action === "reactivate" ? "reactivate" : "retry";
     if (label !== "retry" && !confirm(`${label[0].toUpperCase()}${label.slice(1)} this ${targetType}?`)) return;
@@ -177,13 +239,55 @@ export default function PlatformAdministration() {
     if (response.ok) await loadReliability();
   }
 
+  async function reviewCredential(credentialId: string, status: "verified" | "rejected") {
+    setBusy(credentialId);
+    const response = await fetch("/api/platform/tutor-trust", {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${await token()}`,
+      },
+      body: JSON.stringify({
+        credentialId,
+        status,
+        reviewerNote: reviewNotes[credentialId] || "",
+      }),
+    });
+    const result = await response.json();
+    setMessage(response.ok
+      ? status === "verified"
+        ? "Credential verified and the coach trust badge updated."
+        : "Credential rejected with the review note saved."
+      : result.error || "Credential review failed.");
+    if (response.ok) await loadTutorTrust();
+    setBusy("");
+  }
+
+  async function moderateTutorReview(reviewId: string, status: "hidden" | "published") {
+    setBusy(reviewId);
+    const response = await fetch("/api/platform/tutor-trust", {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${await token()}`,
+      },
+      body: JSON.stringify({ reviewId, status }),
+    });
+    const result = await response.json();
+    setMessage(response.ok
+      ? status === "hidden" ? "Review hidden from public profiles." : "Review republished."
+      : result.error || "Review moderation failed.");
+    if (response.ok) await loadTutorTrust();
+    setBusy("");
+  }
+
   if (!data) return <main className="system-loading"><div><b>Platform administration</b><p>{message}</p>{message.includes("required") && <Link href="/">Return home</Link>}</div></main>;
 
   return <main className="platform-admin">
     <aside>
       <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
       <p>PLATFORM ADMIN</p>
-      <nav>{["Schools", "Users", "Email", "Reliability", "Audit"].map((item) =>
+      <nav>{["Schools", "Users", "Email", "Coach trust", "Reliability", "Audit"].map((item) =>
         <button className={tab === item ? "active" : ""} key={item} onClick={() => setTab(item)}>{item}</button>
       )}</nav>
       <Link href="/dashboard">Creator workspace</Link>
@@ -231,6 +335,43 @@ export default function PlatformAdministration() {
           {item.status !== "sent" && <button disabled={busy === item.id} onClick={() => update("email", item.id, "retry")}>Retry</button>}
           {item.lastError && <p>{item.lastError}</p>}
         </div>)}</div>
+      </article>}
+
+      {tab === "Coach trust" && <article className="platform-panel tutor-trust-admin">
+        {!tutorTrust ? <div className="empty-activity"><strong>Loading credential reviews...</strong></div> : <>
+          <div className="operations-heading">
+            <div><p className="sys-kicker">INDEPENDENT REVIEW</p><h2>Coach credentials and learner proof</h2><p>Advertising plans never affect verification. Review evidence consistently and leave a useful note when rejecting a submission.</p></div>
+          </div>
+          <div className="reliability-metrics">
+            <div><span>Awaiting review</span><strong>{tutorTrust.metrics.pendingCredentials || 0}</strong><small>Credential submissions</small></div>
+            <div><span>Verified credentials</span><strong>{tutorTrust.metrics.verifiedCredentials || 0}</strong><small>Across all coach profiles</small></div>
+            <div><span>Verified profiles</span><strong>{tutorTrust.metrics.verifiedProfiles || 0}</strong><small>At least one approved credential</small></div>
+            <div><span>Verified reviews</span><strong>{tutorTrust.metrics.publishedReviews || 0}</strong><small>From completed sessions</small></div>
+          </div>
+          <div className="tutor-trust-list">
+            {tutorTrust.credentials.length ? tutorTrust.credentials.map((credential) => <section key={credential.id}>
+              <header>
+                <div><p className="sys-kicker">{credential.schoolName.toUpperCase()}</p><h3>{credential.tutorName}</h3><span>{credential.headline}</span></div>
+                <span className={`delivery-status ${credential.status}`}>{credential.status}</span>
+              </header>
+              <dl><div><dt>Credential</dt><dd>{credential.title}</dd></div><div><dt>Issuer</dt><dd>{credential.issuer}</dd></div><div><dt>Year</dt><dd>{credential.awardedYear || "Not supplied"}</dd></div><div><dt>Submitted by</dt><dd>{credential.submittedBy}</dd></div></dl>
+              {credential.evidenceUrl ? <a href={credential.evidenceUrl} target="_blank" rel="noreferrer">Open private evidence ↗</a> : <p className="admin-warning-copy">No evidence URL was supplied. Verify directly with the issuing organisation before approval.</p>}
+              <label>Review note<textarea value={reviewNotes[credential.id] || ""} onChange={(event) => setReviewNotes((current) => ({ ...current, [credential.id]: event.target.value }))} maxLength={1000} placeholder="What was checked, or what the coach needs to correct." /></label>
+              <footer>
+                <small>Submitted {new Date(credential.createdAt).toLocaleDateString("en-ZA")}</small>
+                <div><button disabled={busy === credential.id} onClick={() => reviewCredential(credential.id, "rejected")}>Reject</button><button className="sys-primary" disabled={busy === credential.id} onClick={() => reviewCredential(credential.id, "verified")}>Verify credential</button></div>
+              </footer>
+            </section>) : <p>No credentials have been submitted yet.</p>}
+          </div>
+          <section className="tutor-review-moderation">
+            <div className="operations-heading"><div><p className="sys-kicker">VERIFIED-SESSION REVIEWS</p><h2>Review moderation</h2><p>Reviews are tied to completed sessions. Hide only content that breaches platform standards; do not remove fair criticism.</p></div><span>{tutorTrust.reviews.filter((review) => review.status === "published").length} public</span></div>
+            <div>{tutorTrust.reviews.length ? tutorTrust.reviews.map((review) => <article key={review.id}>
+              <header><div><b>{review.rating} ★ · {review.tutorName}</b><small>{review.schoolName} · {review.reviewerName} · {new Date(review.createdAt).toLocaleDateString("en-ZA")}</small></div><span className={`delivery-status ${review.status}`}>{review.status}</span></header>
+              <p>{review.comment || "Rating submitted without a written comment."}</p>
+              <button disabled={busy === review.id} onClick={() => moderateTutorReview(review.id, review.status === "published" ? "hidden" : "published")}>{review.status === "published" ? "Hide review" : "Republish review"}</button>
+            </article>) : <p>No completed-session reviews have been published yet.</p>}</div>
+          </section>
+        </>}
       </article>}
 
       {tab === "Reliability" && <article className="platform-panel reliability-panel">

@@ -24,6 +24,7 @@ type TutoringRequest = {
   timezone: string | null;
   sessionMode: string | null;
   meetingDetails: string | null;
+  reviewId: string | null;
 };
 
 const statusCopy: Record<string, { label: string; text: string }> = {
@@ -38,6 +39,10 @@ const statusCopy: Record<string, { label: string; text: string }> = {
   booked: {
     label: "Confirmed",
     text: "Your appointment is confirmed. The joining details are below.",
+  },
+  completed: {
+    label: "Completed",
+    text: "This session is complete. Your review helps the next learner choose with confidence.",
   },
   declined: {
     label: "Choose another time",
@@ -56,6 +61,8 @@ export default function TutoringPage() {
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [currentTime, setCurrentTime] = useState(0);
+  const [ratings, setRatings] = useState<Record<string, number>>({});
+  const [reviewComments, setReviewComments] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     if (!supabase) return;
@@ -104,13 +111,38 @@ export default function TutoringPage() {
     setBusy("");
   }
 
+  async function submitReview(item: TutoringRequest) {
+    const session = (await supabase?.auth.getSession())?.data.session;
+    if (!session) return;
+    setBusy(`review-${item.id}`);
+    setMessage("");
+    const response = await fetch("/api/tutor-reviews", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${session.access_token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        inquiryId: item.id,
+        rating: ratings[item.id] || 0,
+        comment: reviewComments[item.id] || "",
+      }),
+    });
+    const result = await response.json();
+    setMessage(response.ok
+      ? `Thank you. Your verified-session review for ${item.tutorName} is now published.`
+      : result.error || "Your review could not be published.");
+    if (response.ok) await load();
+    setBusy("");
+  }
+
   async function signOut() {
     await supabase?.auth.signOut();
     location.href = "/";
   }
 
   const upcoming = items.filter((item) =>
-    !["declined", "closed"].includes(item.status) &&
+    !["declined", "closed", "completed"].includes(item.status) &&
     (!item.startsAt || item.startsAt > currentTime)
   );
   const history = items.filter((item) => !upcoming.includes(item));
@@ -144,7 +176,7 @@ export default function TutoringPage() {
       {loading ? <article className="panel product-empty"><h2>Loading your tutoring desk…</h2></article> : <>
         <div className="tutoring-heading"><div><p className="sys-kicker">NEXT</p><h2>Upcoming requests</h2></div><Link href="/courses">Explore learning</Link></div>
         {upcoming.length ? <div className="tutoring-grid">{upcoming.map((item) =>
-          <TutoringCard key={item.id} item={item} busy={busy === item.id} now={currentTime} onCancel={cancelAppointment} />
+          <TutoringCard key={item.id} item={item} busy={busy === item.id} now={currentTime} onCancel={cancelAppointment} onReview={submitReview} rating={ratings[item.id] || 0} comment={reviewComments[item.id] || ""} reviewBusy={busy === `review-${item.id}`} onRating={(rating) => setRatings((current) => ({ ...current, [item.id]: rating }))} onComment={(comment) => setReviewComments((current) => ({ ...current, [item.id]: comment }))} />
         )}</div> : <article className="panel tutoring-empty">
           <span>1:1</span>
           <div><h2>No upcoming tutoring yet.</h2><p>Open an academy&apos;s tutor directory, compare expertise and request a time that works for you.</p><Link className="sys-primary" href="/courses">Find an academy</Link></div>
@@ -153,7 +185,7 @@ export default function TutoringPage() {
         {history.length > 0 && <div className="tutoring-history">
           <div className="tutoring-heading"><div><p className="sys-kicker">HISTORY</p><h2>Earlier requests</h2></div></div>
           <div className="tutoring-grid">{history.map((item) =>
-            <TutoringCard key={item.id} item={item} busy={false} now={currentTime} onCancel={cancelAppointment} />
+            <TutoringCard key={item.id} item={item} busy={false} now={currentTime} onCancel={cancelAppointment} onReview={submitReview} rating={ratings[item.id] || 0} comment={reviewComments[item.id] || ""} reviewBusy={busy === `review-${item.id}`} onRating={(rating) => setRatings((current) => ({ ...current, [item.id]: rating }))} onComment={(comment) => setReviewComments((current) => ({ ...current, [item.id]: comment }))} />
           )}</div>
         </div>}
       </>}
@@ -166,11 +198,23 @@ function TutoringCard({
   busy,
   now,
   onCancel,
+  onReview,
+  rating,
+  comment,
+  reviewBusy,
+  onRating,
+  onComment,
 }: {
   item: TutoringRequest;
   busy: boolean;
   now: number;
   onCancel: (item: TutoringRequest) => void;
+  onReview: (item: TutoringRequest) => void;
+  rating: number;
+  comment: string;
+  reviewBusy: boolean;
+  onRating: (rating: number) => void;
+  onComment: (comment: string) => void;
 }) {
   const copy = statusCopy[item.status] || statusCopy.new;
   const canCancel = ["new", "contacted", "booked"].includes(item.status) &&
@@ -191,6 +235,15 @@ function TutoringCard({
       <small>JOINING OR VENUE DETAILS</small>
       <p>{item.meetingDetails || "The tutor or academy will share the final details before your appointment."}</p>
     </div>}
+    {item.status === "completed" && !item.reviewId && <section className="tutoring-review-form">
+      <p className="sys-kicker">VERIFIED SESSION REVIEW</p>
+      <h4>How was your session?</h4>
+      <div aria-label="Choose a rating">{[1, 2, 3, 4, 5].map((value) => <button aria-label={`${value} star${value === 1 ? "" : "s"}`} aria-pressed={rating === value} key={value} onClick={() => onRating(value)} type="button">★</button>)}</div>
+      <textarea maxLength={800} value={comment} onChange={(event) => onComment(event.target.value)} placeholder="What helped, and who would you recommend this coach or tutor to?" />
+      <button className="sys-primary" disabled={reviewBusy || !rating} onClick={() => onReview(item)} type="button">{reviewBusy ? "Publishing…" : "Publish verified review"}</button>
+      <small>Only learners from completed NorthstarLabs sessions can leave this review.</small>
+    </section>}
+    {item.reviewId && <p className="tutoring-reviewed">✓ You reviewed this completed session.</p>}
     <div className="tutoring-actions">
       <Link href={`/schools/${item.schoolSlug}/tutors/${item.tutorSlug}`}>
         {item.status === "declined" ? "Choose another time" : "View tutor"}

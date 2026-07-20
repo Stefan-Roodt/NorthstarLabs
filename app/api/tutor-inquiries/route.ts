@@ -9,7 +9,7 @@ import {
 } from "../../../lib/school-access";
 import { requireApiUser } from "../../../lib/server-auth";
 
-const inquiryStatuses = new Set(["new", "contacted", "booked", "closed", "declined"]);
+const inquiryStatuses = new Set(["new", "contacted", "booked", "completed", "closed", "declined"]);
 const contactPreferences = new Set(["email", "phone", "whatsapp"]);
 
 function cleanText(value: unknown, maximum: number) {
@@ -36,7 +36,8 @@ export async function GET(request: Request) {
         s.name AS schoolName,s.slug AS schoolSlug,
         ts.starts_at AS startsAt,ts.ends_at AS endsAt,ts.timezone,
         ts.session_mode AS sessionMode,
-        CASE WHEN ti.status='booked' THEN ts.meeting_details ELSE '' END AS meetingDetails
+        CASE WHEN ti.status IN ('booked','completed') THEN ts.meeting_details ELSE '' END AS meetingDetails,
+        (SELECT tr.id FROM tutor_reviews tr WHERE tr.inquiry_id=ti.id LIMIT 1) AS reviewId
        FROM tutor_inquiries ti
        JOIN tutors t ON t.id=ti.tutor_id
        JOIN schools s ON s.id=ti.school_id
@@ -65,7 +66,7 @@ export async function GET(request: Request) {
      LEFT JOIN tutor_slots ts ON ts.id=ti.slot_id
      WHERE ti.school_id=? ORDER BY
        CASE ti.status WHEN 'new' THEN 0 WHEN 'contacted' THEN 1
-         WHEN 'booked' THEN 2 ELSE 3 END,
+         WHEN 'booked' THEN 2 WHEN 'completed' THEN 3 ELSE 4 END,
        ti.created_at DESC`,
   ).bind(school.id).all();
   return Response.json({ school, inquiries: rows.results });
@@ -285,7 +286,7 @@ export async function PATCH(request: Request) {
       slotStatus: string | null;
     }>();
     if (!inquiry) return Response.json({ error: "Tutoring request not found." }, { status: 404 });
-    if (["declined", "closed"].includes(inquiry.status)) {
+    if (["completed", "declined", "closed"].includes(inquiry.status)) {
       return Response.json({ error: "This request is already closed." }, { status: 409 });
     }
     if (inquiry.startsAt && inquiry.startsAt <= Date.now()) {
@@ -373,6 +374,18 @@ export async function PATCH(request: Request) {
     : inquiry.status;
   const creatorNote = cleanText(body.creatorNote, 1_000);
   const now = Date.now();
+  if (status === "completed" && inquiry.status !== "booked" && inquiry.status !== "completed") {
+    return Response.json(
+      { error: "Confirm the booking before marking the session completed." },
+      { status: 409 },
+    );
+  }
+  if (status === "completed" && inquiry.endsAt && inquiry.endsAt > now) {
+    return Response.json(
+      { error: "A scheduled session can only be completed after its end time." },
+      { status: 409 },
+    );
+  }
   if (inquiry.slotId && status === "booked") {
     const booked = await env.DB.prepare(
       `UPDATE tutor_slots SET status='booked',updated_at=?
@@ -389,6 +402,11 @@ export async function PATCH(request: Request) {
     await env.DB.prepare(
       "UPDATE tutor_slots SET status=?,updated_at=? WHERE id=?",
     ).bind(Number(inquiry.startsAt || 0) > now ? "open" : "cancelled", now, inquiry.slotId).run();
+  }
+  if (inquiry.slotId && status === "completed" && inquiry.slotStatus === "booked") {
+    await env.DB.prepare(
+      "UPDATE tutor_slots SET status='completed',updated_at=? WHERE id=?",
+    ).bind(now, inquiry.slotId).run();
   }
   await env.DB.prepare(
     "UPDATE tutor_inquiries SET status=?,creator_note=?,updated_at=? WHERE id=?",
@@ -411,6 +429,20 @@ export async function PATCH(request: Request) {
         actionUrl: `${new URL(request.url).origin}/tutoring`,
       },
       idempotencyKey: `tutor-booking:${inquiry.id}:${status}`,
+    }).catch(() => ({ id: "", status: "pending" }));
+  }
+  if (status === "completed") {
+    await queueEmail({
+      schoolId: school.id,
+      recipientUserId: inquiry.learnerId,
+      recipientEmail: inquiry.learnerEmail,
+      templateKey: "tutor_review_request",
+      variables: {
+        academy: inquiry.schoolName,
+        tutor: inquiry.tutorName,
+        actionUrl: `${new URL(request.url).origin}/tutoring`,
+      },
+      idempotencyKey: `tutor-review-request:${inquiry.id}`,
     }).catch(() => ({ id: "", status: "pending" }));
   }
   await writeAuditLog({

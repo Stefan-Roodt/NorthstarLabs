@@ -34,6 +34,11 @@ type Tutor = {
   status: string;
   inquiryCount: number;
   newInquiryCount: number;
+  verifiedCredentialCount: number;
+  reviewCount: number;
+  averageRating: number | null;
+  profileCompleteness: number;
+  profileMissing: string[];
 };
 
 type Inquiry = {
@@ -72,6 +77,20 @@ type TutorSlot = {
   inquiryId: string | null;
   learnerName: string | null;
   inquiryStatus: string | null;
+};
+
+type TutorCredential = {
+  id: string;
+  tutorId: string;
+  tutorName: string;
+  title: string;
+  issuer: string;
+  awardedYear: number | null;
+  evidenceUrl: string | null;
+  status: string;
+  reviewerNote: string;
+  reviewedAt: number | null;
+  createdAt: number;
 };
 
 type TutorData = {
@@ -134,6 +153,7 @@ export default function TutorAdminPage() {
   const [data, setData] = useState<TutorData | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [slots, setSlots] = useState<TutorSlot[]>([]);
+  const [credentials, setCredentials] = useState<TutorCredential[]>([]);
   const [editingId, setEditingId] = useState("");
   const [draft, setDraft] = useState<TutorDraft>(emptyDraft);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -146,6 +166,11 @@ export default function TutorAdminPage() {
   const [slotMode, setSlotMode] = useState("online");
   const [slotTimezone, setSlotTimezone] = useState("Africa/Johannesburg");
   const [meetingDetails, setMeetingDetails] = useState("");
+  const [credentialTutorId, setCredentialTutorId] = useState("");
+  const [credentialTitle, setCredentialTitle] = useState("");
+  const [credentialIssuer, setCredentialIssuer] = useState("");
+  const [credentialYear, setCredentialYear] = useState("");
+  const [credentialEvidenceUrl, setCredentialEvidenceUrl] = useState("");
 
   const token = useCallback(async () => {
     return (await supabase?.auth.getSession())?.data.session?.access_token || "";
@@ -170,15 +195,17 @@ export default function TutorAdminPage() {
       location.href = "/login?next=/dashboard/tutors";
       return;
     }
-    const [tutorsResponse, inquiriesResponse, slotsResponse] = await Promise.all([
+    const [tutorsResponse, inquiriesResponse, slotsResponse, credentialsResponse] = await Promise.all([
       authed("/api/tutors"),
       authed("/api/tutor-inquiries"),
       authed("/api/tutor-slots"),
+      authed("/api/tutor-credentials"),
     ]);
     if (tutorsResponse.ok) {
       const tutorData = await tutorsResponse.json() as TutorData;
       setData(tutorData);
       setSlotTutorId((current) => current || tutorData.tutors[0]?.id || "");
+      setCredentialTutorId((current) => current || tutorData.tutors[0]?.id || "");
       setMessage("");
     } else {
       setMessage("Your tutor desk could not be loaded.");
@@ -191,6 +218,10 @@ export default function TutorAdminPage() {
     if (slotsResponse.ok) {
       const result = await slotsResponse.json() as { slots: TutorSlot[] };
       setSlots(result.slots);
+    }
+    if (credentialsResponse.ok) {
+      const result = await credentialsResponse.json() as { credentials: TutorCredential[] };
+      setCredentials(result.credentials);
     }
   }, [authed, supabase]);
 
@@ -330,6 +361,49 @@ export default function TutorAdminPage() {
     setBusy("");
   }
 
+  async function submitCredential(event: FormEvent) {
+    event.preventDefault();
+    setBusy("credential");
+    setMessage("");
+    const response = await authed("/api/tutor-credentials", {
+      method: "POST",
+      body: JSON.stringify({
+        tutorId: credentialTutorId,
+        title: credentialTitle,
+        issuer: credentialIssuer,
+        awardedYear: credentialYear ? Number(credentialYear) : null,
+        evidenceUrl: credentialEvidenceUrl,
+      }),
+    });
+    const result = await response.json();
+    setMessage(response.ok
+      ? "Credential submitted for independent review."
+      : result.error || "The credential could not be submitted.");
+    if (response.ok) {
+      setCredentialTitle("");
+      setCredentialIssuer("");
+      setCredentialYear("");
+      setCredentialEvidenceUrl("");
+      await load();
+    }
+    setBusy("");
+  }
+
+  async function withdrawCredential(credential: TutorCredential) {
+    if (!confirm(`Withdraw ${credential.title} from verification?`)) return;
+    setBusy(credential.id);
+    const response = await authed(
+      `/api/tutor-credentials?id=${encodeURIComponent(credential.id)}`,
+      { method: "DELETE" },
+    );
+    const result = await response.json();
+    setMessage(response.ok
+      ? "Credential withdrawn."
+      : result.error || "The credential could not be withdrawn.");
+    if (response.ok) await load();
+    setBusy("");
+  }
+
   async function createSlots(event: FormEvent) {
     event.preventDefault();
     setBusy("slots");
@@ -455,8 +529,13 @@ export default function TutorAdminPage() {
             <p className="sys-kicker">{tutor.verified ? "✓ VERIFIED · " : ""}{(tutor.listingTier || "listed").toUpperCase()} PLAN</p>
             <h3>{tutor.displayName}</h3>
             <p>{tutor.headline || "Add a clear professional headline before publishing."}</p>
+            <div className="coach-completeness">
+              <span><b>Profile strength</b><strong>{tutor.profileCompleteness}%</strong></span>
+              <i><b style={{ width: `${tutor.profileCompleteness}%` }} /></i>
+              {tutor.profileMissing?.[0] && <small>Next: {tutor.profileMissing[0]}</small>}
+            </div>
             <div className="tutor-admin-tags">{tutor.subjects.slice(0, 4).map((subject) => <span key={subject}>{subject}</span>)}</div>
-            <dl><div><dt>Hourly rate</dt><dd>{tutor.priceCents ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}/hour` : "Not set"}</dd></div><div><dt>Enquiries</dt><dd>{tutor.inquiryCount}{tutor.newInquiryCount ? ` · ${tutor.newInquiryCount} new` : ""}</dd></div></dl>
+            <dl><div><dt>Hourly rate</dt><dd>{tutor.priceCents ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}/hour` : "Not set"}</dd></div><div><dt>Learner proof</dt><dd>{tutor.reviewCount ? `${tutor.averageRating} ★ · ${tutor.reviewCount}` : "No reviews yet"}</dd></div></dl>
             <div className="tutor-admin-actions">
               <button onClick={() => editTutor(tutor)}>Edit</button>
               {tutor.status !== "published" && <button className="sys-primary" disabled={busy === tutor.id} onClick={() => setStatus(tutor, "published")}>Publish</button>}
@@ -467,6 +546,34 @@ export default function TutorAdminPage() {
             </div>
           </article>)}
         </div> : <article className="panel product-empty"><h3>No coach profiles yet</h3><p>Create your first profile above. It stays private until you publish it.</p></article>}
+      </section>
+
+      <section className="tutor-admin-section" id="credentials">
+        <div className="product-section-heading">
+          <span>TRUST</span>
+          <div><h2>Credentials and verification</h2><p>Submit structured evidence for independent review. Verification cannot be purchased and remains separate from advertising.</p></div>
+        </div>
+        <div className="coach-credential-grid">
+          <form className="panel coach-credential-form" onSubmit={submitCredential}>
+            <label>Coach profile<select required value={credentialTutorId} onChange={(event) => setCredentialTutorId(event.target.value)}><option value="">Choose a profile</option>{data.tutors.map((tutor) => <option key={tutor.id} value={tutor.id}>{tutor.displayName}</option>)}</select></label>
+            <label>Credential or professional designation<input required minLength={3} maxLength={160} value={credentialTitle} onChange={(event) => setCredentialTitle(event.target.value)} placeholder="ICF Associate Certified Coach" /></label>
+            <label>Issuing organisation<input required minLength={2} maxLength={160} value={credentialIssuer} onChange={(event) => setCredentialIssuer(event.target.value)} placeholder="International Coaching Federation" /></label>
+            <label>Year awarded<input type="number" min={1950} max={new Date().getFullYear()} value={credentialYear} onChange={(event) => setCredentialYear(event.target.value)} placeholder="2024" /></label>
+            <label className="product-span-two">Private evidence URL<input type="url" maxLength={500} value={credentialEvidenceUrl} onChange={(event) => setCredentialEvidenceUrl(event.target.value)} placeholder="https://issuer.example/verify/…" /><small>This evidence is visible only to the NorthstarLabs verification team.</small></label>
+            <button className="sys-primary product-span-two" disabled={busy === "credential" || !data.tutors.length}>{busy === "credential" ? "Submitting…" : "Submit for verification"}</button>
+          </form>
+          <div className="coach-credential-list">
+            {credentials.length ? credentials.map((credential) => <article className="panel" key={credential.id}>
+              <header><div><p className="sys-kicker">{credential.tutorName.toUpperCase()}</p><h3>{credential.title}</h3></div><span className={`delivery-status ${credential.status}`}>{credential.status}</span></header>
+              <p>{credential.issuer}{credential.awardedYear ? ` · ${credential.awardedYear}` : ""}</p>
+              {credential.reviewerNote && <blockquote>{credential.reviewerNote}</blockquote>}
+              <footer>
+                {credential.evidenceUrl && <a href={credential.evidenceUrl} target="_blank" rel="noreferrer">Open submitted evidence</a>}
+                {["pending", "rejected"].includes(credential.status) && <button disabled={busy === credential.id} onClick={() => withdrawCredential(credential)}>Withdraw</button>}
+              </footer>
+            </article>) : <article className="panel product-empty"><h3>No credentials submitted</h3><p>Add one recognised qualification or professional designation to begin verification.</p></article>}
+          </div>
+        </div>
       </section>
 
       <section className="tutor-admin-section" id="availability">
@@ -515,7 +622,7 @@ export default function TutorAdminPage() {
               </div>
               {slot.status === "open"
                 ? <button disabled={busy === slot.id} onClick={() => cancelSlot(slot)}>Remove time</button>
-                : <span>{slot.status === "reserved" ? "Resolve the enquiry below" : "Appointment confirmed"}</span>}
+                : <span>{slot.status === "reserved" ? "Resolve the enquiry below" : slot.status === "completed" ? "Session completed" : "Appointment confirmed"}</span>}
             </article>) : <article className="panel product-empty"><h3>No appointment times yet</h3><p>Add a time above. It will appear on the tutor&apos;s public profile.</p></article>}
           </div>
         </div>
@@ -548,8 +655,9 @@ export default function TutorAdminPage() {
               {inquiry.phoneNumber && <a href={`tel:${inquiry.phoneNumber}`}>Call learner</a>}
               {inquiry.status === "new" && <button disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "contacted")}>Mark contacted</button>}
               {!["booked", "declined", "closed"].includes(inquiry.status) && <button className="sys-primary" disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "booked")}>{inquiry.slotId ? "Confirm booking" : "Mark booked"}</button>}
+              {inquiry.status === "booked" && <button className="sys-primary" disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "completed")}>Mark session completed</button>}
               {inquiry.slotId && !["booked", "declined", "closed"].includes(inquiry.status) && <button disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "declined")}>Decline time</button>}
-              {!["closed", "declined"].includes(inquiry.status) && <button disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "closed")}>Close</button>}
+              {!["closed", "declined", "completed"].includes(inquiry.status) && <button disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "closed")}>Close</button>}
             </div>
           </article>)}
         </div> : <article className="panel product-empty"><h3>No tutor enquiries yet</h3><p>Published tutors will receive protected learner enquiries here.</p></article>}

@@ -7,6 +7,7 @@ export type EmailTemplateKey =
   | "certificate"
   | "tutor_enquiry"
   | "tutor_booking_update"
+  | "tutor_review_request"
   | "tutor_booking_cancelled"
   | "creator_summary"
   | "test";
@@ -113,6 +114,16 @@ function templateContent(templateKey: EmailTemplateKey, values: EmailVariables) 
         : "No payment has been taken. Your original enquiry remains in your tutoring history.",
     };
   }
+  if (templateKey === "tutor_review_request") {
+    return {
+      subject: `How was your session with ${values.tutor || "your coach"}?`,
+      heading: "Your session is complete",
+      intro: `${values.tutor || "Your coach"} marked your session as completed. Share an honest review to help the next learner choose confidently.`,
+      actionLabel: "Review my session",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: "Only learners from completed NorthstarLabs sessions can publish a verified-session review.",
+    };
+  }
   if (templateKey === "tutor_booking_cancelled") {
     return {
       subject: `Tutoring appointment cancelled by ${values.learner || "a learner"}`,
@@ -186,6 +197,7 @@ async function emailAllowed(userId: string | null | undefined, templateKey: Emai
   if (templateKey === "certificate") return Boolean(preferences.completionEmails);
   if (templateKey === "tutor_enquiry") return true;
   if (templateKey === "tutor_booking_update") return true;
+  if (templateKey === "tutor_review_request") return true;
   if (templateKey === "tutor_booking_cancelled") return true;
   if (templateKey === "creator_summary") return Boolean(preferences.creatorSummaries);
   return true;

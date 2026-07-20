@@ -26,6 +26,10 @@ type PublicTutor = {
   bookingUrl: string | null;
   showDirectContact: boolean;
   verified: boolean;
+  verifiedCredentialCount: number;
+  reviewCount: number;
+  averageRating: number | null;
+  profileCompleteness: number;
 };
 
 type TutorDetail = {
@@ -50,6 +54,15 @@ type AvailableSlot = {
   sessionMode: string;
 };
 
+type TutorReview = {
+  id: string;
+  rating: number;
+  comment: string;
+  reviewerName: string;
+  createdAt: number;
+  verifiedSession: boolean;
+};
+
 function whatsappLink(number: string) {
   return `https://wa.me/${number.replace(/\D/g, "")}`;
 }
@@ -68,6 +81,7 @@ export default function TutorDetailPage({ params }: {
   const [selectedSlotId, setSelectedSlotId] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [reviews, setReviews] = useState<TutorReview[]>([]);
 
   useEffect(() => {
     params.then(setPath);
@@ -80,7 +94,16 @@ export default function TutorDetailPage({ params }: {
         if (!response.ok) throw new Error("This tutor profile is unavailable.");
         return response.json() as Promise<TutorDetail>;
       })
-      .then(setData)
+      .then(async (detail) => {
+        setData(detail);
+        const tutorId = detail.tutors[0]?.id;
+        if (!tutorId) return;
+        const reviewsResponse = await fetch(`/api/tutor-reviews?tutorId=${encodeURIComponent(tutorId)}`);
+        if (reviewsResponse.ok) {
+          const result = await reviewsResponse.json() as { reviews: TutorReview[] };
+          setReviews(result.reviews);
+        }
+      })
       .catch((reason: Error) => setNotice(reason.message));
   }, [path]);
 
@@ -154,7 +177,7 @@ export default function TutorDetailPage({ params }: {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={tutor.photoUrl} alt="" />
         </> : <span>{tutor.displayName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span>}
-        <div><p className="sys-kicker">{tutor.verified ? "✓ VERIFIED TUTOR" : `TUTOR AT ${data.school.name.toUpperCase()}`}</p><h1>{tutor.displayName}</h1><p>{tutor.headline}</p></div>
+        <div><p className="sys-kicker">{tutor.verified ? tutor.verifiedCredentialCount > 0 ? `✓ VERIFIED · ${tutor.verifiedCredentialCount} APPROVED ${tutor.verifiedCredentialCount === 1 ? "CREDENTIAL" : "CREDENTIALS"}` : "✓ VERIFIED PROFILE" : `COACH OR TUTOR AT ${data.school.name.toUpperCase()}`}</p><h1>{tutor.displayName}</h1><p>{tutor.headline}</p>{tutor.reviewCount > 0 && <div className="tutor-profile-rating"><b>{tutor.averageRating} ★</b><span>{tutor.reviewCount} verified-session {tutor.reviewCount === 1 ? "review" : "reviews"}</span></div>}</div>
       </div>
       <aside className="tutor-book-card">
         <small>ONE-TO-ONE SESSION</small>
@@ -187,6 +210,14 @@ export default function TutorDetailPage({ params }: {
           <div><dt>Timezone</dt><dd>{tutor.timezone}</dd></div>
         </dl>
         {tutor.qualifications && <section className="tutor-qualifications"><p className="sys-kicker">QUALIFICATIONS & EXPERIENCE</p><p>{tutor.qualifications}</p></section>}
+        <section className="tutor-review-section">
+          <div><p className="sys-kicker">VERIFIED LEARNER PROOF</p><h2>{reviews.length ? "What learners experienced." : "Reviews will appear after completed sessions."}</h2><p>Only learners connected to a completed NorthstarLabs session can publish a review.</p></div>
+          {reviews.length > 0 && <div>{reviews.map((review) => <article key={review.id}>
+            <header><strong>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</strong><span>✓ VERIFIED SESSION</span></header>
+            {review.comment && <blockquote>{review.comment}</blockquote>}
+            <footer><b>{review.reviewerName}</b><time>{new Date(review.createdAt).toLocaleDateString("en-ZA", { month: "short", year: "numeric" })}</time></footer>
+          </article>)}</div>}
+        </section>
       </article>
 
       <form className="tutor-enquiry-form" id="enquire" onSubmit={enquire}>

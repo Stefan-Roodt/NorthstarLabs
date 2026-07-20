@@ -32,6 +32,9 @@ export type TutorRow = {
   updatedAt: number;
   inquiryCount?: number;
   newInquiryCount?: number;
+  verifiedCredentialCount?: number;
+  reviewCount?: number;
+  averageRating?: number | null;
 };
 
 export const tutorColumns = `t.id,t.school_id AS schoolId,t.user_id AS userId,
@@ -46,7 +49,13 @@ export const tutorColumns = `t.id,t.school_id AS schoolId,t.user_id AS userId,
   t.contact_email AS contactEmail,t.phone_number AS phoneNumber,
   t.whatsapp_number AS whatsappNumber,t.booking_url AS bookingUrl,
   t.show_direct_contact AS showDirectContact,t.verified,t.status,
-  t.created_at AS createdAt,t.updated_at AS updatedAt`;
+  t.created_at AS createdAt,t.updated_at AS updatedAt,
+  (SELECT COUNT(*) FROM tutor_credentials tc
+    WHERE tc.tutor_id=t.id AND tc.status='verified') AS verifiedCredentialCount,
+  (SELECT COUNT(*) FROM tutor_reviews tr
+    WHERE tr.tutor_id=t.id AND tr.status='published') AS reviewCount,
+  (SELECT ROUND(AVG(tr.rating),1) FROM tutor_reviews tr
+    WHERE tr.tutor_id=t.id AND tr.status='published') AS averageRating`;
 
 function parseList(value: string) {
   try {
@@ -61,6 +70,7 @@ function parseList(value: string) {
 
 export function serializeTutor(row: TutorRow, includePrivate = false) {
   const direct = Boolean(row.showDirectContact);
+  const completeness = tutorProfileCompleteness(row);
   return {
     id: row.id,
     schoolId: row.schoolId,
@@ -89,11 +99,44 @@ export function serializeTutor(row: TutorRow, includePrivate = false) {
     bookingUrl: includePrivate || direct ? row.bookingUrl : null,
     showDirectContact: direct,
     verified: Boolean(row.verified),
+    verifiedCredentialCount: Number(row.verifiedCredentialCount || 0),
+    reviewCount: Number(row.reviewCount || 0),
+    averageRating: row.averageRating === null || row.averageRating === undefined
+      ? null
+      : Number(row.averageRating),
+    profileCompleteness: completeness.score,
+    ...(includePrivate ? { profileMissing: completeness.missing } : {}),
     status: row.status,
     inquiryCount: Number(row.inquiryCount || 0),
     newInquiryCount: Number(row.newInquiryCount || 0),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+export function tutorProfileCompleteness(row: TutorRow) {
+  const subjects = parseList(row.subjectsJson);
+  const languages = parseList(row.languagesJson);
+  const checks = [
+    [Boolean(row.photoUrl), "Add a professional photograph"],
+    [row.headline.trim().length >= 25, "Write a specific professional headline"],
+    [row.bio.trim().length >= 160, "Expand your biography to explain your approach"],
+    [subjects.length >= 3, "Add at least three searchable topics"],
+    [languages.length >= 1, "Add the languages you coach in"],
+    [row.qualifications.trim().length >= 40, "Describe relevant qualifications and experience"],
+    [Number(row.experienceYears) > 0, "Add your years of experience"],
+    [Number(row.priceCents) > 0, "Set your hourly rate"],
+    [row.availability.trim().length >= 10, "Describe your usual availability"],
+    [
+      Boolean(row.contactEmail) &&
+        Boolean(row.phoneNumber || row.whatsappNumber || row.bookingUrl),
+      "Add a private email and one direct contact method",
+    ],
+  ] as const;
+  const completed = checks.filter(([done]) => done).length;
+  return {
+    score: Math.round((completed / checks.length) * 100),
+    missing: checks.filter(([done]) => !done).map(([, label]) => label),
   };
 }
 

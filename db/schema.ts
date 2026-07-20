@@ -390,6 +390,41 @@ export const tutorInquiries = sqliteTable("tutor_inquiries", {
   index("tutor_inquiries_learner_created_idx").on(table.learnerId, table.createdAt),
   index("tutor_inquiries_slot_status_idx").on(table.slotId, table.status),
 ]);
+export const tutorCredentials = sqliteTable("tutor_credentials", {
+  id: text("id").primaryKey(),
+  tutorId: text("tutor_id").notNull(),
+  schoolId: text("school_id").notNull(),
+  submittedBy: text("submitted_by").notNull(),
+  title: text("title").notNull(),
+  issuer: text("issuer").notNull().default(""),
+  awardedYear: integer("awarded_year"),
+  evidenceUrl: text("evidence_url"),
+  status: text("status").notNull().default("pending"),
+  reviewerNote: text("reviewer_note").notNull().default(""),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: integer("reviewed_at"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  index("tutor_credentials_tutor_status_idx").on(table.tutorId, table.status, table.updatedAt),
+  index("tutor_credentials_school_status_idx").on(table.schoolId, table.status, table.updatedAt),
+]);
+export const tutorReviews = sqliteTable("tutor_reviews", {
+  id: text("id").primaryKey(),
+  inquiryId: text("inquiry_id").notNull(),
+  tutorId: text("tutor_id").notNull(),
+  schoolId: text("school_id").notNull(),
+  learnerId: text("learner_id").notNull(),
+  rating: integer("rating").notNull(),
+  comment: text("comment").notNull().default(""),
+  status: text("status").notNull().default("published"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("tutor_reviews_inquiry_unique").on(table.inquiryId),
+  index("tutor_reviews_tutor_status_created_idx").on(table.tutorId, table.status, table.createdAt),
+  index("tutor_reviews_learner_created_idx").on(table.learnerId, table.createdAt),
+]);
 export const integrations = sqliteTable("integrations", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
