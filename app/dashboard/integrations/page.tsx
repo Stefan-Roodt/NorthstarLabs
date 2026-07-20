@@ -172,7 +172,7 @@ export default function IntegrationsPage() {
 
   return <main className="integration-page">
     <header className="product-admin-top">
-      <Link className="system-brand" href="/dashboard">âœ¦ NORTHSTARLABS</Link>
+      <Link className="system-brand" href="/dashboard">✦ NORTHSTARLABS</Link>
       <nav><Link href="/dashboard/products">Products</Link><Link href="/dashboard/live">Live learning</Link><Link href="/account">Account</Link></nav>
     </header>
     <section className="integration-hero">
@@ -208,7 +208,7 @@ export default function IntegrationsPage() {
         {data.integrations.length ? data.integrations.map((integration) => <article className="panel webhook-card" key={integration.id}>
           <div><span className={`status ${integration.status}`}>{integration.status}</span><h3>{integration.name}</h3><p>{integration.endpointUrl}</p></div>
           <ul>{integration.eventTypes.map((eventType) => <li key={eventType}>{eventType === "*" ? "All events" : eventLabels[eventType] || eventType}</li>)}</ul>
-          <small>{integration.lastDeliveryAt ? `Last delivery ${new Date(integration.lastDeliveryAt).toLocaleString("en-ZA")} Â· ${integration.lastDeliveryStatus}` : "No deliveries yet"}</small>
+          <small>{integration.lastDeliveryAt ? `Last delivery ${new Date(integration.lastDeliveryAt).toLocaleString("en-ZA")} · ${integration.lastDeliveryStatus}` : "No deliveries yet"}</small>
           <div><button disabled={busy === integration.id || integration.status !== "active"} onClick={() => testWebhook(integration)}>Send test</button><button disabled={busy === integration.id} onClick={() => updateStatus(integration)}>{integration.status === "active" ? "Pause" : "Activate"}</button><button className="danger-text" disabled={busy === integration.id} onClick={() => deleteWebhook(integration)}>Delete</button></div>
         </article>) : <article className="panel product-empty"><h3>No webhooks connected</h3><p>Add an endpoint to connect product and live-learning activity to another system.</p></article>}
       </section>

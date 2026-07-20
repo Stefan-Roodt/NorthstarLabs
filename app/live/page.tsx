@@ -91,13 +91,13 @@ export default function LearnerLivePage() {
   const past = sessions.filter((session) => !upcoming.includes(session));
 
   return <main className="learner-live-page">
-    <header className="learner-live-top"><Link className="system-brand" href="/">âœ¦ NORTHSTARLABS</Link><nav><Link href="/learn">My courses</Link><Link href="/community">Community</Link><Link href="/account">Account</Link></nav></header>
+    <header className="learner-live-top"><Link className="system-brand" href="/">✦ NORTHSTARLABS</Link><nav><Link href="/learn">My courses</Link><Link href="/community">Community</Link><Link href="/account">Account</Link></nav></header>
     <section className="learner-live-hero"><div><p className="sys-kicker">MY LIVE LEARNING</p><h1>Show up. Practise. Grow.</h1><p>Your 1:1 coaching, group workshops and live classes are gathered here with secure joining links, email reminders, and calendar alarms.</p></div><span><strong>{upcoming.length}</strong> upcoming</span></section>
     <section className="learner-live-library">
       {message && <div className="notice" role="status">{message}</div>}
       <div className="library-heading"><div><h2>Upcoming sessions</h2><p>Times use your device timezone. Email reminders arrive 24 hours and 1 hour before registered sessions; calendar downloads include 1-hour and 15-minute alarms.</p></div><Link className="builder-preview" href="/learn">Back to my courses</Link></div>
       {upcoming.length ? <div className="learner-live-grid">{upcoming.map((session) => <LearnerSession key={session.id} session={session} busy={busy} now={now} onRegister={register} onCalendar={downloadCalendar} />)}</div>
-        : <article className="panel empty-dashboard"><h2>No live sessions yet</h2><p>When an academy schedules a session for one of your courses, bundles or memberships, it will appear here.</p><Link className="sys-primary" href="/learn">Continue a course â†’</Link></article>}
+        : <article className="panel empty-dashboard"><h2>No live sessions yet</h2><p>When an academy schedules a session for one of your courses, bundles or memberships, it will appear here.</p><Link className="sys-primary" href="/learn">Continue a course →</Link></article>}
         {past.length > 0 && <><div className="library-heading learner-live-past"><div><h2>Session history</h2><p>Your completed live-learning record.</p></div></div><div className="learner-live-grid">{past.map((session) => <LearnerSession key={session.id} session={session} busy={busy} now={now} onRegister={register} onCalendar={downloadCalendar} />)}</div></>}
     </section>
   </main>;
@@ -126,7 +126,7 @@ function LearnerSession({
     <small>{session.meetingProvider.replaceAll("_", " ")}</small>
     <div>
       {upcoming && !session.attendanceStatus && <button className="sys-primary" disabled={busy === session.id} onClick={() => onRegister(session)}>{busy === session.id ? "Registering..." : "Reserve my place"}</button>}
-      {upcoming && session.attendanceStatus && <a className="sys-primary" href={session.meetingUrl} target="_blank" rel="noreferrer">Join meeting â†—</a>}
+      {upcoming && session.attendanceStatus && <a className="sys-primary" href={session.meetingUrl} target="_blank" rel="noreferrer">Join meeting ↗</a>}
       <button onClick={() => onCalendar(session)}>Add to calendar</button>
     </div>
   </article>;

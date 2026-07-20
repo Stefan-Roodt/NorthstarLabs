@@ -445,6 +445,7 @@ test("ships bundles, memberships, live learning, mobile installation, and integr
     integrations,
     productStudio,
     liveStudio,
+    integrationStudio,
     learnerLive,
     manifest,
     serviceWorker,
@@ -461,6 +462,7 @@ test("ships bundles, memberships, live learning, mobile installation, and integr
     readFile(new URL("../lib/integrations.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/dashboard/products/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/dashboard/live/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/integrations/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/live/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/manifest.ts", import.meta.url), "utf8"),
     readFile(new URL("../public/sw.js", import.meta.url), "utf8"),
@@ -500,6 +502,10 @@ test("ships bundles, memberships, live learning, mobile installation, and integr
   assert.match(productStudio, /Grant product access/);
   assert.match(liveStudio, /Schedule a session/);
   assert.match(liveStudio, /Attendance register/);
+  assert.doesNotMatch(
+    [productStudio, liveStudio, integrationStudio, learnerLive].join("\n"),
+    /[âÂÃ]/,
+  );
   assert.match(learnerLive, /Reserve my place/);
   assert.match(manifest, /display: "standalone"/);
   assert.match(serviceWorker, /northstarlabs-shell-v1/);

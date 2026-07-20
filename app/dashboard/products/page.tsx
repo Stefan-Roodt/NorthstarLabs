@@ -234,7 +234,7 @@ export default function ProductsPage() {
 
   return <main className="product-admin-page">
     <header className="product-admin-top">
-      <Link className="system-brand" href="/dashboard">âœ¦ NORTHSTARLABS</Link>
+      <Link className="system-brand" href="/dashboard">✦ NORTHSTARLABS</Link>
       <nav>
         <Link href="/dashboard/live">Live learning</Link>
         <Link href="/dashboard/integrations">Integrations</Link>
