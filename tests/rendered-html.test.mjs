@@ -79,7 +79,8 @@ test("ships a real starter catalogue without placeholder proof", async () => {
   ]);
   assert.doesNotMatch(home, /href="#"/);
   assert.doesNotMatch(home, /32k\+|\$1\.4B|96M|4\.8\/5|Avery Lin|21% less/);
-  assert.match(home, /See the workflow/);
+  assert.match(home, /THE PRODUCT, IN PLAIN ENGLISH/);
+  assert.match(home, /One place to find what to learn, who can help, and what to do next/);
   assert.match(home, /Frequently asked questions/i);
   assert.match(catalog, /NORTHSTARLABS ORIGINALS/);
   assert.match(courseData, /Launch Your First Online Course/);

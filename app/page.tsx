@@ -7,27 +7,38 @@ import { LearningRequestForm } from "./learning-request-form";
 const creatorSignupHref = "/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcreator";
 const coachSignupHref = "/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach";
 
-const features = [
+const platformFlow = [
   {
     n: "01",
-    title: "Build learning people finish",
-    text: "Create structured courses with flexible lessons, private video, quizzes, progress rules, and completion certificates.",
-    href: creatorSignupHref,
-    link: "Start creating free",
+    label: "START WITH THE GOAL",
+    title: "Tell Northstar what you need to achieve.",
+    text: "Describe the result, your starting point, and how you prefer to learn. You do not need to know which product to choose.",
+    href: "/find",
+    link: "Use the Northstar Navigator",
   },
   {
     n: "02",
-    title: "Create a place they belong",
-    text: "Bring learning, member conversations, moderation, and community access together in one branded experience.",
-    href: "#product-tour",
-    link: "See the workflow",
+    label: "GET A CREDIBLE ROUTE",
+    title: "See the right course, coach, or combination.",
+    text: "Compare the learning promise, expertise, verified proof, price, and availability. If nothing fits, Northstar says so.",
+    href: "/courses",
+    link: "Explore real courses",
   },
   {
     n: "03",
-    title: "Guide growth with clear signals",
-    text: "Understand enrolment, progress, completion, course performance, and where individual learners need support.",
-    href: creatorSignupHref,
-    link: "Open my workspace",
+    label: "LEARN, THEN ASK",
+    title: "Use human help where it changes the outcome.",
+    text: "Follow structured lessons, then bring the exact roadblock to a coach, live session, or community without losing the context.",
+    href: "/tutors",
+    link: "Find a relevant coach",
+  },
+  {
+    n: "04",
+    label: "MAKE PROGRESS VISIBLE",
+    title: "Leave with evidence—not just videos watched.",
+    text: "Keep projects, assessments, feedback, milestones, ratings, and certificates connected to the result you came to achieve.",
+    href: "/login?mode=signup&next=%2Fwelcome",
+    link: "Create my free account",
   },
 ];
 
@@ -310,9 +321,51 @@ export default function Home() {
       </section>
 
       <section className="platform shell" id="platform">
-        <p className="section-kicker">ONE PLATFORM. EVERY USEFUL STEP.</p>
-        <div className="section-title"><h2>Build the learning business you’ve imagined.</h2><p>From your first lesson to a growing learner community, NorthstarLabs keeps creation, delivery, support, and reporting connected.</p></div>
-        <div className="feature-grid">{features.map((feature) => <article key={feature.n}><span>{feature.n}</span><div className="feature-icon">{feature.n === "01" ? "◫" : feature.n === "02" ? "◎" : "↗"}</div><h3>{feature.title}</h3><p>{feature.text}</p><a href={feature.href}>{feature.link} <b>→</b></a></article>)}</div>
+        <div className="platform-plain">
+          <p className="section-kicker">THE PRODUCT, IN PLAIN ENGLISH</p>
+          <h2>One place to find what to learn, who can help, and what to do next.</h2>
+          <div>
+            <p><b>For learners</b> NorthstarLabs is a marketplace for useful courses and credible human expertise, organized around the result you want.</p>
+            <p><b>For educators and coaches</b> it is the workspace to build, deliver, support, and improve that entire learning journey.</p>
+          </div>
+        </div>
+
+        <div className="platform-demo" aria-label="Example NorthstarLabs learning route">
+          <article className="platform-goal">
+            <span>A LEARNER ARRIVES WITH A GOAL</span>
+            <strong>“I need to understand Bitcoin well enough to brief my board.”</strong>
+            <Link href="/find">Try it with my goal <b>→</b></Link>
+          </article>
+          <div className="platform-route">
+            <header><span>NORTHSTAR ROUTE</span><b>The best next step—not the biggest sale.</b></header>
+            <div>
+              <article><small>01 · LEARN</small><b>Relevant course</b><span>Build the foundation</span></article>
+              <i>→</i>
+              <article><small>02 · ASK</small><b>Matched coach</b><span>Resolve the real roadblock</span></article>
+              <i>→</i>
+              <article><small>03 · PROGRESS</small><b>Useful evidence</b><span>Brief, project, or certificate</span></article>
+            </div>
+            <footer><span>Northstar keeps the goal, activity, support, feedback, and proof connected.</span><strong>LEARN. ASK. PROGRESS.</strong></footer>
+          </div>
+        </div>
+
+        <div className="platform-flow">{platformFlow.map((step) => <article key={step.n}>
+          <span>{step.n}</span>
+          <p className="section-kicker">{step.label}</p>
+          <h3>{step.title}</h3>
+          <p>{step.text}</p>
+          <a href={step.href}>{step.link} <b>→</b></a>
+        </article>)}</div>
+
+        <div className="platform-creator">
+          <div><p className="section-kicker">THE OTHER HALF OF THE PRODUCT</p><h3>Experts do not merely upload content. They run the learning business.</h3></div>
+          <ul>
+            <li><b>Build</b><span>Courses, programmes, protected video, quizzes, and projects</span></li>
+            <li><b>Deliver</b><span>Storefronts, memberships, live sessions, community, and coaching</span></li>
+            <li><b>Improve</b><span>Progress, learner support, reporting, unmet demand, and trusted feedback</span></li>
+          </ul>
+          <a className="button" href={creatorSignupHref}>Open my creator workspace <span>→</span></a>
+        </div>
       </section>
 
       <section className="story" id="solutions"><div className="shell story-grid">
@@ -366,7 +419,7 @@ export default function Home() {
 
       <section className="cta"><div className="shell"><p className="eyebrow">YOUR KNOWLEDGE DESERVES A WORKING SYSTEM</p><h2>Build it once.<br/>Help people grow.</h2><p>Give your expertise a clear structure, a memorable home, and a learner experience you can improve over time.</p><div><a className="button" href={creatorSignupHref}>Build my academy free <span>↗</span></a><Link className="text-link light" href="/courses">Experience a real course →</Link></div><small className="cta-reassurance">No credit card · Guided setup · Switch between creating and learning anytime</small></div></section>
 
-      <footer className="footer shell"><div className="brand"><span className="brand-mark" aria-hidden="true">✦</span><span className="brand-wordmark">NORTHSTARLABS</span></div><p>Courses for the path. Human coaching for the roadblocks.</p><div className="footer-links"><Link href="/about">About NorthstarLabs</Link><a href="#platform">Platform</a><Link href="/courses">Courses</Link><Link href="/tutors">Coaches</Link><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><Link href="/legal/terms">Terms</Link><Link href="/legal/privacy">Privacy</Link></div><small>© 2026 Northstar Labs. All rights reserved.</small></footer>
+      <footer className="footer shell"><div className="brand"><span className="brand-mark" aria-hidden="true">✦</span><span className="brand-wordmark">NORTHSTARLABS</span></div><p>Courses for the path. Human coaching for the roadblocks.</p><div className="footer-links"><Link href="/about">About NorthstarLabs</Link><a href="#platform">How it works</a><Link href="/courses">Courses</Link><Link href="/tutors">Coaches</Link><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><Link href="/legal/terms">Terms</Link><Link href="/legal/privacy">Privacy</Link></div><small>© 2026 Northstar Labs. All rights reserved.</small></footer>
     </main>
   );
 }
