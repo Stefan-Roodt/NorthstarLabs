@@ -586,7 +586,8 @@ test("ships academy tutor discovery, direct contact, and protected enquiries", a
   assert.match(marketplace, /Find the person who can get you/);
   assert.match(marketplace, /Compare what matters/);
   assert.match(marketplace, /View profile & times/);
-  assert.match(learnerHome, /My tutoring/);
+  assert.match(learnerHome, /My live classes/);
+  assert.doesNotMatch(learnerHome, /My tutoring/);
   assert.match(storefront, /ONE-TO-ONE SUPPORT/);
   assert.match(email, /tutor_enquiry/);
   assert.match(email, /tutor_booking_update/);

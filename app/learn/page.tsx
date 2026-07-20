@@ -75,11 +75,9 @@ export default function LearnerHome() {
     <header>
       <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
       <nav>
-        <Link href="/courses">Explore courses</Link>
-        <Link href="/tutors">Find a tutor</Link>
-        <Link href="/live">Live learning</Link>
-        <Link href="/tutoring">My tutoring</Link>
-        <Link href="/community">Community</Link>
+        <Link href="/courses">Explore modules</Link>
+        <Link href="/live">My live classes</Link>
+        <Link href="/community">My communities</Link>
         <Link href="/account">Account</Link>
         <button onClick={signOut}>Sign out</button>
       </nav>

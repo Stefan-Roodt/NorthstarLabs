@@ -5,6 +5,7 @@ import "./system.css";
 import "./builder.css";
 import "./search-landing.css";
 import { PwaRegister } from "./pwa-register";
+import { AuthCallbackRedirect } from "./auth-callback-redirect";
 
 const display = Space_Grotesk({ variable: "--font-display", subsets: ["latin"] });
 const body = DM_Sans({ variable: "--font-body", subsets: ["latin"] });
@@ -85,5 +86,5 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       },
     ],
   }).replace(/</g, "\\u003c");
-  return <html lang="en-ZA"><body className={`${display.variable} ${body.variable}`}><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} /><script dangerouslySetInnerHTML={{ __html: `window.__NORTHSTARLABS_CONFIG__=${publicConfig}` }} />{children}<PwaRegister /></body></html>;
+  return <html lang="en-ZA"><body className={`${display.variable} ${body.variable}`}><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} /><script dangerouslySetInnerHTML={{ __html: `window.__NORTHSTARLABS_CONFIG__=${publicConfig}` }} /><AuthCallbackRedirect />{children}<PwaRegister /></body></html>;
 }

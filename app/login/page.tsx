@@ -34,6 +34,7 @@ export default function LoginPage() {
     ? destination.split("?")[0].split("/").filter(Boolean)[1] || ""
     : "";
   const onboardingPath = onboardingPathFrom(destination);
+  const directedRole = onboardingPathFrom(requestedDestination);
 
   useEffect(() => {
     if (!supabase) return;
@@ -102,6 +103,7 @@ export default function LoginPage() {
     }
     setBusy(true);
     setMessage("");
+    sessionStorage.setItem("northstar:post-auth-destination", destination);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: new URL(destination, location.origin).toString() },
@@ -146,14 +148,14 @@ export default function LoginPage() {
         <section className="auth-card">
           <Link className="auth-back" href="/">← Back to NorthstarLabs</Link>
           <p className="sys-kicker">{mode === "signup" ? "FREE ACCOUNT" : "WELCOME BACK"}</p>
-          <h2>{mode === "signup" ? joiningCourseDetail ? "Create your account to start." : "Create your account." : "Sign in and continue."}</h2>
+          <h2>{mode === "signup" ? joiningCourseDetail ? "Create your account to start." : directedRole === "creator" ? "Create your academy account." : directedRole === "coach" ? "Create your tutor account." : "Create your learner account." : "Sign in and continue."}</h2>
           <p>{mode === "signup"
             ? joiningCourse
               ? "You are one short step away from starting this course."
               : "Start creating or learning. You can decide after joining."
             : "Return to your courses, learning, and community."}</p>
 
-          {!joiningCourse && <fieldset className="auth-role-picker">
+          {!joiningCourse && !directedRole && <fieldset className="auth-role-picker">
             <legend>Who are you joining as?</legend>
             <p>Your choice sends you to the right starting point. One account can hold more than one role later.</p>
             <div>
@@ -164,7 +166,7 @@ export default function LoginPage() {
           </fieldset>}
 
           <button className="google-btn" disabled={busy} type="button" onClick={continueWithGoogle}>
-            G&nbsp;&nbsp; {mode === "signup" ? "Join with Google" : "Continue with Google"}
+            G&nbsp;&nbsp; {mode === "signup" ? directedRole === "creator" ? "Create academy account with Google" : directedRole === "coach" ? "Create tutor account with Google" : "Join with Google" : "Continue with Google"}
           </button>
           <div className="or"><span/>or use your email<span/></div>
 
