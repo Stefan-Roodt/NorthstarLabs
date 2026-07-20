@@ -930,6 +930,8 @@ test("supports separate academies, professional addresses, and field-level store
   assert.match(styles, /\.academy-completion/);
   assert.match(styles, /\.workspace-controls/);
   assert.match(styles, /\.school-account-actions/);
+  assert.match(styles, /\.dashboard-community-actions a\{min-height:50px/);
+  assert.match(styles, /\.empty-dashboard \.dashboard-community-actions \.sys-primary\{margin-top:0\}/);
 });
 
 test("ships real Northstar-produced faculty videos and attaches them behind lesson grants", async () => {
