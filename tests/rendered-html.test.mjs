@@ -143,10 +143,16 @@ test("ships Stefan's evidence-led Bitcoin history and futures course", async () 
 });
 
 test("copies the complete Bitcoin programme into CogniZen as a review draft", async () => {
-  const migration = await readFile(
-    new URL("../drizzle/0032_cognizen_bitcoin_review_draft.sql", import.meta.url),
-    "utf8",
-  );
+  const [migration, polish] = await Promise.all([
+    readFile(
+      new URL("../drizzle/0032_cognizen_bitcoin_review_draft.sql", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../drizzle/0033_polish_cognizen_bitcoin_draft.sql", import.meta.url),
+      "utf8",
+    ),
+  ]);
   assert.match(migration, /cognizen-bitcoin-intelligence-draft/);
   assert.match(migration, /target\.`slug`='cognizen-consulting'/);
   assert.match(migration, /'draft'/);
@@ -154,6 +160,8 @@ test("copies the complete Bitcoin programme into CogniZen as a review draft", as
   assert.match(migration, /FROM `lessons` source/);
   assert.match(migration, /FROM `quizzes` source/);
   assert.match(migration, /FROM `quiz_questions` source/);
+  assert.match(polish, /lower\(trim\(`title`\)\)='untitled lesson'/);
+  assert.match(polish, /## Your outcome/);
 });
 
 test("guides new members into creating or learning with a low-friction join flow", async () => {

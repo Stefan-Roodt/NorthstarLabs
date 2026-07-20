@@ -193,7 +193,13 @@ test("places a complete Bitcoin review draft in the CogniZen creator workspace",
       (SELECT COUNT(*) FROM quiz_questions qq
        JOIN quizzes q ON q.id=qq.quiz_id
        JOIN lessons l ON l.id=q.lesson_id
-       WHERE l.course_id=c.id) AS questions
+       WHERE l.course_id=c.id) AS questions,
+      (SELECT COUNT(*) FROM lessons
+       WHERE course_id=c.id
+         AND (lower(trim(title))='untitled lesson' OR trim(title)='')) AS placeholders,
+      (SELECT COUNT(*) FROM lessons
+       WHERE course_id=c.id
+         AND lower(content) NOT LIKE '%## your outcome%') AS missingOutcomes
     FROM courses c
     JOIN schools s ON s.id=c.school_id
     WHERE c.id='cognizen-bitcoin-intelligence-draft'
@@ -207,6 +213,8 @@ test("places a complete Bitcoin review draft in the CogniZen creator workspace",
     lessons: 35,
     quizzes: 7,
     questions: 42,
+    placeholders: 0,
+    missingOutcomes: 0,
   });
   const publishedOriginal = db.prepare(`
     SELECT status,school_id AS schoolId

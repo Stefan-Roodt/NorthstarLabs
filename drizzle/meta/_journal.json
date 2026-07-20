@@ -232,6 +232,13 @@
       "when": 1784578800000,
       "tag": "0032_cognizen_bitcoin_review_draft",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1784582400000,
+      "tag": "0033_polish_cognizen_bitcoin_draft",
+      "breakpoints": true
     }
   ]
 }
