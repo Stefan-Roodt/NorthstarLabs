@@ -24,8 +24,9 @@ export default function LoginPage() {
   const [joiningCourseDetail, setJoiningCourseDetail] = useState<JoiningCourse | null>(null);
   const supabase = getSupabaseBrowser();
   const requestedDestination = safeDestination(searchParams.get("next"));
-  const [joiningAs, setJoiningAs] = useState<"learner" | "coach" | "creator" | "">(() => onboardingPathFrom(requestedDestination) || (requestedDestination === "/welcome" ? "learner" : ""));
-  const directedRole = onboardingPathFrom(requestedDestination);
+  const roleParameter = accountRole(searchParams.get("role"));
+  const directedRole = roleParameter || onboardingPathFrom(requestedDestination);
+  const [joiningAs, setJoiningAs] = useState<"learner" | "coach" | "creator" | "">(() => directedRole || (requestedDestination === "/welcome" ? "learner" : ""));
   const selectedRole = directedRole || joiningAs;
   // A role describes the account; it must never discard the page the person was trying to reach.
   const destination = requestedDestination === "/welcome" && selectedRole ? `/welcome?path=${selectedRole}` : requestedDestination;
@@ -118,6 +119,12 @@ export default function LoginPage() {
     setMessage("");
   }
 
+  function chooseJoiningRole(role: "learner" | "coach" | "creator") {
+    setJoiningAs(role);
+    const returnTo = requestedDestination.startsWith("/welcome") ? `/welcome?path=${role}` : requestedDestination;
+    location.assign(`/login?mode=${mode}&role=${role}&next=${encodeURIComponent(returnTo)}`);
+  }
+
   return (
     <main className="auth-page auth-page-expanded">
       <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
@@ -162,9 +169,9 @@ export default function LoginPage() {
             <legend>Who are you joining as?</legend>
             <p>Your choice sends you to the right starting point. One account can hold more than one role later.</p>
             <div>
-              <button className={joiningAs === "learner" ? "active" : ""} type="button" onClick={() => setJoiningAs("learner")}><b>I&apos;m a student</b><small>Join an academy and take modules</small></button>
-              <button className={joiningAs === "coach" ? "active" : ""} type="button" onClick={() => setJoiningAs("coach")}><b>I&apos;m a tutor</b><small>Set up a profile and offer sessions</small></button>
-              <button className={joiningAs === "creator" ? "active" : ""} type="button" onClick={() => setJoiningAs("creator")}><b>I run an academy</b><small>Create an academy and publish modules</small></button>
+              <button className={joiningAs === "learner" ? "active" : ""} type="button" onClick={() => chooseJoiningRole("learner")}><b>I&apos;m a student</b><small>Join an academy and take modules →</small></button>
+              <button className={joiningAs === "coach" ? "active" : ""} type="button" onClick={() => chooseJoiningRole("coach")}><b>I&apos;m a tutor</b><small>Set up a profile and offer sessions →</small></button>
+              <button className={joiningAs === "creator" ? "active" : ""} type="button" onClick={() => chooseJoiningRole("creator")}><b>I run an academy</b><small>Create an academy and publish modules →</small></button>
             </div>
           </fieldset>}
 
@@ -209,6 +216,10 @@ function onboardingPathFrom(destination: string): "creator" | "learner" | "coach
   } catch {
     return null;
   }
+}
+
+function accountRole(value: string | null): "creator" | "learner" | "coach" | null {
+  return value === "creator" || value === "learner" || value === "coach" ? value : null;
 }
 
 function safeDestination(value: string | null): string {

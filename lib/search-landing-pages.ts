@@ -21,8 +21,8 @@ export type SearchLandingPage = {
   related: string[];
 };
 
-const creatorSignup = "/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcreator";
-const coachSignup = "/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach";
+const creatorSignup = "/login?mode=signup&role=creator&next=%2Fwelcome%3Fpath%3Dcreator";
+const coachSignup = "/login?mode=signup&role=coach&next=%2Fwelcome%3Fpath%3Dcoach";
 
 export const searchLandingPages: SearchLandingPage[] = [
   {

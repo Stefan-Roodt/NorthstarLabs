@@ -4,8 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { LearningRequestForm } from "./learning-request-form";
 
-const creatorSignupHref = "/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcreator";
-const coachSignupHref = "/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach";
+const creatorSignupHref = "/login?mode=signup&role=creator&next=%2Fwelcome%3Fpath%3Dcreator";
+const coachSignupHref = "/login?mode=signup&role=coach&next=%2Fwelcome%3Fpath%3Dcoach";
 const homeSearchPaths = [
   { slug: "online-courses-south-africa", title: "Online courses in South Africa", description: "Choose practical courses by outcome, effort, evidence, and available human support." },
   { slug: "find-business-coach-south-africa", title: "Find a business coach", description: "Compare topic fit, rates, credentials, availability, and verified-session proof." },
