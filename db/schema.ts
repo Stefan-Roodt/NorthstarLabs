@@ -390,6 +390,23 @@ export const tutorInquiries = sqliteTable("tutor_inquiries", {
   index("tutor_inquiries_learner_created_idx").on(table.learnerId, table.createdAt),
   index("tutor_inquiries_slot_status_idx").on(table.slotId, table.status),
 ]);
+export const learningRequests = sqliteTable("learning_requests", {
+  id: text("id").primaryKey(),
+  requesterName: text("requester_name").notNull(),
+  requesterEmail: text("requester_email").notNull(),
+  requestType: text("request_type").notNull().default("either"),
+  topic: text("topic").notNull(),
+  detail: text("detail").notNull(),
+  source: text("source").notNull().default("homepage"),
+  status: text("status").notNull().default("new"),
+  adminNote: text("admin_note").notNull().default(""),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  index("learning_requests_status_created_idx").on(table.status, table.createdAt),
+  index("learning_requests_email_created_idx").on(table.requesterEmail, table.createdAt),
+  index("learning_requests_type_status_idx").on(table.requestType, table.status),
+]);
 export const tutorCredentials = sqliteTable("tutor_credentials", {
   id: text("id").primaryKey(),
   tutorId: text("tutor_id").notNull(),

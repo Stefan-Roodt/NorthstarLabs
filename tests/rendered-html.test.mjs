@@ -4,7 +4,7 @@ import test from "node:test";
 
 test("defines NorthstarLabs production metadata", async () => {
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
-  assert.match(layout, /NorthstarLabs — Build learning that works/);
+  assert.match(layout, /NorthstarLabs — Learn\. Ask\. Progress\./);
   assert.match(layout, /metadataBase/);
   assert.match(layout, /og-value\.png/);
   assert.match(layout, /summary_large_image/);
@@ -79,7 +79,7 @@ test("ships a real starter catalogue without placeholder proof", async () => {
   ]);
   assert.doesNotMatch(home, /href="#"/);
   assert.doesNotMatch(home, /32k\+|\$1\.4B|96M|4\.8\/5|Avery Lin|21% less/);
-  assert.match(home, /Product tour/);
+  assert.match(home, /See the workflow/);
   assert.match(home, /Frequently asked questions/i);
   assert.match(catalog, /NORTHSTARLABS ORIGINALS/);
   assert.match(courseData, /Launch Your First Online Course/);
@@ -621,7 +621,7 @@ test("ships coach advertising plans, direct onboarding, hourly rates, and topic 
   assert.match(marketplace, /Offer this topic/);
   assert.match(marketplace, /SPONSORED SPOTLIGHT/);
   assert.match(marketplace, /Verification is assessed separately/);
-  assert.match(home, /Advertise my services/);
+  assert.match(home, /Create my coach profile/);
 });
 
 test("ships independent coach verification and completed-session learner proof", async () => {
@@ -686,6 +686,74 @@ test("ships protected two-way ratings after completed coaching sessions", async 
   assert.match(learnerDesk, /PRIVATE LEARNER REPUTATION/);
   assert.match(learnerDesk, /seven-day blind period/);
   assert.match(admin, /Private reputation safeguards/);
+});
+
+test("makes NorthstarLabs clear, memorable, discoverable, and responsive to unmet demand", async () => {
+  const [
+    home,
+    requestForm,
+    requestApi,
+    schema,
+    migration,
+    admin,
+    about,
+    robots,
+    sitemap,
+    llms,
+    dashboard,
+    academy,
+    navigator,
+    catalogue,
+  ] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learning-request-form.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/learning-requests/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0023_sloppy_klaw.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/about/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/robots.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/sitemap.ts", import.meta.url), "utf8"),
+    readFile(new URL("../public/llms.txt", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/academy/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/find/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/courses/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(home, /LEARN/);
+  assert.match(home, /GET UNSTUCK/);
+  assert.match(home, /TEACH/);
+  assert.match(home, /Find my next step/);
+  assert.match(home, /Learn\. Ask\. Progress\./);
+  assert.match(home, /If we do not have what you need/);
+  assert.match(home, /LearningRequestForm/);
+  assert.match(requestForm, /Ask Northstar to help/);
+  assert.match(requestApi, /INSERT INTO learning_requests/);
+  assert.match(requestApi, /learning_request_received/);
+  assert.match(schema, /export const learningRequests/);
+  assert.match(migration, /CREATE TABLE `learning_requests`/);
+  assert.match(migration, /CogniZen Consulting/);
+  assert.match(admin, /Requests/);
+  assert.match(admin, /Mark matched/);
+  assert.match(about, /WHAT NORTHSTARLABS IS/);
+  assert.match(about, /Learn\. Ask\. Progress\./);
+  assert.match(robots, /OAI-SearchBot/);
+  assert.match(robots, /Claude-SearchBot/);
+  assert.match(robots, /PerplexityBot/);
+  assert.match(sitemap, /FROM courses/);
+  assert.match(sitemap, /FROM tutors/);
+  assert.match(sitemap, /\/find/);
+  assert.match(llms, /NorthstarLabs/);
+  assert.match(llms, /Courses for the path/);
+  assert.match(dashboard, /workspaceIdentity/);
+  assert.match(dashboard, /Edit identity/);
+  assert.match(academy, /id="academy-identity"/);
+  assert.match(navigator, /Start with the result you want/);
+  assert.match(navigator, /Show my best next step/);
+  assert.match(navigator, /No credible match/);
+  assert.match(navigator, /LearningRequestForm/);
+  assert.match(catalogue, /GOAL-MATCHED RESULTS/);
+  assert.match(catalogue, /No forced matches/i);
 });
 
 test("parses browser byte ranges safely", async () => {

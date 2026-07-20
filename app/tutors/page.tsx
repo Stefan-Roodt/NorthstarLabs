@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { coachListingWeight } from "../../lib/coach-listing-plans";
+import { LearningRequestForm } from "../learning-request-form";
 
 type MarketplaceTutor = {
   id: string;
@@ -73,14 +74,15 @@ export default function TutorMarketplacePage() {
   const [comparedIds, setComparedIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const topic = new URLSearchParams(location.search).get("topic");
-    if (topic) {
+    const topicFrame = requestAnimationFrame(() => {
+      const topic = new URLSearchParams(location.search).get("topic");
+      if (!topic) return;
       const canonicalTopic = topicCatalog.find(
         (item) => item.toLowerCase() === topic.toLowerCase(),
       );
       if (canonicalTopic) setSubject(canonicalTopic);
       else setQuery(topic);
-    }
+    });
     fetch("/api/tutors?marketplace=1")
       .then((response) => {
         if (!response.ok) throw new Error("marketplace unavailable");
@@ -89,6 +91,7 @@ export default function TutorMarketplacePage() {
       .then((result) => setTutors(result.tutors))
       .catch(() => setNotice("Tutor discovery is temporarily unavailable. Please try again shortly."))
       .finally(() => setLoading(false));
+    return () => cancelAnimationFrame(topicFrame);
   }, []);
 
   const subjects = useMemo(() => [...new Set([
@@ -296,9 +299,18 @@ export default function TutorMarketplacePage() {
         )}</div> : !loading && <article className="marketplace-empty">
           <span>?</span><div><h2>{selectedTopic ? `No ${selectedTopic} coach is published yet.` : "No coaches are published yet."}</h2><p>{selectedTopic
             ? `Your ${selectedTopic} selection worked. NorthstarLabs does not currently have a published profile offering that topic, so we will not show you an unrelated coach.`
-            : "Published coach and tutor profiles will appear here as soon as they are available."}</p><div className="marketplace-empty-actions"><button onClick={clearFilters}>Show all available coaches</button><Link href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach">Offer this topic</Link></div></div>
+            : "Published coach and tutor profiles will appear here as soon as they are available."}</p><div className="marketplace-empty-actions"><button onClick={clearFilters}>Show all available coaches</button><a href="#request-a-match">Ask Northstar to find it</a><Link href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach">Offer this topic</Link></div></div>
         </article>}
       </div>
+    </section>
+
+    <section className="marketplace-request" id="request-a-match">
+      <div>
+        <p className="sys-kicker">NO STRONG MATCH YET?</p>
+        <h2>Tell us what the right person should help you achieve.</h2>
+        <p>NorthstarLabs will use your detail to check the coach network and look for a credible subject expert. We will not substitute an unrelated profile just to fill the page.</p>
+      </div>
+      <LearningRequestForm key={selectedTopic || "open"} defaultType="coach" defaultTopic={selectedTopic} source="coach-marketplace" compact />
     </section>
 
     {compared.length > 0 && <section className="marketplace-compare" id="compare">

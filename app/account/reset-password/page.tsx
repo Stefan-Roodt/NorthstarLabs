@@ -1,21 +1,21 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
+import { type FormEvent, useEffect, useState } from "react";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 
 export default function ResetPassword() {
+  const supabase = getSupabaseBrowser();
   const [ready, setReady] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("Checking your secure reset link...");
+  const [message, setMessage] = useState(supabase
+    ? "Checking your secure reset link..."
+    : "Password recovery is temporarily unavailable.");
   const [busy, setBusy] = useState(false);
-  const supabase = getSupabaseBrowser();
 
   useEffect(() => {
-    if (!supabase) {
-      setMessage("Password recovery is temporarily unavailable.");
-      return;
-    }
+    if (!supabase) return;
     let active = true;
     (async () => {
       let session = (await supabase.auth.getSession()).data.session;
@@ -67,7 +67,7 @@ export default function ResetPassword() {
   }
 
   return <main className="auth-page">
-    <a className="system-brand" href="/">✦ NORTHSTARLABS</a>
+    <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
     <section className="auth-card compact-auth-card">
       <p className="sys-kicker">SECURE PASSWORD</p>
       <h1>Choose a new password.</h1>
@@ -100,7 +100,7 @@ export default function ResetPassword() {
         </button>
       </form>}
       {message && <p className="form-message" role="status">{message}</p>}
-      {!ready && <a className="auth-back" href="/forgot-password">Request another reset link</a>}
+      {!ready && <Link className="auth-back" href="/forgot-password">Request another reset link</Link>}
     </section>
   </main>;
 }

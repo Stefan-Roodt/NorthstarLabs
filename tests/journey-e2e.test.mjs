@@ -752,6 +752,10 @@ test("security policy limits abusive writes and rejects oversized JSON", async (
     { scope: "tutor_inquiry", limit: 10, windowMs: 3_600_000 },
   );
   assert.deepEqual(
+    rateLimitPolicy(new Request("https://northstarlabs.co.za/api/learning-requests", { method: "POST" })),
+    { scope: "learning_request", limit: 5, windowMs: 3_600_000 },
+  );
+  assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/tutor-reviews", { method: "POST" })),
     { scope: "tutor_review", limit: 5, windowMs: 86_400_000 },
   );

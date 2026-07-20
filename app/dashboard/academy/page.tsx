@@ -118,7 +118,7 @@ export default function AcademySettings() {
 
     <div className="academy-editor-layout">
       <form className="academy-settings" onSubmit={save}>
-        <section className="panel">
+        <section className="panel" id="academy-identity">
           <div className="academy-section-heading">
             <span>01</span>
             <div><h2>Identity</h2><p>The essentials learners see throughout your school.</p></div>

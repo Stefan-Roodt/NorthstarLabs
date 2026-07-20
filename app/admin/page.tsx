@@ -10,6 +10,19 @@ type PlatformData = {
   schools: Array<{ id: string; name: string; slug: string; status: string; owner: string; courses: number; members: number }>;
   users: Array<{ id: string; email: string; displayName: string; role: string; status: string; createdAt: number }>;
   messages: Array<{ id: string; recipientEmail: string; subject: string; status: string; lastError: string | null; schoolName: string | null; createdAt: number }>;
+  learningRequests: Array<{
+    id: string;
+    requesterName: string;
+    requesterEmail: string;
+    requestType: string;
+    topic: string;
+    detail: string;
+    source: string;
+    status: string;
+    adminNote: string;
+    createdAt: number;
+    updatedAt: number;
+  }>;
   audit: Array<{ id: string; actor: string; action: string; targetType: string; schoolName: string | null; createdAt: number }>;
 };
 type ReliabilityData = {
@@ -339,7 +352,7 @@ export default function PlatformAdministration() {
     <aside>
       <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
       <p>PLATFORM ADMIN</p>
-      <nav>{["Schools", "Users", "Email", "Coach trust", "Reliability", "Audit"].map((item) =>
+      <nav>{["Schools", "Users", "Requests", "Email", "Coach trust", "Reliability", "Audit"].map((item) =>
         <button className={tab === item ? "active" : ""} key={item} onClick={() => setTab(item)}>{item}</button>
       )}</nav>
       <Link href="/dashboard">Creator workspace</Link>
@@ -351,7 +364,7 @@ export default function PlatformAdministration() {
         <article><span>Active schools</span><strong>{data.metrics.activeSchools || 0}</strong><small>{data.metrics.schools || 0} total</small></article>
         <article><span>Members</span><strong>{data.metrics.users || 0}</strong><small>{data.metrics.suspendedUsers || 0} suspended</small></article>
         <article><span>Published courses</span><strong>{data.metrics.publishedCourses || 0}</strong><small>{data.metrics.activeEnrollments || 0} active enrolments</small></article>
-        <article><span>Email attention</span><strong>{data.metrics.emailAttention || 0}</strong><small>{data.metrics.sentEmails || 0} delivered</small></article>
+        <article><span>Prospect requests</span><strong>{data.metrics.openLearningRequests || 0}</strong><small>Need a course or coach match</small></article>
       </div>
 
       {tab === "Schools" && <article className="platform-panel">
@@ -375,6 +388,32 @@ export default function PlatformAdministration() {
             <span className={`delivery-status ${user.status}`}>{user.status}</span>
             <button disabled={busy === user.id} onClick={() => update("user", user.id, user.status === "active" ? "suspend" : "reactivate")}>{user.status === "active" ? "Suspend" : "Reactivate"}</button>
           </div>)}
+        </div>
+      </article>}
+
+      {tab === "Requests" && <article className="platform-panel">
+        <div className="operations-heading">
+          <div><p className="sys-kicker">UNMET LEARNING DEMAND</p><h2>Find the right course, coach, or expert</h2></div>
+          <span>{data.learningRequests.filter((item) => ["new", "reviewing"].includes(item.status)).length} open</span>
+        </div>
+        <div className="learning-request-admin-list">{data.learningRequests.length
+          ? data.learningRequests.map((item) => <section key={item.id}>
+            <header>
+              <div><p className="sys-kicker">{item.requestType.toUpperCase()} REQUEST</p><h3>{item.topic}</h3><span>{item.requesterName} · {item.requesterEmail} · from {item.source.replaceAll("-", " ")}</span></div>
+              <span className={`delivery-status ${item.status}`}>{item.status}</span>
+            </header>
+            <p>{item.detail}</p>
+            <footer>
+              <small>Received {new Date(item.createdAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</small>
+              <div>
+                <a href={`mailto:${item.requesterEmail}?subject=${encodeURIComponent(`Your NorthstarLabs request: ${item.topic}`)}`}>Reply by email</a>
+                {item.status === "new" && <button disabled={busy === item.id} onClick={() => update("learning_request", item.id, "reviewing")}>Start review</button>}
+                {!["matched", "closed"].includes(item.status) && <button className="sys-primary" disabled={busy === item.id} onClick={() => update("learning_request", item.id, "matched")}>Mark matched</button>}
+                {item.status !== "closed" && <button disabled={busy === item.id} onClick={() => update("learning_request", item.id, "closed")}>Close</button>}
+              </div>
+            </footer>
+          </section>)
+          : <p>No prospective user requests have arrived yet.</p>}
         </div>
       </article>}
 

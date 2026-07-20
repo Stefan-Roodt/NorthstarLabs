@@ -8,14 +8,26 @@ import { PwaRegister } from "./pwa-register";
 const display = Space_Grotesk({ variable: "--font-display", subsets: ["latin"] });
 const body = DM_Sans({ variable: "--font-body", subsets: ["latin"] });
 export const dynamic = "force-dynamic";
+const publicSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://northstarlabs.co.za";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://northstar-learning-platform.pikster.chatgpt.site"),
+  metadataBase: new URL(publicSiteUrl),
   title: {
-    default: "NorthstarLabs — Build learning that works",
+    default: "NorthstarLabs — Learn. Ask. Progress.",
     template: "%s | NorthstarLabs",
   },
-  description: "Create courses, host protected media, run live learning and community, guide progress, and award certificates from one connected platform.",
+  description: "NorthstarLabs connects structured courses with human coaching, live learning, community, progress, and certificates for creators, coaches, and learners.",
+  applicationName: "NorthstarLabs",
+  creator: "NorthstarLabs",
+  category: "education",
+  keywords: [
+    "online learning platform",
+    "course creation platform",
+    "online coaching marketplace",
+    "learning management system",
+    "South Africa online courses",
+    "NorthstarLabs",
+  ],
   manifest: "/manifest.webmanifest",
   icons: { icon: "/favicon.svg" },
   appleWebApp: {
@@ -24,17 +36,22 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   alternates: { canonical: "/" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, maxImagePreview: "large", maxSnippet: -1, maxVideoPreview: -1 },
+  },
   openGraph: {
     type: "website",
     siteName: "NorthstarLabs",
-    title: "NorthstarLabs — Build learning that works",
-    description: "One connected platform to create, deliver, and grow practical learning.",
+    title: "NorthstarLabs — Learn. Ask. Progress.",
+    description: "Courses for the path. Human coaching for the roadblocks. One connected platform for real learning progress.",
     images: [{ url: "/og-value.png", width: 1200, height: 630, alt: "NorthstarLabs connected learning platform" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "NorthstarLabs — Build learning that works",
-    description: "One connected platform to create, deliver, and grow practical learning.",
+    title: "NorthstarLabs — Learn. Ask. Progress.",
+    description: "Courses for the path. Human coaching for the roadblocks.",
     images: ["/og-value.png"],
   },
 };
@@ -44,5 +61,28 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
     supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "",
   }).replace(/</g, "\\u003c");
-  return <html lang="en"><body className={`${display.variable} ${body.variable}`}><script dangerouslySetInnerHTML={{ __html: `window.__NORTHSTARLABS_CONFIG__=${publicConfig}` }} />{children}<PwaRegister /></body></html>;
+  const structuredData = JSON.stringify({
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${publicSiteUrl}/#organization`,
+        name: "NorthstarLabs",
+        url: publicSiteUrl,
+        logo: `${publicSiteUrl}/favicon.svg`,
+        slogan: "Learn. Ask. Progress.",
+        description: "A connected learning platform where structured courses, human coaching, live learning, community, and learner progress work together.",
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${publicSiteUrl}/#website`,
+        name: "NorthstarLabs",
+        alternateName: "Northstar Labs",
+        url: publicSiteUrl,
+        publisher: { "@id": `${publicSiteUrl}/#organization` },
+        inLanguage: "en",
+      },
+    ],
+  }).replace(/</g, "\\u003c");
+  return <html lang="en-ZA"><body className={`${display.variable} ${body.variable}`}><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} /><script dangerouslySetInnerHTML={{ __html: `window.__NORTHSTARLABS_CONFIG__=${publicConfig}` }} />{children}<PwaRegister /></body></html>;
 }

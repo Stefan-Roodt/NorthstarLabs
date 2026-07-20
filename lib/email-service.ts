@@ -10,6 +10,8 @@ export type EmailTemplateKey =
   | "tutor_review_request"
   | "learner_rating_request"
   | "tutor_booking_cancelled"
+  | "learning_request_received"
+  | "learning_request_admin"
   | "creator_summary"
   | "test";
 
@@ -143,6 +145,26 @@ function templateContent(templateKey: EmailTemplateKey, values: EmailVariables) 
       actionLabel: "Open tutor desk",
       actionUrl: safeUrl(values.actionUrl),
       detail: "The appointment time has been released so another learner can request it.",
+    };
+  }
+  if (templateKey === "learning_request_received") {
+    return {
+      subject: `We received your request about ${values.topic || "what you want to learn"}`,
+      heading: "Your request reached NorthstarLabs",
+      intro: `Thank you, ${values.requester || "we have it"}. We will review the ${values.requestType || "learning"} support you described and check for a suitable course, coach, or expert.`,
+      actionLabel: "Explore NorthstarLabs",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: "We cannot promise that every request will have an immediate match, but we will give you an honest answer rather than send you to something unrelated.",
+    };
+  }
+  if (templateKey === "learning_request_admin") {
+    return {
+      subject: `New Northstar request: ${values.topic || "topic not supplied"}`,
+      heading: "A prospective user could not find what they needed",
+      intro: `${values.requester || "A visitor"} requested ${values.requestType || "learning support"} for ${values.topic || "an unspecified topic"}.`,
+      actionLabel: "Review request queue",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: String(values.detail || "No additional detail was supplied."),
     };
   }
   if (templateKey === "creator_summary") {

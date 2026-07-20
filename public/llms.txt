@@ -1,0 +1,48 @@
+# NorthstarLabs
+
+> NorthstarLabs is a connected learning platform where structured courses, human coaching, live learning, community, and learner progress work together.
+
+Canonical website: https://northstarlabs.co.za
+
+Memory cue: Learn. Ask. Progress.
+
+Brand promise: Courses for the path. Coaches for the roadblocks.
+
+NorthstarLabs serves three audiences:
+
+- Creators build branded academies, courses, programmes, communities, and learner journeys.
+- Learners take practical courses, save progress, join live learning, earn certificates, and find personal help.
+- Coaches publish discoverable profiles, set their own hourly rates, show credentials and availability, and receive protected enquiries.
+
+The NorthstarLabs difference:
+
+- A course gives a learner the path.
+- A coach helps with the personal roadblock.
+- The learning activity, live support, community, progress, ratings, and proof stay connected.
+- If a suitable course or coach is not listed, a prospective user can submit a detailed request so NorthstarLabs can look for a credible match.
+
+Available now:
+
+- Free account creation for creator, coach, and learner paths
+- Public course catalogue and branded academy storefronts
+- Course authoring with text, protected video, downloads, sections, quizzes, and completion rules
+- Learner progress, notes, bookmarks, assessments, and verifiable certificates
+- Coach marketplace with topics, rates, availability, credentials, enquiries, and verified-session reviews
+- Bundles, memberships, live sessions, community, email operations, reporting, integrations, and administration
+
+Current commercial status:
+
+- Free account creation and starter courses are available.
+- Paid plan upgrades remain disabled until live billing completes final activation and transaction testing.
+
+Important public pages:
+
+- About NorthstarLabs: https://northstarlabs.co.za/about
+- Goal-first Northstar Navigator: https://northstarlabs.co.za/find
+- Course catalogue: https://northstarlabs.co.za/courses
+- Coach marketplace: https://northstarlabs.co.za/tutors
+- Terms: https://northstarlabs.co.za/legal/terms
+- Privacy: https://northstarlabs.co.za/legal/privacy
+- XML sitemap: https://northstarlabs.co.za/sitemap.xml
+
+Brand spelling: NorthstarLabs

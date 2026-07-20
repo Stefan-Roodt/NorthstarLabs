@@ -6,7 +6,7 @@ import { requirePlatformAdmin } from "../../../../lib/platform-admin";
 export async function GET(request: Request) {
   const user = await requirePlatformAdmin(request);
   if (!user) return Response.json({ error: "Platform administrator access required." }, { status: 403 });
-  const [metrics, schools, users, messages, audit] = await Promise.all([
+  const [metrics, schools, users, messages, learningRequests, audit] = await Promise.all([
     env.DB.prepare(
       `SELECT
         (SELECT COUNT(*) FROM schools) AS schools,
@@ -16,7 +16,8 @@ export async function GET(request: Request) {
         (SELECT COUNT(*) FROM courses WHERE status='published') AS publishedCourses,
         (SELECT COUNT(*) FROM enrollments WHERE status='active') AS activeEnrollments,
         (SELECT COUNT(*) FROM email_messages WHERE status='sent') AS sentEmails,
-        (SELECT COUNT(*) FROM email_messages WHERE status IN ('failed','configuration_required')) AS emailAttention`,
+        (SELECT COUNT(*) FROM email_messages WHERE status IN ('failed','configuration_required')) AS emailAttention,
+        (SELECT COUNT(*) FROM learning_requests WHERE status IN ('new','reviewing')) AS openLearningRequests`,
     ).first(),
     env.DB.prepare(
       `SELECT s.id,s.name,s.slug,s.status,s.updated_at AS updatedAt,
@@ -38,6 +39,16 @@ export async function GET(request: Request) {
        ORDER BY em.created_at DESC LIMIT 80`,
     ).all(),
     env.DB.prepare(
+      `SELECT id,requester_name AS requesterName,
+        requester_email AS requesterEmail,request_type AS requestType,
+        topic,detail,source,status,admin_note AS adminNote,
+        created_at AS createdAt,updated_at AS updatedAt
+       FROM learning_requests
+       ORDER BY CASE status WHEN 'new' THEN 0 WHEN 'reviewing' THEN 1
+         WHEN 'matched' THEN 2 ELSE 3 END,created_at DESC
+       LIMIT 100`,
+    ).all(),
+    env.DB.prepare(
       `SELECT al.id,al.action,al.target_type AS targetType,al.target_id AS targetId,
         al.detail_json AS detailJson,al.created_at AS createdAt,
         COALESCE(p.display_name,p.email,'System') AS actor,s.name AS schoolName
@@ -52,6 +63,7 @@ export async function GET(request: Request) {
     schools: schools.results,
     users: users.results,
     messages: messages.results,
+    learningRequests: learningRequests.results,
     audit: audit.results,
     provider: {
       configured: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM),
@@ -123,6 +135,26 @@ export async function PATCH(request: Request) {
       detail: { status: result.status },
     });
     return Response.json(result);
+  }
+
+  if (
+    body.targetType === "learning_request" &&
+    ["reviewing", "matched", "closed"].includes(body.action)
+  ) {
+    const result = await env.DB.prepare(
+      "UPDATE learning_requests SET status=?,updated_at=? WHERE id=?",
+    ).bind(body.action, Date.now(), body.targetId).run();
+    if (!result.meta.changes) {
+      return Response.json({ error: "Learning request not found." }, { status: 404 });
+    }
+    await writeAuditLog({
+      actorId: user.id,
+      action: `platform.learning_request.${body.action}`,
+      targetType: "learning_request",
+      targetId: body.targetId,
+      detail: { status: body.action },
+    });
+    return Response.json({ saved: true, status: body.action });
   }
 
   return Response.json({ error: "Unsupported administration action." }, { status: 400 });

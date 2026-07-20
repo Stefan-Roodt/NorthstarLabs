@@ -128,6 +128,7 @@ for (const table of [
   "backup_runs",
   "content_reports",
   "data_requests",
+  "learning_requests",
 ]) {
   if (!tables.some((item) => item.name === table)) {
     throw new Error(`The ${table} production-hardening table was not created.`);

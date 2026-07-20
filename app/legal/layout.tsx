@@ -1,21 +1,23 @@
+import Link from "next/link";
+
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   return (
     <main className="legal-page">
       <header className="legal-top">
-        <a className="system-brand" href="/">✦ NORTHSTARLABS</a>
+        <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
         <nav aria-label="Legal navigation">
-          <a href="/legal/terms">Terms of Service</a>
-          <a href="/legal/privacy">Privacy Policy</a>
-          <a href="/login">Sign in</a>
+          <Link href="/legal/terms">Terms of Service</Link>
+          <Link href="/legal/privacy">Privacy Policy</Link>
+          <Link href="/login">Sign in</Link>
         </nav>
       </header>
       {children}
       <footer className="legal-footer">
         <span>© 2026 Northstar Labs. All rights reserved.</span>
         <nav>
-          <a href="/">Home</a>
-          <a href="/legal/terms">Terms</a>
-          <a href="/legal/privacy">Privacy</a>
+          <Link href="/">Home</Link>
+          <Link href="/legal/terms">Terms</Link>
+          <Link href="/legal/privacy">Privacy</Link>
         </nav>
       </footer>
     </main>

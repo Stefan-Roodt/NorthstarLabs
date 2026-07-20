@@ -172,6 +172,7 @@ function list(value: string) {
 
 export default function TutorAdminPage() {
   const supabase = getSupabaseBrowser();
+  const [pageLoadedAt] = useState(() => Date.now());
   const [data, setData] = useState<TutorData | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [slots, setSlots] = useState<TutorSlot[]>([]);
@@ -723,7 +724,7 @@ export default function TutorAdminPage() {
                 : "Use this as context, never as an automatic reason to reject a learner."}</small>
             </div>}
             <label>Private team note<textarea value={notes[inquiry.id] || ""} onChange={(event) => setNotes((current) => ({ ...current, [inquiry.id]: event.target.value }))} maxLength={1000} placeholder="What was agreed, follow-up date, or booking details." /></label>
-            {inquiry.status === "completed" && !inquiry.learnerRatingId && inquiry.updatedAt + RATING_WINDOW_MS >= Date.now() && <section className="coach-rates-learner">
+            {inquiry.status === "completed" && !inquiry.learnerRatingId && inquiry.updatedAt + RATING_WINDOW_MS >= pageLoadedAt && <section className="coach-rates-learner">
               <p className="sys-kicker">PRIVATE TWO-WAY RATING</p>
               <h4>How did {inquiry.learnerName} participate?</h4>
               <div className="coach-rating-stars" aria-label="Choose a learner rating">{[1, 2, 3, 4, 5].map((value) =>
@@ -738,7 +739,7 @@ export default function TutorAdminPage() {
               <button className="sys-primary" disabled={busy === `learner-rating-${inquiry.id}` || !learnerRatings[inquiry.id] || (learnerRatings[inquiry.id] < 5 && !(learnerRatingTags[inquiry.id] || []).length)} onClick={() => submitLearnerRating(inquiry)} type="button">{busy === `learner-rating-${inquiry.id}` ? "Saving…" : "Submit private rating"}</button>
               <small>The rating stays sealed until both sides submit or seven days pass. Learners see only an aggregate after three ratings.</small>
             </section>}
-            {inquiry.status === "completed" && !inquiry.learnerRatingId && inquiry.updatedAt + RATING_WINDOW_MS < Date.now() && <p className="tutoring-rating-closed">The 14-day rating window for this session has closed.</p>}
+            {inquiry.status === "completed" && !inquiry.learnerRatingId && inquiry.updatedAt + RATING_WINDOW_MS < pageLoadedAt && <p className="tutoring-rating-closed">The 14-day rating window for this session has closed.</p>}
             {inquiry.learnerRatingId && <p className="tutoring-reviewed">✓ Your private learner rating has been submitted.</p>}
             <div className="tutor-inquiry-actions">
               <a href={`mailto:${inquiry.learnerEmail}?subject=${encodeURIComponent(`Tutoring: ${inquiry.subject}`)}`}>Reply by email</a>

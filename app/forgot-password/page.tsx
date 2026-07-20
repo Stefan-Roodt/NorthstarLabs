@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import Link from "next/link";
+import { type FormEvent, useState } from "react";
 import { getSupabaseBrowser } from "../../lib/supabase-client";
 
 export default function ForgotPassword() {
@@ -27,7 +28,7 @@ export default function ForgotPassword() {
   }
 
   return <main className="auth-page">
-    <a className="system-brand" href="/">✦ NORTHSTARLABS</a>
+    <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
     <section className="auth-card compact-auth-card">
       <p className="sys-kicker">ACCOUNT RECOVERY</p>
       <h1>Reset your password.</h1>
@@ -49,7 +50,7 @@ export default function ForgotPassword() {
         </button>
       </form>
       {message && <p className="form-message" role="status">{message}</p>}
-      <a className="auth-back" href="/login">← Return to sign in</a>
+      <Link className="auth-back" href="/login">← Return to sign in</Link>
     </section>
   </main>;
 }
