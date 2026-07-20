@@ -142,6 +142,20 @@ test("ships Stefan's evidence-led Bitcoin history and futures course", async () 
   assert.doesNotMatch(migration, /guaranteed profit|risk-free return|price will reach/i);
 });
 
+test("copies the complete Bitcoin programme into CogniZen as a review draft", async () => {
+  const migration = await readFile(
+    new URL("../drizzle/0032_cognizen_bitcoin_review_draft.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migration, /cognizen-bitcoin-intelligence-draft/);
+  assert.match(migration, /target\.`slug`='cognizen-consulting'/);
+  assert.match(migration, /'draft'/);
+  assert.match(migration, /FROM `course_sections` source/);
+  assert.match(migration, /FROM `lessons` source/);
+  assert.match(migration, /FROM `quizzes` source/);
+  assert.match(migration, /FROM `quiz_questions` source/);
+});
+
 test("guides new members into creating or learning with a low-friction join flow", async () => {
   const [home, login, welcome, course] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),

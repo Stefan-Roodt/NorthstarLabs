@@ -179,6 +179,7 @@ if (facultyProfiles.count !== 3) {
 const attachedFacultyMedia = database.prepare(
   `SELECT COUNT(*) AS count FROM lessons
    WHERE primary_asset_id IN ('faculty-media-ai-intro','faculty-media-bitcoin-intro','faculty-media-web3-intro')
+     AND course_id IN ('northstar-ai-command-studio','stefan-bitcoin-genesis-next-era','stefan-web3-foundations')
      AND lesson_type='video' AND required_watch_percent=85`,
 ).get();
 if (attachedFacultyMedia.count !== 3) {

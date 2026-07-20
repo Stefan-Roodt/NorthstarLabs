@@ -179,6 +179,45 @@ test("publishes Stefan's evidence-led Bitcoin deep dive as a NorthstarLabs signa
   assert.ok(sourceCoverage.energy >= 1);
 });
 
+test("places a complete Bitcoin review draft in the CogniZen creator workspace", async () => {
+  const db = await migratedDatabase();
+  const course = db.prepare(`
+    SELECT c.title,c.status,c.owner_id AS ownerId,s.slug AS schoolSlug,
+      (SELECT COUNT(*) FROM course_sections
+       WHERE course_id=c.id) AS sections,
+      (SELECT COUNT(*) FROM lessons
+       WHERE course_id=c.id) AS lessons,
+      (SELECT COUNT(*) FROM quizzes q
+       JOIN lessons l ON l.id=q.lesson_id
+       WHERE l.course_id=c.id) AS quizzes,
+      (SELECT COUNT(*) FROM quiz_questions qq
+       JOIN quizzes q ON q.id=qq.quiz_id
+       JOIN lessons l ON l.id=q.lesson_id
+       WHERE l.course_id=c.id) AS questions
+    FROM courses c
+    JOIN schools s ON s.id=c.school_id
+    WHERE c.id='cognizen-bitcoin-intelligence-draft'
+  `).get();
+  assert.deepEqual({ ...course }, {
+    title: "Bitcoin Intelligence: From Genesis Block to Boardroom — Review draft",
+    status: "draft",
+    ownerId: "stefan-course-owner-fixture",
+    schoolSlug: "cognizen-consulting",
+    sections: 7,
+    lessons: 35,
+    quizzes: 7,
+    questions: 42,
+  });
+  const publishedOriginal = db.prepare(`
+    SELECT status,school_id AS schoolId
+    FROM courses WHERE id='stefan-bitcoin-genesis-next-era'
+  `).get();
+  assert.deepEqual({ ...publishedOriginal }, {
+    status: "published",
+    schoolId: "northstarlabs",
+  });
+});
+
 test("completes an isolated creator-to-learner production journey", async () => {
   const db = await migratedDatabase();
   const now = Date.UTC(2026, 6, 19);
