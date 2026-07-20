@@ -500,6 +500,10 @@ test("ships bundles, memberships, live learning, mobile installation, and integr
   assert.match(integrations, /x-northstar-signature/);
   assert.match(productStudio, /Create a product/);
   assert.match(productStudio, /Grant product access/);
+  assert.match(productStudio, /Choose service provider/);
+  assert.match(productStudio, /switchServiceProvider/);
+  assert.match(productStudio, /This product stays inside/);
+  assert.match(productStudio, /Include this provider&apos;s community/);
   assert.match(liveStudio, /Schedule a session/);
   assert.match(liveStudio, /Attendance register/);
   assert.doesNotMatch(

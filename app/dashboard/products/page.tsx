@@ -35,6 +35,7 @@ type ProductData = {
   courses: Course[];
   community: { id: string; name: string } | null;
 };
+type ServiceProvider = { id: string; slug: string; name: string; memberRole: string };
 
 const productNames: Record<string, string> = {
   bundle: "Course bundle",
@@ -45,6 +46,7 @@ const productNames: Record<string, string> = {
 export default function ProductsPage() {
   const supabase = getSupabaseBrowser();
   const [data, setData] = useState<ProductData | null>(null);
+  const [serviceProviders, setServiceProviders] = useState<ServiceProvider[]>([]);
   const [entitlements, setEntitlements] = useState<Entitlement[]>([]);
   const [editingId, setEditingId] = useState("");
   const [name, setName] = useState("");
@@ -84,9 +86,10 @@ export default function ProductsPage() {
       location.href = "/login?next=/dashboard/products";
       return;
     }
-    const [productsResponse, grantsResponse] = await Promise.all([
+    const [productsResponse, grantsResponse, profileResponse] = await Promise.all([
       authed("/api/products"),
       authed("/api/products/grants"),
+      authed("/api/profile"),
     ]);
     if (productsResponse.ok) {
       const result = await productsResponse.json() as ProductData;
@@ -99,6 +102,10 @@ export default function ProductsPage() {
     if (grantsResponse.ok) {
       const result = await grantsResponse.json() as { entitlements: Entitlement[] };
       setEntitlements(result.entitlements);
+    }
+    if (profileResponse.ok) {
+      const result = await profileResponse.json() as { schools?: ServiceProvider[] };
+      setServiceProviders(result.schools || []);
     }
   }, [authed, supabase]);
 
@@ -141,6 +148,23 @@ export default function ProductsPage() {
     setCourseIds((current) => current.includes(courseId)
       ? current.filter((id) => id !== courseId)
       : [...current, courseId]);
+  }
+
+  async function switchServiceProvider(activeSchoolId: string) {
+    if (!activeSchoolId || activeSchoolId === data?.school.id) return;
+    setBusy("provider");
+    setMessage("Opening the selected service provider...");
+    const response = await authed("/api/profile", {
+      method: "PATCH",
+      body: JSON.stringify({ activeSchoolId }),
+    });
+    if (response.ok) {
+      location.reload();
+      return;
+    }
+    const result = await response.json() as { error?: string };
+    setMessage(result.error || "That service provider could not be opened.");
+    setBusy("");
   }
 
   async function saveProduct(event: FormEvent) {
@@ -235,11 +259,28 @@ export default function ProductsPage() {
   return <main className="product-admin-page">
     <header className="product-admin-top">
       <Link className="system-brand" href="/dashboard">✦ NORTHSTARLABS</Link>
-      <nav>
-        <Link href="/dashboard/live">Live learning</Link>
-        <Link href="/dashboard/integrations">Integrations</Link>
-        <Link href={`/schools/${data.school.slug}`}>Storefront</Link>
-      </nav>
+      <div className="product-provider-controls">
+        <label>
+          <span>Service provider</span>
+          <select
+            aria-label="Choose service provider"
+            disabled={busy === "provider"}
+            value={data.school.id}
+            onChange={(event) => void switchServiceProvider(event.target.value)}
+          >
+            {serviceProviders.length
+              ? serviceProviders.map((provider) =>
+                <option key={provider.id} value={provider.id}>{provider.name}</option>
+              )
+              : <option value={data.school.id}>{data.school.name}</option>}
+          </select>
+        </label>
+        <nav>
+          <Link href="/dashboard/live">Live learning</Link>
+          <Link href="/dashboard/integrations">Integrations</Link>
+          <Link href={`/schools/${data.school.slug}`}>Storefront</Link>
+        </nav>
+      </div>
     </header>
 
     <section className="product-admin-hero">
@@ -279,15 +320,16 @@ export default function ProductsPage() {
           <label>Access length (days)<input min={0} max={3650} type="number" value={durationDays} onChange={(event) => setDurationDays(event.target.value)} /><small>Use 0 for access without an expiry date.</small></label>
         </div>
         <fieldset className="product-course-picker">
-          <legend>Included courses</legend>
+          <legend>Included learning and support</legend>
           {data.courses.length ? data.courses.map((course) => <label key={course.id}>
             <input type="checkbox" checked={courseIds.includes(course.id)} onChange={() => toggleCourse(course.id)} />
             <span><b>{course.title}</b><small>{course.status}</small></span>
-          </label>) : <p>Create a course first, or make this a live programme.</p>}
+          </label>) : <p>No courses have been created for {data.school.name}. You can still make this a live programme or include its community.</p>}
           {data.community && <label>
             <input type="checkbox" checked={includesCommunity} onChange={(event) => setIncludesCommunity(event.target.checked)} />
-            <span><b>Include {data.community.name}</b><small>Membership is granted and revoked with the product.</small></span>
+            <span><b>Include this provider&apos;s community</b><small>{data.community.name} access is granted and revoked with the product.</small></span>
           </label>}
+          <p className="product-scope-note">This product stays inside {data.school.name}. Use the service-provider menu above to build the offer under another academy.</p>
         </fieldset>
         <div className="product-form-actions">
           <button className="sys-primary" disabled={busy === "product"}>{busy === "product" ? "Saving..." : editingId ? "Save product" : "Create draft"}</button>
