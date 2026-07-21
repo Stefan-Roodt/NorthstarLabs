@@ -87,7 +87,8 @@ export async function PATCH(request: Request) {
     await createCreatorSchool(user, schoolName, body.role === "coach" ? "coach" : "creator");
   } else if (body.role === "learner") {
     await env.DB.prepare(
-      `UPDATE profiles SET role='learner',onboarding_path='learner',
+      `UPDATE profiles SET role=CASE WHEN role='creator' THEN role ELSE 'learner' END,
+       onboarding_path='learner',
        onboarding_completed=1,onboarded_at=COALESCE(onboarded_at,?) WHERE id=?`,
     ).bind(Date.now(), user.id).run();
   }

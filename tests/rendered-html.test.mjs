@@ -205,10 +205,17 @@ test("guides new members into creating or learning with a low-friction join flow
   ]);
   assert.match(home, /Three clear steps\. No blank dashboard/);
   assert.match(home, /Build my academy free/);
-  assert.match(login, /No payment details/);
+  assert.match(login, /No card or sales call/);
   assert.match(login, /emailRedirectTo: new URL\(destination/);
-  assert.match(welcome, /Create my academy and first module/);
+  assert.match(login, /START FREE IN ABOUT 60 SECONDS/);
+  assert.match(login, /What do you want to do first/);
+  assert.match(login, /const needsRoleChoice/);
+  assert.doesNotMatch(login, /requestedDestination === "\/welcome" \? "learner"/);
+  assert.match(welcome, /Name your academy/);
   assert.match(welcome, /Start a practical free course/);
+  assert.match(welcome, /welcomeDestination/);
+  assert.match(welcome, /location\.replace\("\/courses\?welcome=1"\)/);
+  assert.match(welcome, /location\.replace\(role === "coach"/);
   assert.match(course, /enrol=1/);
   assert.match(course, /Joining your course/);
 });
@@ -240,6 +247,7 @@ test("persists onboarding and supports secure invitations for new or existing ac
   assert.match(learners, /Pending invitations/);
   assert.match(learners, /Copy link/);
   assert.match(profile, /onboarding_completed=1/);
+  assert.match(profile, /CASE WHEN role='creator' THEN role ELSE 'learner' END/);
   assert.match(login, /onboarding_path/);
   assert.match(login, /searchParams\.get\("mode"\)/);
 });
@@ -674,7 +682,7 @@ test("ships coach advertising plans, direct onboarding, hourly rates, and topic 
   assert.match(plans, /monthlyCents: 14_900/);
   assert.match(plans, /monthlyCents: 34_900/);
   assert.match(plans, /monthlyCents: 69_900/);
-  assert.match(welcome, /I WANT TO COACH/);
+  assert.match(welcome, /FINAL STEP · COACHING/);
   assert.match(welcome, /dashboard\/tutors\?setup=1/);
   assert.match(profile, /body\.role === "coach"/);
   assert.match(admin, /Your hourly rate in rand/);
