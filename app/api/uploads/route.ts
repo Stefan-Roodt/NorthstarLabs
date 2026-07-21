@@ -12,6 +12,7 @@ const MEDIA_RULES: Record<string, { kind: string; maxBytes: number }> = {
   "video/ogg": { kind: "video", maxBytes: 200 * 1024 * 1024 },
   "audio/mpeg": { kind: "audio", maxBytes: 50 * 1024 * 1024 },
   "audio/mp4": { kind: "audio", maxBytes: 50 * 1024 * 1024 },
+  "audio/webm": { kind: "audio", maxBytes: 50 * 1024 * 1024 },
   "audio/ogg": { kind: "audio", maxBytes: 50 * 1024 * 1024 },
   "audio/wav": { kind: "audio", maxBytes: 50 * 1024 * 1024 },
   "image/jpeg": { kind: "image", maxBytes: 20 * 1024 * 1024 },

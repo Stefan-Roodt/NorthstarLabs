@@ -34,6 +34,8 @@ type StudioCapabilities = {
   quizzes: boolean;
   narration: boolean;
   videoClips: boolean;
+  aiNarration: boolean;
+  aiVideoClips: boolean;
   provider: string;
 };
 
@@ -204,12 +206,12 @@ export default function IntegrationsPage() {
       </section>
 
       <section className="panel creator-provider-panel" id="creator-studio-providers">
-        <div className="product-section-heading"><span>CREATOR AUTOMATION</span><div><h2>Creator Studio engines</h2><p>Core course drafting works inside Northstar. Connect optional providers only when you need generated narration or cinematic media.</p></div></div>
+        <div className="product-section-heading"><span>CREATOR AUTOMATION</span><div><h2>Creator Studio engines</h2><p>Core drafting, self-recorded narration and branded lesson intros work inside Northstar. Connect an optional provider only for fully AI-generated media.</p></div></div>
         <div className="creator-provider-summary">
           <div><span>Current engine</span><b>{studioCapabilities?.provider || "Checking connection..."}</b><small>The native engine keeps approved source text inside Northstar.</small></div>
           <div><span>Course drafts & checks</span><b>{studioCapabilities?.blueprint && studioCapabilities?.quizzes ? "Ready" : "Setup required"}</b><small>Built-in structures, activities and assessment feedback need no external key.</small></div>
-          <div><span>Narration</span><b>{studioCapabilities?.narration ? "Connected" : "Setup required"}</b><small>Used only after the creator has reviewed the course structure.</small></div>
-          <div><span>Cinematic clips</span><b>{studioCapabilities?.videoClips ? "Connected" : "Optional model required"}</b><small>Separate from ordinary protected video uploads and never required to publish.</small></div>
+          <div><span>Narration</span><b>{studioCapabilities?.narration ? "Self-service ready" : "Unavailable"}</b><small>Record or upload in the course editor. AI narration: {studioCapabilities?.aiNarration ? "connected" : "optional"}.</small></div>
+          <div><span>Cinematic intros</span><b>{studioCapabilities?.videoClips ? "Self-service ready" : "Unavailable"}</b><small>Create a branded opening locally. Fully generated AI video: {studioCapabilities?.aiVideoClips ? "connected" : "optional"}.</small></div>
         </div>
         <div className="creator-provider-actions">
           <Link className="sys-primary" href="/dashboard/studio#studio-workspace">Return to Creator Studio</Link>

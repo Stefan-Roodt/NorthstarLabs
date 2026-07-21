@@ -111,6 +111,100 @@ function dateTimeInputValue(timestamp: number | null) {
   return local.toISOString().slice(0, 16);
 }
 
+function supportedRecorderType(candidates: string[]) {
+  if (typeof MediaRecorder === "undefined") return "";
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+}
+
+function safeMediaFilename(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[^a-zA-Z0-9 -]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .toLowerCase()
+    .slice(0, 80) || "northstar-lesson";
+}
+
+function wrapCanvasText(context: CanvasRenderingContext2D, text: string, maxWidth: number) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (line && context.measureText(candidate).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.slice(0, 4);
+}
+
+function drawCinematicFrame(
+  context: CanvasRenderingContext2D,
+  progress: number,
+  courseTitle: string,
+  lessonTitle: string,
+  lessonNumber: number,
+) {
+  const { width, height } = context.canvas;
+  context.clearRect(0, 0, width, height);
+  const background = context.createLinearGradient(0, 0, width, height);
+  background.addColorStop(0, "#11121c");
+  background.addColorStop(0.58, "#1b1d31");
+  background.addColorStop(1, "#273c9f");
+  context.fillStyle = background;
+  context.fillRect(0, 0, width, height);
+
+  const ease = 1 - Math.pow(1 - Math.min(progress * 1.8, 1), 3);
+  const outro = Math.max(0, (progress - 0.82) / 0.18);
+  context.globalAlpha = 1 - outro * 0.28;
+  context.fillStyle = "#d8ff57";
+  context.beginPath();
+  context.arc(width * (0.82 + 0.06 * Math.sin(progress * Math.PI * 2)), height * 0.2, 95 + progress * 45, 0, Math.PI * 2);
+  context.fill();
+  context.strokeStyle = "rgba(255,255,255,.16)";
+  context.lineWidth = 2;
+  for (let index = 0; index < 4; index += 1) {
+    context.beginPath();
+    context.arc(width * 0.86, height * 0.18, 150 + index * 64 + progress * 30, 0, Math.PI * 2);
+    context.stroke();
+  }
+
+  const left = 92;
+  context.save();
+  context.translate(left - (1 - ease) * 90, 0);
+  context.globalAlpha = ease * (1 - outro * 0.18);
+  context.fillStyle = "#d8ff57";
+  context.font = "700 22px Arial, sans-serif";
+  context.letterSpacing = "3px";
+  context.fillText(`NORTHSTARLABS  •  ${courseTitle.toUpperCase().slice(0, 52)}`, 0, 108);
+  context.letterSpacing = "0px";
+
+  context.fillStyle = "#ffffff";
+  context.font = "700 72px Arial, sans-serif";
+  const titleLines = wrapCanvasText(context, lessonTitle, width - left * 2);
+  titleLines.forEach((line, index) => context.fillText(line, 0, 235 + index * 78));
+
+  const footerY = Math.min(610, 275 + titleLines.length * 78);
+  context.fillStyle = "rgba(255,255,255,.72)";
+  context.font = "600 24px Arial, sans-serif";
+  context.fillText(`LESSON ${String(lessonNumber).padStart(2, "0")}  •  LEARN WITH PURPOSE`, 0, footerY);
+  context.restore();
+
+  context.globalAlpha = 1;
+  context.fillStyle = "rgba(255,255,255,.2)";
+  context.fillRect(left, height - 58, width - left * 2, 5);
+  context.fillStyle = "#d8ff57";
+  context.fillRect(left, height - 58, (width - left * 2) * progress, 5);
+  context.fillStyle = "#ffffff";
+  context.font = "700 18px Arial, sans-serif";
+  context.fillText("✦", width - left - 24, height - 79);
+}
+
 export default function CourseBuilder({ params }: { params: Promise<{ courseId: string }> }) {
   const [courseId, setCourseId] = useState("");
   const [course, setCourse] = useState<Course | null>(null);
@@ -125,9 +219,17 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   const [draggedLessonId, setDraggedLessonId] = useState("");
   const [publishingErrors, setPublishingErrors] = useState<string[]>([]);
   const [studioBusy, setStudioBusy] = useState(false);
+  const [mediaProduction, setMediaProduction] = useState<"" | "recording" | "processing" | "cinematic">("");
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const revision = useRef(0);
   const contentEditor = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const narrationInput = useRef<HTMLInputElement>(null);
+  const videoInput = useRef<HTMLInputElement>(null);
+  const narrationRecorder = useRef<MediaRecorder | null>(null);
+  const narrationStream = useRef<MediaStream | null>(null);
+  const narrationChunks = useRef<Blob[]>([]);
+  const recordingTimer = useRef<number | null>(null);
   const supabase = getSupabaseBrowser();
 
   const selected = useMemo(
@@ -168,6 +270,20 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       setMessage("All changes saved");
     })();
   }, [courseId, supabase, token]);
+
+  useEffect(() => () => {
+    if (recordingTimer.current) window.clearInterval(recordingTimer.current);
+    if (narrationRecorder.current?.state === "recording") {
+      narrationRecorder.current.onstop = null;
+      narrationRecorder.current.stop();
+    }
+    narrationStream.current?.getTracks().forEach((track) => track.stop());
+  }, []);
+
+  useEffect(() => {
+    if (!course || location.hash !== "#media-production") return;
+    window.setTimeout(() => document.getElementById("media-production")?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+  }, [course]);
 
   const persistLesson = useCallback(async (
     lesson: Lesson,
@@ -249,13 +365,14 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
 
   function editLesson(patch: Partial<Lesson>) {
     if (!course || !selected) return;
-    setCourse({
-      ...course,
-      lessons: course.lessons.map((item) =>
-        item.id === selected.id ? { ...item, ...patch } : item
+    const selectedLessonId = selected.id;
+    setCourse((current) => current ? {
+      ...current,
+      lessons: current.lessons.map((item) =>
+        item.id === selectedLessonId ? { ...item, ...patch } : item
       ),
-    });
-    markDirty(selected.id);
+    } : current);
+    markDirty(selectedLessonId);
   }
 
   function editQuiz(patch: Partial<Quiz>) {
@@ -581,8 +698,8 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     location.href = "/dashboard";
   }
 
-  async function uploadFile(file: File) {
-    if (!course) return;
+  async function uploadFile(file: File): Promise<Asset | null> {
+    if (!course) return null;
     setUploading(true);
     setUploadProgress(0);
     setMessage(`Uploading ${file.name}…`);
@@ -616,10 +733,157 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     setUploadProgress(0);
     if (!result.ok || !result.asset) {
       setMessage(result.error || "Upload failed.");
-      return;
+      return null;
     }
     setCourse((current) => current ? { ...current, media: [result.asset!, ...current.media] } : current);
     setMessage(`${result.asset.filename} added to the media library`);
+    return result.asset;
+  }
+
+  async function attachProducedMedia(asset: Asset, lesson: Lesson, successMessage: string) {
+    const updatedLesson: Lesson = {
+      ...lesson,
+      primaryAssetId: asset.id,
+      primaryAsset: asset,
+      videoKey: "",
+      lessonType: asset.kind === "audio" ? "audio" : asset.kind === "video" ? "video" : lesson.lessonType,
+    };
+    setCourse((current) => current ? {
+      ...current,
+      lessons: current.lessons.map((item) => item.id === lesson.id ? updatedLesson : item),
+    } : current);
+    setSelectedId(lesson.id);
+    setDirty((current) => current?.id === lesson.id ? null : current);
+    const saved = await persistLesson(updatedLesson);
+    setMessage(saved ? successMessage : `${asset.filename} is safe in the media library, but could not be attached automatically.`);
+  }
+
+  async function startNarrationRecording() {
+    if (!selected || mediaProduction) return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setMessage("Direct recording is not supported in this browser. Use Upload narration instead.");
+      return;
+    }
+    if (selected.primaryAsset && !confirm("Replace this lesson’s current primary media with the new narration?")) return;
+    try {
+      const lesson = selected;
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      const mimeType = supportedRecorderType(["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]);
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      narrationRecorder.current = recorder;
+      narrationStream.current = stream;
+      narrationChunks.current = [];
+      setRecordingSeconds(0);
+      setMediaProduction("recording");
+      setMessage("Recording narration. Speak clearly, then choose Stop & attach.");
+      recorder.ondataavailable = (event) => {
+        if (event.data.size) narrationChunks.current.push(event.data);
+      };
+      recorder.onerror = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        if (recordingTimer.current) window.clearInterval(recordingTimer.current);
+        setMediaProduction("");
+        setMessage("The recording stopped unexpectedly. Try again or upload an audio file.");
+      };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        narrationStream.current = null;
+        narrationRecorder.current = null;
+        if (recordingTimer.current) window.clearInterval(recordingTimer.current);
+        recordingTimer.current = null;
+        setMediaProduction("processing");
+        const resolvedType = recorder.mimeType || mimeType || "audio/webm";
+        const blob = new Blob(narrationChunks.current, { type: resolvedType });
+        narrationChunks.current = [];
+        if (!blob.size) {
+          setMediaProduction("");
+          setMessage("No audio was captured. Check microphone permission and try again.");
+          return;
+        }
+        const extension = resolvedType.startsWith("audio/mp4") ? "m4a" : "webm";
+        const file = new File([blob], `${safeMediaFilename(lesson.title)}-narration.${extension}`, { type: resolvedType });
+        const asset = await uploadFile(file);
+        if (asset) await attachProducedMedia(asset, lesson, "Narration recorded, protected, and attached to this lesson.");
+        setMediaProduction("");
+      };
+      recorder.start(500);
+      recordingTimer.current = window.setInterval(() => setRecordingSeconds((seconds) => seconds + 1), 1000);
+    } catch (error) {
+      setMediaProduction("");
+      setMessage(error instanceof DOMException && error.name === "NotAllowedError"
+        ? "Microphone access was not allowed. Enable it for NorthStarLabs or upload an audio file."
+        : "The microphone could not be started. Try again or upload an audio file.");
+    }
+  }
+
+  function stopNarrationRecording() {
+    if (narrationRecorder.current?.state !== "recording") return;
+    setMessage("Finishing and protecting your narration…");
+    narrationRecorder.current.stop();
+  }
+
+  async function createCinematicIntro() {
+    if (!course || !selected || mediaProduction) return;
+    if (typeof MediaRecorder === "undefined") {
+      setMessage("Local video creation is not supported in this browser. Use Upload finished video instead.");
+      return;
+    }
+    const canvas = document.createElement("canvas");
+    if (typeof canvas.captureStream !== "function") {
+      setMessage("Local video creation is not supported in this browser. Use Upload finished video instead.");
+      return;
+    }
+    if (selected.primaryAsset && !confirm("Replace this lesson’s current primary media with the new branded intro?")) return;
+    const lesson = selected;
+    const lessonNumber = course.lessons.findIndex((item) => item.id === lesson.id) + 1;
+    const mimeType = supportedRecorderType(["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]);
+    let stream: MediaStream | null = null;
+    let recorder: MediaRecorder | null = null;
+    try {
+      setMediaProduction("cinematic");
+      setMessage("Creating a six-second NorthStarLabs lesson intro in your browser…");
+      canvas.width = 1280;
+      canvas.height = 720;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Canvas unavailable");
+      drawCinematicFrame(context, 0, course.title, lesson.title, lessonNumber);
+      stream = canvas.captureStream(30);
+      const activeRecorder = new MediaRecorder(stream, mimeType ? { mimeType, videoBitsPerSecond: 4_000_000 } : undefined);
+      recorder = activeRecorder;
+      const chunks: Blob[] = [];
+      const completed = new Promise<Blob>((resolve, reject) => {
+        activeRecorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+        activeRecorder.onerror = () => reject(new Error("Video encoder failed"));
+        activeRecorder.onstop = () => resolve(new Blob(chunks, { type: (activeRecorder.mimeType || mimeType || "video/webm").split(";")[0] }));
+      });
+      activeRecorder.start(500);
+      const startedAt = performance.now();
+      await new Promise<void>((resolve) => {
+        const animate = (now: number) => {
+          const progress = Math.min(1, (now - startedAt) / 6000);
+          drawCinematicFrame(context, progress, course.title, lesson.title, lessonNumber);
+          if (progress < 1) requestAnimationFrame(animate);
+          else resolve();
+        };
+        requestAnimationFrame(animate);
+      });
+      activeRecorder.stop();
+      const blob = await completed;
+      if (!blob.size) throw new Error("No video created");
+      const resolvedType = (blob.type || activeRecorder.mimeType || mimeType || "video/webm").split(";")[0];
+      const extension = resolvedType === "video/mp4" ? "mp4" : "webm";
+      const file = new File([blob], `${safeMediaFilename(lesson.title)}-northstar-intro.${extension}`, { type: resolvedType });
+      const asset = await uploadFile(file);
+      if (asset) await attachProducedMedia(asset, lesson, "Branded cinematic intro created, protected, and attached to this lesson.");
+    } catch {
+      setMessage("The branded intro could not be created in this browser. Upload a finished MP4 or WebM instead.");
+    } finally {
+      if (recorder?.state === "recording") recorder.stop();
+      stream?.getTracks().forEach((track) => track.stop());
+      setMediaProduction("");
+    }
   }
 
   async function generateStudioNarration() {
@@ -1106,10 +1370,84 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               />
               <small>Transcripts improve accessibility and make the lesson searchable.</small>
             </label>
-            {selected.transcript.trim() && !selected.primaryAsset && <section className="studio-narration-callout">
-              <div><p className="sys-kicker">CREATOR STUDIO NARRATION</p><h2>Turn the reviewed script into protected audio.</h2><p>Google Gemini creates a draft narration, stores it in your private media library, and attaches it to this lesson. Listen and review before publishing.</p></div>
-              <button type="button" disabled={studioBusy} onClick={generateStudioNarration}>{studioBusy ? "Generating…" : "Generate narration"}</button>
-            </section>}
+
+            <section className="self-media-studio" id="media-production">
+              <header>
+                <div><p className="sys-kicker">SELF-SERVICE MEDIA STUDIO</p><h2>Give this lesson a voice—or a cinematic opening.</h2></div>
+                <span>Created in your browser<br/>Protected in your academy</span>
+              </header>
+              <div className="self-media-grid">
+                <article className="narration-production-card">
+                  <div className={`narration-meter ${mediaProduction === "recording" ? "active" : ""}`} aria-hidden="true">
+                    {Array.from({ length: 17 }, (_, index) => <i key={index} />)}
+                  </div>
+                  <p className="sys-kicker">NARRATION</p>
+                  <h3>Record your own lesson voice.</h3>
+                  <p>Use the transcript above as your script, or speak naturally. Northstar records, uploads and attaches the protected audio in one flow.</p>
+                  <div className="media-production-status" aria-live="polite">
+                    {mediaProduction === "recording" ? <><b>Recording live</b><span>{String(Math.floor(recordingSeconds / 60)).padStart(2, "0")}:{String(recordingSeconds % 60).padStart(2, "0")}</span></>
+                      : mediaProduction === "processing" ? <><b>Protecting audio</b><span>Please wait…</span></>
+                      : <><b>Microphone or upload</b><span>No provider needed</span></>}
+                  </div>
+                  <div className="media-production-actions">
+                    {mediaProduction === "recording"
+                      ? <button className="record-stop" type="button" onClick={stopNarrationRecording}>■ Stop & attach</button>
+                      : <button className="production-primary" type="button" disabled={Boolean(mediaProduction)} onClick={startNarrationRecording}>● Record narration</button>}
+                    <button type="button" disabled={Boolean(mediaProduction)} onClick={() => narrationInput.current?.click()}>Upload audio</button>
+                  </div>
+                  {selected.transcript.trim() && <button className="advanced-media-action" type="button" disabled={studioBusy || Boolean(mediaProduction)} onClick={generateStudioNarration}>{studioBusy ? "AI narrator is working…" : "Use a connected AI narrator →"}</button>}
+                </article>
+
+                <article className="cinematic-production-card">
+                  <div className="cinematic-preview" aria-hidden="true"><span>✦ NORTHSTARLABS</span><b>{selected.title}</b><i /></div>
+                  <p className="sys-kicker">CINEMATIC INTRO</p>
+                  <h3>Generate a branded opening clip.</h3>
+                  <p>Create a polished six-second 16:9 lesson title animation using the course and lesson names. No model, credits or external key required.</p>
+                  <div className="media-production-status" aria-live="polite">
+                    {mediaProduction === "cinematic" ? <><b>Rendering video</b><span>About 6 seconds…</span></>
+                      : <><b>1280 × 720 WebM</b><span>Northstar branded</span></>}
+                  </div>
+                  <div className="media-production-actions">
+                    <button className="production-primary" type="button" disabled={Boolean(mediaProduction)} onClick={createCinematicIntro}>{mediaProduction === "cinematic" ? "Creating intro…" : "✦ Create branded intro"}</button>
+                    <button type="button" disabled={Boolean(mediaProduction)} onClick={() => videoInput.current?.click()}>Upload video</button>
+                  </div>
+                  <Link className="advanced-media-action" href="/dashboard/integrations#creator-studio-providers">Advanced AI production options →</Link>
+                </article>
+              </div>
+              <footer><b>Nothing is published automatically.</b><span>Review the result in the lesson preview, add a transcript or captions, and publish only when it is ready.</span></footer>
+              <input
+                hidden
+                ref={narrationInput}
+                type="file"
+                accept="audio/mpeg,audio/mp4,audio/webm,audio/ogg,audio/wav"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (!file) return;
+                  const lesson = selected;
+                  const asset = await uploadFile(file);
+                  if (asset && (!lesson.primaryAsset || confirm("Replace this lesson’s current primary media with the uploaded narration?"))) {
+                    await attachProducedMedia(asset, lesson, "Narration uploaded, protected, and attached to this lesson.");
+                  }
+                }}
+              />
+              <input
+                hidden
+                ref={videoInput}
+                type="file"
+                accept="video/mp4,video/webm,video/ogg"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (!file) return;
+                  const lesson = selected;
+                  const asset = await uploadFile(file);
+                  if (asset && (!lesson.primaryAsset || confirm("Replace this lesson’s current primary media with the uploaded video?"))) {
+                    await attachProducedMedia(asset, lesson, "Video uploaded, protected, and attached to this lesson.");
+                  }
+                }}
+              />
+            </section>
 
             <section className="resource-editor">
               <div><p className="sys-kicker">DOWNLOADS & RESOURCES</p><h2>Give learners something useful to keep.</h2></div>

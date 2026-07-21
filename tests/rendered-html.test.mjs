@@ -1186,3 +1186,33 @@ test("gives creators an honest, actionable learner-quality review", async () => 
   assert.match(courseApi, /Attach playable media to every video or audio lesson/);
   assert.match(courseApi, /Add assessment questions to every quiz lesson/);
 });
+
+test("makes narration and branded cinematic intros usable without an external provider", async () => {
+  const [editor, uploads, provider, studio, integrations, styles] = await Promise.all([
+    readFile(new URL("../app/dashboard/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/uploads/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/creator-studio.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/studio/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/integrations/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/builder.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(editor, /navigator\.mediaDevices\?\.getUserMedia/);
+  assert.match(editor, /new MediaRecorder/);
+  assert.match(editor, /canvas\.captureStream\(30\)/);
+  assert.match(editor, /Record narration/);
+  assert.match(editor, /Stop & attach/);
+  assert.match(editor, /Create branded intro/);
+  assert.match(editor, /attachProducedMedia/);
+  assert.match(editor, /Nothing is published automatically/);
+  assert.match(uploads, /"audio\/webm"/);
+  assert.match(provider, /narration: true/);
+  assert.match(provider, /videoClips: true/);
+  assert.match(provider, /aiNarration: gemini/);
+  assert.match(provider, /aiVideoClips: gemini/);
+  assert.match(studio, /Narration studio/);
+  assert.match(studio, /Generate locally in your browser/);
+  assert.match(integrations, /Self-service ready/);
+  assert.match(styles, /\.self-media-studio/);
+  assert.match(styles, /@keyframes northstar-wave/);
+});

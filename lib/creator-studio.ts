@@ -494,8 +494,10 @@ export function configuredStudioCapabilities() {
   return {
     blueprint: true,
     quizzes: true,
-    narration: gemini,
-    videoClips: gemini && Boolean(process.env.GEMINI_VIDEO_MODEL),
+    narration: true,
+    videoClips: true,
+    aiNarration: gemini,
+    aiVideoClips: gemini && Boolean(process.env.GEMINI_VIDEO_MODEL),
     provider: gemini ? "Northstar Native + Google Gemini" : "Northstar Native",
   };
 }

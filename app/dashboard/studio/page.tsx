@@ -25,7 +25,10 @@ type Project = {
   id: string; courseId: string | null; title: string; audience: string; outcome: string;
   lessonMinutes: number; status: string; model: string; sources: Source[]; blueprint: Blueprint | null;
 };
-type Capabilities = { blueprint: boolean; quizzes: boolean; narration: boolean; videoClips: boolean; provider: string };
+type Capabilities = {
+  blueprint: boolean; quizzes: boolean; narration: boolean; videoClips: boolean;
+  aiNarration: boolean; aiVideoClips: boolean; provider: string;
+};
 
 const blankSource = (): Source => ({
   title: "", sourceType: "notes", sourceUrl: "", sourceText: "", rightsBasis: "owned",
@@ -153,6 +156,15 @@ export default function CreatorStudioPage() {
     setMessage(`${capability} is ready. Start a new governed project or open an existing one below.`);
   }
 
+  function openSelfServiceMedia(capability: string) {
+    if (selected?.courseId) {
+      location.href = `/dashboard/courses/${selected.courseId}#media-production`;
+      return;
+    }
+    document.getElementById("studio-workspace")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setMessage(`${capability} is ready in the course editor. Build, review and export a draft here first, then create the media for any lesson.`);
+  }
+
   const lessonCount = selected?.blueprint?.sections.reduce((sum, section) => sum + section.lessons.length, 0) || 0;
   const productionCount = selected?.blueprint?.sections.reduce(
     (sum, section) => sum + section.lessons.filter((lesson) => ["audio", "video"].includes(lesson.lessonType)).length, 0,
@@ -173,8 +185,8 @@ export default function CreatorStudioPage() {
     <section className="studio-capabilities" aria-label="Creator Studio capabilities">
       <div className="ready"><button type="button" onClick={() => openCapability(true, "Grounded course drafting")}><b>01</b><span>Course structure</span><small>Built in and ready</small><em>Start building →</em></button></div>
       <div className="ready"><button type="button" onClick={() => openCapability(true, "Quizzes and checks")}><b>02</b><span>Checks with feedback</span><small>Built in and ready</small><em>Start building →</em></button></div>
-      <div className={capabilities?.narration ? "ready" : "planned"}><button type="button" onClick={() => openCapability(Boolean(capabilities?.narration), "AI narration")}><b>03</b><span>AI narration</span><small>{capabilities?.narration ? "Connected upgrade" : "Optional upgrade"}</small><em>{capabilities?.narration ? "Open workspace →" : "Connect when needed →"}</em></button></div>
-      <div className={capabilities?.videoClips ? "ready" : "planned"}><button type="button" onClick={() => openCapability(Boolean(capabilities?.videoClips), "Cinematic clips")}><b>04</b><span>Cinematic clips</span><small>{capabilities?.videoClips ? "Connected upgrade" : "Optional upgrade"}</small><em>{capabilities?.videoClips ? "Open workspace →" : "Connect when needed →"}</em></button></div>
+      <div className="ready"><button type="button" onClick={() => openSelfServiceMedia("Self-recorded narration")}><b>03</b><span>Narration studio</span><small>Record or upload yourself</small><em>Use after export →</em></button></div>
+      <div className="ready"><button type="button" onClick={() => openSelfServiceMedia("Branded cinematic intros")}><b>04</b><span>Cinematic intros</span><small>Generate locally in your browser</small><em>Use after export →</em></button></div>
     </section>
 
     <section className="studio-automation-flow" aria-label="Automated course-building workflow">
