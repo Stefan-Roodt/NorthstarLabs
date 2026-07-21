@@ -36,6 +36,8 @@ const MEDIA_RULES: Record<string, { kind: string; maxBytes: number }> = {
     maxBytes: 50 * 1024 * 1024,
   },
   "text/plain": { kind: "document", maxBytes: 10 * 1024 * 1024 },
+  "text/markdown": { kind: "document", maxBytes: 10 * 1024 * 1024 },
+  "text/html": { kind: "document", maxBytes: 10 * 1024 * 1024 },
   "application/zip": { kind: "archive", maxBytes: 100 * 1024 * 1024 },
 };
 
@@ -58,7 +60,8 @@ function inferredContentType(filename: string) {
     pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     xls: "application/vnd.ms-excel",
     xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    txt: "text/plain", zip: "application/zip",
+    txt: "text/plain", md: "text/markdown", markdown: "text/markdown",
+    html: "text/html", htm: "text/html", zip: "application/zip",
   } as Record<string, string>)[extension] || "";
 }
 

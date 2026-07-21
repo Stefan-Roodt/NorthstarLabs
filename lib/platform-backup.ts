@@ -9,6 +9,7 @@ const BACKUP_TABLES = [
   "invitations",
   "courses",
   "course_sections",
+  "course_import_projects",
   "media_assets",
   "media_playback_grants",
   "lessons",

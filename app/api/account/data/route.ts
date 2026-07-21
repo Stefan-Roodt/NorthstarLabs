@@ -267,6 +267,9 @@ export async function DELETE(request: Request) {
         "UPDATE integrations SET created_by='deleted-user' WHERE created_by=?",
       ).bind(user.id),
       env.DB.prepare(
+        "UPDATE course_import_projects SET created_by='deleted-user' WHERE created_by=?",
+      ).bind(user.id),
+      env.DB.prepare(
         "UPDATE invitations SET accepted_by=NULL WHERE accepted_by=?",
       ).bind(user.id),
       env.DB.prepare(

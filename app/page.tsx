@@ -8,6 +8,7 @@ const creatorSignupHref = "/login?mode=signup&role=creator&next=%2Fwelcome%3Fpat
 const coachSignupHref = "/login?mode=signup&role=coach&next=%2Fwelcome%3Fpath%3Dcoach";
 const learnerPortfolioSignupHref = "/login?mode=signup&role=learner&next=%2Fportfolio";
 const learnerMasterySignupHref = "/login?mode=signup&role=learner&next=%2Fmastery";
+const migrationSignupHref = "/login?mode=signup&role=creator&next=%2Fdashboard%2Fimport";
 const homeSearchPaths = [
   { slug: "online-courses-south-africa", title: "Online courses in South Africa", description: "Choose practical courses by outcome, effort, evidence, and available human support." },
   { slug: "find-business-coach-south-africa", title: "Find a business coach", description: "Compare topic fit, rates, credentials, availability, and verified-session proof." },
@@ -375,6 +376,24 @@ export default function Home() {
             <li><b>Improve</b><span>Progress, learner support, reporting, unmet demand, and trusted feedback</span></li>
           </ul>
           <a className="button" href={creatorSignupHref}>Open my creator workspace <span>→</span></a>
+        </div>
+      </section>
+
+      <section className="migration-advantage shell" aria-labelledby="migration-advantage-title">
+        <div className="migration-advantage-copy">
+          <p className="section-kicker">FREE MIGRATION STUDIO</p>
+          <h2 id="migration-advantage-title">Your existing work should be a head start—not a hostage.</h2>
+          <p>Bring course exports, curriculum outlines, learner CSVs and ordered source documents into Northstar. Document one becomes module one, document two becomes module two, and every result stays private until you review it.</p>
+          <ul><li><b>Inspect</b><span>See the interpreted modules, lessons, media and learner counts first</span></li><li><b>Protect</b><span>No overwrite and no automatic publishing</span></li><li><b>Continue</b><span>Open every imported course as an editable Northstar draft</span></li></ul>
+          <a className="button" href={migrationSignupHref}>Bring my academy across free <span>→</span></a>
+          <small>Teachable, Thinkific, Podia, CSV, JSON, outlines and ordered documents</small>
+        </div>
+        <div className="migration-advantage-demo" aria-label="Example course import preview">
+          <header><span>MIGRATION PREVIEW</span><b>Nothing created yet</b></header>
+          <div><strong>01</strong><p><small>MODULE</small><b>Digital asset foundations</b><span>6 lessons</span></p></div>
+          <div><strong>02</strong><p><small>MODULE</small><b>Bitcoin architecture</b><span>8 lessons</span></p></div>
+          <div><strong>03</strong><p><small>MODULE</small><b>Risk and application</b><span>5 lessons</span></p></div>
+          <footer><span>3 modules · 19 lessons · 4 assessments</span><b>CREATE PRIVATE DRAFT →</b></footer>
         </div>
       </section>
 

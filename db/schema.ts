@@ -233,6 +233,28 @@ export const creatorStudioGenerations = sqliteTable("creator_studio_generations"
   index("creator_studio_generations_project_created_idx").on(table.projectId, table.createdAt),
   index("creator_studio_generations_school_status_idx").on(table.schoolId, table.status, table.createdAt),
 ]);
+export const courseImportProjects = sqliteTable("course_import_projects", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull(),
+  createdBy: text("created_by").notNull(),
+  provider: text("provider").notNull().default("other"),
+  sourceType: text("source_type").notNull().default("course_export"),
+  sourceFilename: text("source_filename").notNull().default(""),
+  title: text("title").notNull(),
+  status: text("status").notNull().default("previewed"),
+  rightsConfirmed: integer("rights_confirmed", { mode: "boolean" }).notNull().default(false),
+  planJson: text("plan_json").notNull(),
+  summaryJson: text("summary_json").notNull().default("{}"),
+  warningsJson: text("warnings_json").notNull().default("[]"),
+  resultJson: text("result_json").notNull().default("{}"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+  importedAt: integer("imported_at"),
+}, (table) => [
+  index("course_import_projects_school_updated_idx").on(table.schoolId, table.updatedAt),
+  index("course_import_projects_creator_updated_idx").on(table.createdBy, table.updatedAt),
+  index("course_import_projects_status_updated_idx").on(table.status, table.updatedAt),
+]);
 export const enrollments = sqliteTable("enrollments", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), courseId: text("course_id").notNull(),
   progress: integer("progress").notNull().default(0), status: text("status").notNull().default("active"),

@@ -252,6 +252,36 @@ test("persists onboarding and supports secure invitations for new or existing ac
   assert.match(login, /searchParams\.get\("mode"\)/);
 });
 
+test("ships a free inspect-first academy and course migration studio", async () => {
+  const [page, api, parser, schema, migration, home, backup, terms, privacy] = await Promise.all([
+    readFile(new URL("../app/dashboard/import/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/imports/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/course-import.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0039_thick_gertrude_yorkes.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/platform-backup.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/legal/terms/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/legal/privacy/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(page, /Move in without starting over/);
+  assert.match(page, /Selected order becomes module order/);
+  assert.match(page, /Nothing was published/);
+  assert.match(page, /Create private drafts/);
+  assert.match(api, /status='importing'/);
+  assert.match(api, /'draft',0/);
+  assert.match(api, /sendInvitations === true/);
+  assert.match(api, /attach_document/);
+  assert.match(parser, /courseFromDocumentSequence/);
+  assert.match(parser, /Module \$\{index \+ 1\}/);
+  assert.match(schema, /export const courseImportProjects/);
+  assert.match(migration, /CREATE TABLE `course_import_projects`/);
+  assert.match(home, /Your existing work should be a head start/);
+  assert.match(backup, /"course_import_projects"/);
+  assert.match(terms, /Course and learner migration/);
+  assert.match(privacy, /normalised course structure/);
+});
+
 test("ships a structured course editor, reusable media library, and safe learner rendering", async () => {
   const [schema, migration, builder, lessonsApi, uploadsApi, courseApi, learnApi, learner, renderer] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
