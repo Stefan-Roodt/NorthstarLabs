@@ -9,6 +9,8 @@ test("PayFast checkout derives every charge from server-owned catalogue data", a
   const checkout = await read("app/api/payfast/checkout/route.ts");
   assert.match(checkout, /FROM courses c JOIN schools/);
   assert.match(checkout, /FROM products p JOIN schools/);
+  assert.match(checkout, /purpose: "coach_listing"/);
+  assert.match(checkout, /body\.tutorId/);
   assert.match(checkout, /INSERT INTO payment_orders/);
   assert.match(checkout, /amountCents < 500/);
   assert.match(checkout, /frequency = target\.billingInterval === "yearly" \? "6" : "3"/);
@@ -28,6 +30,8 @@ test("PayFast ITNs are verified before access is granted", async () => {
   assert.match(itn, /grantPlatformSubscription/);
   assert.match(itn, /grantCourse/);
   assert.match(itn, /grantProduct/);
+  assert.match(itn, /grantCoachListing/);
+  assert.match(itn, /cancelCoachListing/);
 });
 
 test("payment records make notifications durable and idempotent", async () => {

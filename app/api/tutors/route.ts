@@ -71,8 +71,8 @@ async function publicTutors(schoolSlug: string, tutorSlug?: string | null) {
   const query = `SELECT ${tutorColumns}
     FROM tutors t WHERE t.school_id=? AND t.status='published'
     ${tutorSlug ? "AND t.slug=?" : ""}
-    ORDER BY CASE t.listing_tier
-      WHEN 'spotlight' THEN 0 WHEN 'featured' THEN 1 ELSE 2 END,
+    ORDER BY CASE WHEN t.listing_tier='verified' AND t.verified=1
+      THEN 0 ELSE 1 END,
       t.verified DESC,t.updated_at DESC`;
   const rows = await env.DB.prepare(query)
     .bind(...(tutorSlug ? [school.id, tutorSlug] : [school.id]))
@@ -109,8 +109,8 @@ async function publicTutorMarketplace() {
      LEFT JOIN tutor_slots ts ON ts.tutor_id=t.id
      WHERE t.status='published' AND s.status='active'
      GROUP BY t.id
-     ORDER BY CASE t.listing_tier
-       WHEN 'spotlight' THEN 0 WHEN 'featured' THEN 1 ELSE 2 END,
+     ORDER BY CASE WHEN t.listing_tier='verified' AND t.verified=1
+       THEN 0 ELSE 1 END,
        t.verified DESC,
        CASE WHEN nextAvailableAt IS NULL THEN 1 ELSE 0 END,
        nextAvailableAt ASC,t.updated_at DESC
@@ -201,7 +201,7 @@ export async function POST(request: Request) {
     ? String(body.serviceType)
     : "coaching";
   const priceUnit = priceUnits.has(String(body.priceUnit)) ? String(body.priceUnit) : "hour";
-  const listingPlan = coachListingPlan(body.listingTier);
+  const listingPlan = coachListingPlan("listed");
   const subjects = cleanStringList(body.subjects);
   const languages = cleanStringList(body.languages, 8);
   await env.DB.prepare(
@@ -313,9 +313,9 @@ export async function PATCH(request: Request) {
   const priceUnit = priceUnits.has(String(body.priceUnit))
     ? String(body.priceUnit)
     : current.priceUnit;
-  const listingPlan = coachListingPlan(body.listingTier === undefined
-    ? current.listingTier
-    : body.listingTier);
+  // Paid visibility is activated only by a verified PayFast notification.
+  // Editing a profile must never grant a paid marketplace tier.
+  const listingPlan = coachListingPlan(current.listingTier === "verified" ? "verified" : "listed");
   const now = Date.now();
   await env.DB.prepare(
     `UPDATE tutors SET slug=?,display_name=?,headline=?,bio=?,service_type=?,subjects_json=?,

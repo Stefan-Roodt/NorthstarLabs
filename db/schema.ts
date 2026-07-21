@@ -462,7 +462,7 @@ export const tutors = sqliteTable("tutors", {
   priceCents: integer("price_cents").notNull().default(0),
   priceUnit: text("price_unit").notNull().default("hour"),
   listingTier: text("listing_tier").notNull().default("listed"),
-  listingMonthlyCents: integer("listing_monthly_cents").notNull().default(14900),
+  listingMonthlyCents: integer("listing_monthly_cents").notNull().default(0),
   sessionMode: text("session_mode").notNull().default("online"),
   location: text("location").notNull().default(""),
   timezone: text("timezone").notNull().default("Africa/Johannesburg"),

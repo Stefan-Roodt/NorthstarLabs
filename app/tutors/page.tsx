@@ -262,12 +262,11 @@ export default function TutorMarketplacePage() {
           <div><p className="sys-kicker">YOUR MATCHES</p><h2>{loading ? "Finding people…" : selectedTopic ? `${filtered.length} ${filtered.length === 1 ? "match" : "matches"} for “${selectedTopic}”` : `${filtered.length} ${filtered.length === 1 ? "coach or tutor" : "coaches and tutors"} to consider`}</h2></div>
           <label>Sort by<select value={sort} onChange={(event) => setSort(event.target.value as SortMode)}><option value="recommended">Recommended</option><option value="available">Available soonest</option><option value="experience">Most experienced</option><option value="price">Lowest hourly rate</option></select></label>
         </header>
-        <p className="marketplace-placement-note">Featured placement is paid advertising. Verification is assessed separately and never purchased.</p>
+        <p className="marketplace-placement-note">Every coach can be listed free. Northstar Verified professionals receive priority only for relevant searches; verification must be earned and is never purchased.</p>
         {notice && <p className="notice" role="status">{notice}</p>}
         {!loading && filtered.length ? <div className="marketplace-grid">{filtered.map((tutor) =>
           <article className={`marketplace-card tier-${tutor.listingTier || "listed"}`} key={tutor.id} style={{ borderTopColor: tutor.schoolPrimaryColor || "#3556d8" }}>
-            {tutor.listingTier === "spotlight" && <span className="marketplace-paid-badge">SPONSORED SPOTLIGHT</span>}
-            {tutor.listingTier === "featured" && <span className="marketplace-paid-badge featured">FEATURED</span>}
+            {tutor.listingTier === "verified" && tutor.verified && <span className="marketplace-paid-badge featured">VERIFIED PROFESSIONAL</span>}
             <div className="marketplace-card-person">
               {tutor.photoUrl ? <Image src={tutor.photoUrl} alt="" width={84} height={98} unoptimized /> : <span>{initials(tutor.displayName)}</span>}
               <div>
@@ -336,8 +335,8 @@ export default function TutorMarketplacePage() {
     </div>}
 
     <section className="marketplace-bottom">
-      <div><p className="sys-kicker">COACH OR TEACH ONE-TO-ONE?</p><h2>Put your expertise where learners can find it.</h2><p>Choose your visibility plan, set your own hourly rate, and receive protected enquiries.</p></div>
-      <Link href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach">Advertise my coaching →</Link>
+      <div><p className="sys-kicker">COACH OR TEACH ONE-TO-ONE?</p><h2>Put your expertise where learners can find it.</h2><p>List free, set your own hourly rate and receive protected enquiries. Verified coaches can add priority relevant exposure for R200/month.</p></div>
+      <Link href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach">List my coaching free →</Link>
     </section>
   </main>;
 }

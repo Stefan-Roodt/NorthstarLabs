@@ -781,9 +781,10 @@ test("ships academy tutor discovery, direct contact, and protected enquiries", a
   assert.match(email, /tutor_booking_cancelled/);
 });
 
-test("ships coach advertising plans, direct onboarding, hourly rates, and topic discovery", async () => {
-  const [migration, plans, welcome, profile, admin, marketplace, home] = await Promise.all([
+test("ships a free coach marketplace with optional verified exposure", async () => {
+  const [migration, openMarketplaceMigration, plans, welcome, profile, admin, marketplace, home] = await Promise.all([
     readFile(new URL("../drizzle/0020_clammy_sally_floyd.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0046_open_coach_marketplace.sql", import.meta.url), "utf8"),
     readFile(new URL("../lib/coach-listing-plans.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/welcome/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/profile/route.ts", import.meta.url), "utf8"),
@@ -794,22 +795,25 @@ test("ships coach advertising plans, direct onboarding, hourly rates, and topic 
   assert.match(migration, /ADD `service_type`/);
   assert.match(migration, /ADD `listing_tier`/);
   assert.match(migration, /ADD `listing_monthly_cents`/);
-  assert.match(plans, /monthlyCents: 14_900/);
-  assert.match(plans, /monthlyCents: 34_900/);
-  assert.match(plans, /monthlyCents: 69_900/);
+  assert.match(openMarketplaceMigration, /listing_monthly_cents`=0/);
+  assert.match(plans, /monthlyCents: 0/);
+  assert.match(plans, /monthlyCents: 20_000/);
+  assert.match(plans, /Northstar Verified/);
   assert.match(welcome, /FINAL STEP · COACHING/);
   assert.match(welcome, /dashboard\/tutors\?setup=1/);
   assert.match(profile, /body\.role === "coach"/);
   assert.match(admin, /Your hourly rate in rand/);
-  assert.match(admin, /Advertising billing is not active yet/);
+  assert.match(admin, /Verification cannot be bought/);
+  assert.match(admin, /Activate Verified · R200\/month/);
   assert.match(marketplace, /EXPLORE BY TOPIC/);
   assert.match(marketplace, /setSubject\(canonicalTopic\)/);
   assert.match(marketplace, /scrollIntoView/);
   assert.match(marketplace, /url\.searchParams\.set\("topic", topic\)/);
   assert.match(marketplace, /Your \$\{selectedTopic\} selection worked/);
   assert.match(marketplace, /Offer this topic/);
-  assert.match(marketplace, /SPONSORED SPOTLIGHT/);
-  assert.match(marketplace, /Verification is assessed separately/);
+  assert.match(marketplace, /Every coach can be listed free/);
+  assert.match(marketplace, /VERIFIED PROFESSIONAL/);
+  assert.match(marketplace, /List my coaching free/);
   assert.match(home, /Create my coach profile/);
 });
 
@@ -1565,4 +1569,26 @@ test("gives learners a persistent low-bandwidth, text-first course mode", async 
   assert.match(styles, /\.low-bandwidth-media/);
   assert.match(styles, /\.bandwidth-notice/);
   assert.match(styles, /\.learner-bandwidth-notice/);
+});
+
+test("adds purposeful learner guidance, motion, and milestone recognition", async () => {
+  const [learner, help, layout, styles, pkg] = await Promise.all([
+    readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/[courseId]/lesson-help.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/system.css", import.meta.url), "utf8"),
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
+  ]);
+  assert.match(pkg, /"motion"/);
+  assert.match(pkg, /"driver\.js"/);
+  assert.match(pkg, /"canvas-confetti"/);
+  assert.match(layout, /driver\.js\/dist\/driver\.css/);
+  assert.match(learner, /Show me around/);
+  assert.match(learner, /useReducedMotion/);
+  assert.match(learner, /disableForReducedMotion: true/);
+  assert.match(learner, /lowBandwidth \|\| shouldReduceMotion/);
+  assert.match(learner, /A real milestone\. Keep the momentum going\./);
+  assert.match(help, /data-tour="lesson-help"/);
+  assert.match(styles, /\.learning-celebration/);
+  assert.match(styles, /\.northstar-course-tour/);
 });

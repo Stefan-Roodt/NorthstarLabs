@@ -187,7 +187,7 @@ export const searchLandingPages: SearchLandingPage[] = [
     proofNote: "No advertising charge is taken today. Billing for coach listing tiers is not active yet; NorthstarLabs will ask for confirmation before billing begins.",
     faqs: [
       { question: "Can I choose my own hourly rate?", answer: "Yes. You control the rate, availability, session mode, and the topics attached to your profile." },
-      { question: "Do I pay immediately when choosing a listing tier?", answer: "No. Advertising billing is not active yet. You can select a tier while building the profile, and NorthstarLabs will request confirmation before any future billing begins." },
+      { question: "Does it cost to list as a coach?", answer: "No. Every coach can create a standard profile, appear in relevant searches, set an hourly rate, and receive enquiries for free. Independently approved coaches may optionally activate Northstar Verified exposure for R200 per month; payment never buys verification." },
       { question: "Can I buy a verified badge?", answer: "No. Credential verification is reviewed separately from advertising and cannot be purchased through a higher listing tier." },
       { question: "Can I pause my profile?", answer: "Yes. You can keep a profile as a private draft, publish it when ready, and pause it when your availability changes." },
     ],

@@ -15,7 +15,7 @@ type PaymentOrder = {
   id: string;
   userId: string;
   schoolId: string | null;
-  purpose: "platform_subscription" | "course" | "product";
+  purpose: "platform_subscription" | "course" | "product" | "coach_listing";
   targetId: string;
   itemName: string;
   amountCents: number;
@@ -226,6 +226,46 @@ async function grantProduct(
   });
 }
 
+async function grantCoachListing(
+  order: PaymentOrder,
+  paymentId: string,
+  now: number,
+) {
+  const tutor = await env.DB.prepare(
+    `SELECT id,school_id AS schoolId,display_name AS displayName,verified
+     FROM tutors WHERE id=? AND status<>'archived'`,
+  ).bind(order.targetId).first<{
+    id: string;
+    schoolId: string;
+    displayName: string;
+    verified: number;
+  }>();
+  if (!tutor || tutor.schoolId !== order.schoolId || !tutor.verified) {
+    throw new Error("The coach must pass verification before priority exposure can activate.");
+  }
+  await env.DB.prepare(
+    `UPDATE tutors SET listing_tier='verified',listing_monthly_cents=20000,
+     updated_at=? WHERE id=?`,
+  ).bind(now, tutor.id).run();
+  await writeAuditLog({
+    actorId: order.userId,
+    schoolId: tutor.schoolId,
+    action: "payment.coach_listing.complete",
+    targetType: "payment_order",
+    targetId: order.id,
+    detail: { tutorId: tutor.id, paymentId, tier: "verified" },
+  });
+  await emitIntegrationEvent(env.DB, tutor.schoolId, "coach.listing.activated", {
+    orderId: order.id,
+    paymentId,
+    tutorId: tutor.id,
+    displayName: tutor.displayName,
+    tier: "verified",
+    amountCents: order.amountCents,
+    currency: "ZAR",
+  });
+}
+
 async function markIncompleteSubscription(
   order: PaymentOrder,
   paymentStatus: string,
@@ -248,6 +288,22 @@ async function cancelProductSubscription(order: PaymentOrder, now: number) {
      WHERE product_id=? AND user_id=? AND source_reference=?`,
   ).bind(order.targetId, order.userId, order.id).first<{ id: string }>();
   if (entitlement) await revokeProductAccess(env.DB, entitlement.id, now);
+}
+
+async function cancelCoachListing(order: PaymentOrder, now: number) {
+  if (order.purpose !== "coach_listing") return;
+  await env.DB.prepare(
+    `UPDATE tutors SET listing_tier='listed',listing_monthly_cents=0,updated_at=?
+     WHERE id=? AND school_id=?`,
+  ).bind(now, order.targetId, order.schoolId).run();
+  await writeAuditLog({
+    actorId: order.userId,
+    schoolId: order.schoolId,
+    action: "payment.coach_listing.cancelled",
+    targetType: "payment_order",
+    targetId: order.id,
+    detail: { tutorId: order.targetId },
+  });
 }
 
 export async function POST(request: Request) {
@@ -343,10 +399,15 @@ export async function POST(request: Request) {
         await grantCourse(order, paymentId, now, origin);
       } else if (order.purpose === "product") {
         await grantProduct(order, paymentId, now, origin);
+      } else if (order.purpose === "coach_listing") {
+        await grantCoachListing(order, paymentId, now);
       }
     } else {
       await markIncompleteSubscription(order, paymentStatus, token);
-      if (paymentStatus === "CANCELLED") await cancelProductSubscription(order, now);
+      if (paymentStatus === "CANCELLED") {
+        await cancelProductSubscription(order, now);
+        await cancelCoachListing(order, now);
+      }
     }
     const orderStatus = paymentStatus === "COMPLETE"
       ? "complete"

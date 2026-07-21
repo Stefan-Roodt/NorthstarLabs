@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { coachListingPlan } from "../../../../lib/coach-listing-plans";
 import {
   isPayfastPlan,
   payfastConfigured,
@@ -10,7 +11,7 @@ import {
 import { requireApiUser } from "../../../../lib/server-auth";
 
 type CheckoutTarget = {
-  purpose: "platform_subscription" | "course" | "product";
+  purpose: "platform_subscription" | "course" | "product" | "coach_listing";
   targetId: string;
   schoolId: string | null;
   itemName: string;
@@ -36,7 +37,8 @@ async function checkoutTarget(body: {
   plan?: unknown;
   courseId?: unknown;
   productId?: unknown;
-}): Promise<CheckoutTarget | null> {
+  tutorId?: unknown;
+}, userId: string): Promise<CheckoutTarget | null> {
   if (isPayfastPlan(body.plan)) {
     const plan = payfastPlans[body.plan];
     const amount = Number(process.env[plan.amountEnv]);
@@ -99,6 +101,29 @@ async function checkoutTarget(body: {
       billingInterval,
     };
   }
+  if (typeof body.tutorId === "string" && body.tutorId.length <= 100) {
+    const tutor = await env.DB.prepare(
+      `SELECT t.id,t.school_id AS schoolId,t.display_name AS displayName
+       FROM tutors t JOIN schools s ON s.id=t.school_id
+       WHERE t.id=? AND (t.user_id=? OR t.created_by=?) AND t.verified=1
+         AND t.status<>'archived' AND s.status='active'`,
+    ).bind(body.tutorId, userId, userId).first<{
+      id: string;
+      schoolId: string;
+      displayName: string;
+    }>();
+    if (!tutor) return null;
+    const plan = coachListingPlan("verified");
+    return {
+      purpose: "coach_listing",
+      targetId: tutor.id,
+      schoolId: tutor.schoolId,
+      itemName: `Northstar Verified: ${tutor.displayName}`,
+      description: "Northstar Verified professional coach listing",
+      amountCents: plan.monthlyCents,
+      billingInterval: "monthly",
+    };
+  }
   return null;
 }
 
@@ -117,10 +142,11 @@ export async function POST(request: Request) {
     plan?: unknown;
     courseId?: unknown;
     productId?: unknown;
+    tutorId?: unknown;
   };
-  const target = await checkoutTarget(body);
+  const target = await checkoutTarget(body, user.id);
   if (!target) {
-    return Response.json({ error: "Choose an available paid plan, course, or programme." }, { status: 400 });
+    return Response.json({ error: "Choose an available paid plan, course, programme, or verified listing." }, { status: 400 });
   }
   if (!Number.isInteger(target.amountCents) || target.amountCents < 500) {
     return Response.json(

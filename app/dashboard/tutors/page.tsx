@@ -371,6 +371,33 @@ export default function TutorAdminPage() {
     setBusy("");
   }
 
+  async function startVerifiedListing(tutor: Tutor) {
+    setBusy(`listing-${tutor.id}`);
+    setMessage("");
+    const response = await authed("/api/payfast/checkout", {
+      method: "POST",
+      body: JSON.stringify({ tutorId: tutor.id }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.action || !result.fields) {
+      setMessage(result.error || "The verified listing checkout could not be opened.");
+      setBusy("");
+      return;
+    }
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = result.action;
+    for (const [name, value] of Object.entries(result.fields as Record<string, string>)) {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    }
+    document.body.appendChild(form);
+    form.submit();
+  }
+
   async function updateInquiry(inquiry: Inquiry, status: string) {
     setBusy(inquiry.id);
     const response = await authed("/api/tutor-inquiries", {
@@ -564,18 +591,18 @@ export default function TutorAdminPage() {
           <label className="academy-switch product-span-two"><input type="checkbox" checked={draft.showDirectContact} onChange={(event) => updateDraft("showDirectContact", event.target.checked)} /><span><b>Show direct contact buttons publicly</b><small>When off, learners use the protected enquiry form and private contact details remain hidden.</small></span></label>
         </div>
         <fieldset className="coach-plan-picker">
-          <legend>Choose your monthly advertising plan</legend>
-          <p>Plans change marketplace visibility, not verification or coaching quality.</p>
+          <legend>Choose how you are seen</legend>
+          <p>Every coach can list free. Northstar Verified is available only after independent approval and adds relevant priority exposure.</p>
           <div>
             {coachListingPlans.map((plan) => <label className={draft.listingTier === plan.id ? "selected" : ""} key={plan.id}>
-              <input type="radio" name="listing-tier" value={plan.id} checked={draft.listingTier === plan.id} onChange={() => updateDraft("listingTier", plan.id)} />
-              <span><b>{plan.name}</b><strong>R{(plan.monthlyCents / 100).toLocaleString("en-ZA")}<small>/month</small></strong></span>
+              <input type="radio" name="listing-tier" value={plan.id} checked={plan.id === (draft.listingTier === "verified" ? "verified" : "listed")} disabled readOnly />
+              <span><b>{plan.name}</b><strong>{plan.monthlyCents ? `R${(plan.monthlyCents / 100).toLocaleString("en-ZA")}` : "Free"}{plan.monthlyCents ? <small>/month</small> : null}</strong></span>
               <em>{plan.label}</em>
               <p>{plan.description}</p>
               <ul>{plan.features.map((feature) => <li key={feature}>✓ {feature}</li>)}</ul>
             </label>)}
           </div>
-          <aside><b>No charge today.</b> Advertising billing is not active yet. Selecting a plan now does not charge you; we will ask you to confirm before billing begins.</aside>
+          <aside><b>Verification cannot be bought.</b> Submit your evidence below. Once approved, you may activate Northstar Verified for R200/month through PayFast; your free listing remains available if you do not.</aside>
         </fieldset>
         <div className="tutor-editor-actions">
           <button className="sys-primary" disabled={busy === "profile"}>{busy === "profile" ? "Saving…" : editingId ? "Save coach changes" : "Create coach draft"}</button>
@@ -601,8 +628,13 @@ export default function TutorAdminPage() {
             </div>
             <div className="tutor-admin-tags">{tutor.subjects.slice(0, 4).map((subject) => <span key={subject}>{subject}</span>)}</div>
             <dl><div><dt>Hourly rate</dt><dd>{tutor.priceCents ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}/hour` : "Not set"}</dd></div><div><dt>Learner proof</dt><dd>{tutor.reviewCount ? `${tutor.averageRating} ★ · ${tutor.reviewCount}` : "No reviews yet"}</dd></div></dl>
+            {tutor.listingTier === "verified" && tutor.verified && <p className="coach-listing-status active"><b>Northstar Verified is active.</b> This profile receives priority in relevant searches while its verification remains valid.</p>}
+            {tutor.listingTier !== "verified" && tutor.verified && <p className="coach-listing-status"><b>Verification approved.</b> Your free listing remains live. Activate R200/month professional exposure only if it is useful to you.</p>}
+            {!tutor.verified && <p className="coach-listing-status"><b>Free listing.</b> Submit evidence below if you want to become eligible for Northstar Verified.</p>}
             <div className="tutor-admin-actions">
               <button onClick={() => editTutor(tutor)}>Edit</button>
+              {tutor.verified && tutor.listingTier !== "verified" && <button className="sys-primary" disabled={busy === `listing-${tutor.id}`} onClick={() => startVerifiedListing(tutor)}>{busy === `listing-${tutor.id}` ? "Opening PayFast…" : "Activate Verified · R200/month"}</button>}
+              {!tutor.verified && <a href="#credentials">Earn verification</a>}
               {tutor.status !== "published" && <button className="sys-primary" disabled={busy === tutor.id} onClick={() => setStatus(tutor, "published")}>Publish</button>}
               {tutor.status === "published" && <Link href={`/schools/${data.school.slug}/tutors/${tutor.slug}`}>View public</Link>}
               {tutor.status === "published" && <button onClick={() => setStatus(tutor, "paused")}>Pause</button>}
@@ -616,7 +648,7 @@ export default function TutorAdminPage() {
       <section className="tutor-admin-section" id="credentials">
         <div className="product-section-heading">
           <span>TRUST</span>
-          <div><h2>Credentials and verification</h2><p>Submit structured evidence for independent review. Verification cannot be purchased and remains separate from advertising.</p></div>
+          <div><h2>Credentials and verification</h2><p>Submit structured evidence for independent review. Verification cannot be purchased and remains separate from paid exposure.</p></div>
         </div>
         <div className="coach-credential-grid">
           <form className="panel coach-credential-form" onSubmit={submitCredential}>

@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { type CSSProperties, type SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
+import confetti from "canvas-confetti";
+import { driver } from "driver.js";
+import { domAnimation, LazyMotion, m, useReducedMotion } from "motion/react";
 import { LessonContent } from "../../../lib/lesson-content";
 import { getLessonGuide } from "../../../lib/lesson-guide";
 import { useLowBandwidthMode } from "../../../lib/low-bandwidth";
@@ -270,11 +273,14 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
   const [focusMode, setFocusMode] = useState(false);
   const [search, setSearch] = useState("");
   const [certificate, setCertificate] = useState<Certificate | null>(null);
+  const [celebration, setCelebration] = useState<{ title: string; detail: string } | null>(null);
   const activeLessonId = useRef("");
+  const celebrationTimer = useRef<number | null>(null);
   const searchParams = useSearchParams();
   const preview = searchParams.get("preview") === "1";
   const showOrientation = !preview && searchParams.get("welcome") === "1" && !orientationDismissed;
   const supabase = getSupabaseBrowser();
+  const shouldReduceMotion = useReducedMotion();
   const { enabled: lowBandwidth, ready: bandwidthReady, toggle: toggleLowBandwidth } = useLowBandwidthMode();
 
   const token = useCallback(async () => {
@@ -288,6 +294,10 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
   useEffect(() => {
     activeLessonId.current = lessons[current]?.id || "";
   }, [current, lessons]);
+
+  useEffect(() => () => {
+    if (celebrationTimer.current) window.clearTimeout(celebrationTimer.current);
+  }, []);
 
   useEffect(() => {
     if (!id || !supabase || !bandwidthReady) return;
@@ -435,6 +445,37 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
     void saveLearnerState(lesson.id, { watchedPercent: percent }, true);
   }
 
+  function celebrateProgress(updatedLessons: Lesson[], courseCompleted = false) {
+    const previousDone = lessons.filter((item) => item.completed).length;
+    const nextDone = updatedLessons.filter((item) => item.completed).length;
+    const total = Math.max(1, updatedLessons.length);
+    const previousQuarter = Math.floor(previousDone / total * 4);
+    const nextQuarter = Math.floor(nextDone / total * 4);
+    const crossedMilestone = nextQuarter > previousQuarter;
+    if (!courseCompleted && !crossedMilestone) return;
+
+    const percentage = Math.min(100, Math.round(nextDone / total * 100));
+    setCelebration(courseCompleted
+      ? { title: "Course complete", detail: "You finished the journey. Your certificate is ready." }
+      : { title: `${percentage}% complete`, detail: "A real milestone. Keep the momentum going." });
+    if (celebrationTimer.current) window.clearTimeout(celebrationTimer.current);
+    celebrationTimer.current = window.setTimeout(() => setCelebration(null), courseCompleted ? 6500 : 4200);
+
+    if (lowBandwidth || shouldReduceMotion) return;
+    void confetti({
+      particleCount: courseCompleted ? 90 : 34,
+      spread: courseCompleted ? 82 : 48,
+      startVelocity: courseCompleted ? 36 : 24,
+      gravity: 0.9,
+      ticks: courseCompleted ? 220 : 140,
+      origin: { x: 0.72, y: 0.78 },
+      colors: [school?.primaryColor || "#3556d8", school?.accentColor || "#ffbd8a", "#171724"],
+      shapes: ["star", "circle"],
+      disableForReducedMotion: true,
+      useWorker: true,
+    });
+  }
+
   async function completeLesson() {
     if (preview) return;
     const lesson = lessons[current];
@@ -467,6 +508,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       return item;
     });
     setLessons(updatedLessons);
+    celebrateProgress(updatedLessons, Boolean(result.certificateCode));
     if (result.certificateCode) {
       setCertificate({
         code: result.certificateCode,
@@ -550,6 +592,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
     });
     setLessons(updatedLessons);
     if (result.passed) {
+      celebrateProgress(updatedLessons, Boolean(result.certificateCode));
       setQuizResult(`Passed with ${result.score}%. This lesson is complete.`);
       if (result.certificateCode) {
         setCertificate({
@@ -651,6 +694,71 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
     });
   }
 
+  function startCourseTour() {
+    setOrientationDismissed(true);
+    history.replaceState({}, "", `/learn/${id}`);
+    window.requestAnimationFrame(() => {
+      const courseTour = driver({
+        animate: !shouldReduceMotion,
+        allowClose: true,
+        showProgress: true,
+        nextBtnText: "Next",
+        prevBtnText: "Back",
+        doneBtnText: "Start learning",
+        progressText: "Step {{current}} of {{total}}",
+        popoverClass: "northstar-course-tour",
+        steps: [
+          {
+            element: "[data-tour='course-progress']",
+            popover: {
+              title: "Your progress at a glance",
+              description: "Northstar saves each completed lesson and always brings you back to the next useful step.",
+              side: "bottom",
+              align: "center",
+            },
+          },
+          {
+            element: "[data-tour='curriculum']",
+            popover: {
+              title: "The whole learning journey",
+              description: "Open any available lesson, see what is complete, and search this course without leaving it.",
+              side: "right",
+              align: "start",
+            },
+          },
+          {
+            element: "[data-tour='lesson']",
+            popover: {
+              title: "One focused lesson at a time",
+              description: "The outcome, estimated time, media, notes, resources, and knowledge check stay together here.",
+              side: "left",
+              align: "start",
+            },
+          },
+          {
+            element: "[data-tour='lesson-help']",
+            popover: {
+              title: "Human help is built in",
+              description: "Ask for a simpler explanation or send the educator a question with the exact lesson context attached.",
+              side: "top",
+              align: "start",
+            },
+          },
+          {
+            element: "[data-tour='completion']",
+            popover: {
+              title: "Finish with evidence",
+              description: "Complete the required activity to unlock the next step and work toward a verifiable certificate.",
+              side: "top",
+              align: "end",
+            },
+          },
+        ],
+      });
+      courseTour.drive();
+    });
+  }
+
   return <main className={`learn-page${focusMode ? " focus-mode" : ""}${lowBandwidth ? " low-bandwidth" : ""}`} style={schoolStyle}>
     <header>
       <Link className="learner-school-brand" href={school ? `/schools/${school.slug}` : "/"}>
@@ -662,7 +770,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       </Link>
       {preview
         ? <div className="preview-mode-label">Creator preview · progress is disabled</div>
-        : <div><span>{progress}% complete</span><i><b style={{ width: `${progress}%` }} /></i></div>}
+        : <div data-tour="course-progress"><span>{progress}% complete</span><i><b style={{ width: `${progress}%` }} /></i></div>}
       {!preview && <button
         className={`bandwidth-toggle ${lowBandwidth ? "active" : ""}`}
         aria-pressed={lowBandwidth}
@@ -672,6 +780,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       {preview
         ? <Link href={`/dashboard/courses/${id}`}>Exit preview</Link>
         : <div className="learner-course-links">
+          <button type="button" onClick={startCourseTour}>Course tour</button>
           <button
             aria-pressed={focusMode}
             onClick={() => setFocusMode((currentMode) => !currentMode)}
@@ -694,14 +803,22 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
         <li><span>02</span><b>Complete each required activity</b></li>
         <li><span>03</span><b>Earn your verifiable certificate</b></li>
       </ol>
-      <button className="sys-primary" onClick={beginLearning}>Start my first lesson →</button>
+      <div className="first-lesson-actions">
+        <button type="button" onClick={startCourseTour}>Show me around</button>
+        <button className="sys-primary" onClick={beginLearning}>Start my first lesson →</button>
+      </div>
     </section>}
+    {celebration && <aside className="learning-celebration" role="status" aria-live="polite">
+      <span aria-hidden="true">✦</span>
+      <div><b>{celebration.title}</b><small>{celebration.detail}</small></div>
+      <button type="button" aria-label="Dismiss progress celebration" onClick={() => setCelebration(null)}>×</button>
+    </aside>}
     {!preview && certificate?.status === "active" && <div className="certificate-ready">
       <div><b>Course completed</b><span>Your verified NorthStarLabs certificate is ready.</span></div>
       <div><Link href={`/certificates/${certificate.code}`}>View certificate</Link><a href={`/api/certificates/${certificate.code}/pdf`}>Download PDF</a></div>
     </div>}
     <div className="learn-layout">
-      <aside>
+      <aside data-tour="curriculum">
         <p className="sys-kicker">{title}</p>
         <h2>Your curriculum</h2>
         <label className="course-search">
@@ -742,7 +859,14 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
         })}
         {learnerMessage && <p className="learner-state-message" role="status">{learnerMessage}</p>}
       </aside>
-      <section>
+      <LazyMotion features={domAnimation}>
+      <m.section
+        key={lesson.id}
+        data-tour="lesson"
+        initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: shouldReduceMotion ? 0 : 0.22, ease: "easeOut" }}
+      >
         {lesson.locked && !preview ? <div className="lesson-locked-panel">
           <span>⌁</span>
           <p className="sys-kicker">LESSON LOCKED</p>
@@ -819,7 +943,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
           {resourceMessage && <p className="resource-message" role="status">{resourceMessage}</p>}
         </section>}
 
-        {lesson.quiz && <section className="learner-quiz">
+        {lesson.quiz && <section className="learner-quiz" data-tour="completion">
           <div>
             <p className="sys-kicker">KNOWLEDGE CHECK</p>
             <h2>{lesson.quiz.title}</h2>
@@ -924,7 +1048,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
           <div><span>{lesson.notes.length.toLocaleString()} / 10,000</span><button onClick={() => void saveLearnerState(lesson.id, { notes: lesson.notes })}>Save notes</button></div>
         </section>}
 
-        {!lesson.quiz && <div className="lesson-actions">
+        {!lesson.quiz && <div className="lesson-actions" data-tour="completion">
           <button disabled={current === 0} onClick={() => void openLesson(current - 1)}>← Previous</button>
           {preview
             ? <span className="preview-completion-note">Completion is disabled in preview.</span>
@@ -935,7 +1059,8 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
               </button>}
         </div>}
         </>}
-      </section>
+      </m.section>
+      </LazyMotion>
     </div>
   </main>;
 }

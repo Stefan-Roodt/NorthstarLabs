@@ -45,6 +45,8 @@ export async function GET(
       : "/learn";
   } else if (order.purpose === "platform_subscription") {
     continueUrl = "/dashboard";
+  } else if (order.purpose === "coach_listing") {
+    continueUrl = "/dashboard/tutors";
   }
   return Response.json({ ...order, continueUrl });
 }

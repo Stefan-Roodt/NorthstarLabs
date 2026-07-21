@@ -90,7 +90,7 @@ export function serializeTutor(row: TutorRow, includePrivate = false) {
     priceCents: Number(row.priceCents || 0),
     priceUnit: row.priceUnit,
     listingTier: row.listingTier || "listed",
-    listingMonthlyCents: Number(row.listingMonthlyCents || 14_900),
+    listingMonthlyCents: Number(row.listingMonthlyCents ?? 0),
     sessionMode: row.sessionMode,
     location: row.location,
     timezone: row.timezone,

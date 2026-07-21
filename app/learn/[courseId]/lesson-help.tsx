@@ -102,7 +102,7 @@ export function ContextualLessonHelp({
     setBusy("");
   }
 
-  return <section className="contextual-help" aria-labelledby="contextual-help-title">
+  return <section className="contextual-help" data-tour="lesson-help" aria-labelledby="contextual-help-title">
     <header>
       <div>
         <p className="sys-kicker">CONTEXTUAL LESSON HELP</p>

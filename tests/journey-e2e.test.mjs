@@ -678,7 +678,7 @@ test("publishes academy tutors and protects learner enquiry details", async () =
   assert.deepEqual(publicTutor.subjects, ["Mathematics", "Physical Science"]);
   assert.equal(publicTutor.serviceType, "coaching");
   assert.equal(publicTutor.listingTier, "listed");
-  assert.equal(publicTutor.listingMonthlyCents, 14_900);
+  assert.equal(publicTutor.listingMonthlyCents, 0);
   assert.equal(publicTutor.profileCompleteness, 20);
   assert.equal(publicTutor.reviewCount, 0);
   assert.equal(publicTutor.phoneNumber, "");
