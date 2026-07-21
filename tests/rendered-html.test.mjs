@@ -306,9 +306,10 @@ test("ships a free inspect-first academy and course migration studio", async () 
 });
 
 test("ships a structured course editor, reusable media library, and safe learner rendering", async () => {
-  const [schema, migration, builder, lessonsApi, uploadsApi, courseApi, learnApi, learner, renderer] = await Promise.all([
+  const [schema, migration, cleanupMigration, builder, lessonsApi, uploadsApi, courseApi, learnApi, learner, renderer] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0008_rainy_molten_man.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0043_remove_empty_bitcoin_placeholder.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/dashboard/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/lessons/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/uploads/route.ts", import.meta.url), "utf8"),
@@ -337,6 +338,11 @@ test("ships a structured course editor, reusable media library, and safe learner
   assert.match(builder, /draggable/);
   assert.match(builder, /Learner preview/);
   assert.match(builder, /Upload files/);
+  assert.match(builder, /isBlankNewLesson/);
+  assert.doesNotMatch(builder, /markDirty\(lesson\.id\);\s*setMessage\("New lesson created/);
+  assert.match(lessonsApi, /Add a title or lesson material before saving/);
+  assert.match(cleanupMigration, /DELETE FROM `lessons`/);
+  assert.match(cleanupMigration, /stefan-bitcoin-genesis-next-era/);
   assert.match(learnApi, /lesson_resources/);
   assert.match(learner, /LessonContent/);
   assert.match(learner, /Files to keep and use/);

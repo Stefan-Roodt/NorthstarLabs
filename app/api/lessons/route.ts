@@ -85,6 +85,20 @@ export async function POST(request: Request) {
   if (!existing) {
     const collision = await env.DB.prepare("SELECT id FROM lessons WHERE id=?").bind(id).first();
     if (collision) return Response.json({ error: "Lesson id is already in use." }, { status: 409 });
+    const isBlankPlaceholder = lesson.title.trim().toLowerCase() === "untitled lesson" &&
+      lessonType !== "quiz" &&
+      !(lesson.content || "").trim() &&
+      !(lesson.transcript || "").trim() &&
+      !lesson.videoKey?.trim() &&
+      !primaryAssetId &&
+      !introAssetId &&
+      resourceIds.length === 0;
+    if (isBlankPlaceholder) {
+      return Response.json(
+        { error: "Add a title or lesson material before saving." },
+        { status: 400 },
+      );
+    }
   }
 
   const now = Date.now();

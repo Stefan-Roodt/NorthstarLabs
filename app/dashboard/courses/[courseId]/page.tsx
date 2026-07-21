@@ -104,6 +104,18 @@ const blankQuestion = (): QuizQuestion => ({
   conceptLabel: "",
 });
 
+function isBlankNewLesson(lesson: Lesson) {
+  return !lesson.updatedAt &&
+    lesson.lessonType !== "quiz" &&
+    lesson.title.trim().toLowerCase() === "untitled lesson" &&
+    !lesson.content.trim() &&
+    !lesson.transcript.trim() &&
+    !lesson.videoKey?.trim() &&
+    !lesson.primaryAssetId &&
+    !lesson.introAssetId &&
+    lesson.resources.length === 0;
+}
+
 function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / 1024 / 1024).toFixed(bytes > 10 * 1024 * 1024 ? 0 : 1)} MB`;
@@ -432,9 +444,16 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   }
 
   async function chooseLesson(lessonId: string) {
+    if (!course || selected?.id === lessonId) return;
     if (selected && dirty?.id === selected.id) {
       const saved = await persistLesson(selected, dirty.revision, true);
       if (!saved) return;
+    } else if (selected && isBlankNewLesson(selected)) {
+      setCourse({
+        ...course,
+        lessons: course.lessons.filter((lesson) => lesson.id !== selected.id),
+      });
+      setMessage("Empty lesson discarded");
     }
     setSelectedId(lessonId);
     setWorkspaceTab("lesson");
@@ -446,7 +465,8 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     if (selected && dirty?.id === selected.id) {
       if (!await persistLesson(selected, dirty.revision, true)) return;
     }
-    const sectionLessons = course.lessons.filter((lesson) => lesson.sectionId === sectionId);
+    const currentLessons = course.lessons.filter((lesson) => !isBlankNewLesson(lesson));
+    const sectionLessons = currentLessons.filter((lesson) => lesson.sectionId === sectionId);
     const lesson: Lesson = {
       id: crypto.randomUUID(),
       sectionId,
@@ -469,11 +489,11 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
         questions: [blankQuestion()],
       } : null,
     };
-    setCourse({ ...course, lessons: [...course.lessons, lesson] });
+    setCourse({ ...course, lessons: [...currentLessons, lesson] });
     setSelectedId(lesson.id);
     setWorkspaceTab("lesson");
-    markDirty(lesson.id);
-    setMessage("New lesson created — autosaving…");
+    setDirty(null);
+    setMessage("New lesson started — add a title or material to save it");
   }
 
   async function deleteLesson(lesson: Lesson) {
