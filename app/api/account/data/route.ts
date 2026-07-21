@@ -6,7 +6,7 @@ import { requireApiUser } from "../../../../lib/server-auth";
 import { recordSystemEvent, safeErrorMessage } from "../../../../lib/system-monitor";
 
 async function accountExport(userId: string) {
-  const [profile, schools, enrollments, progress, attempts, masteryConcepts, masteryPractice, certificates, posts, preferences, products, live, portfolio, portfolioSources, portfolioEvidence, lessonHelp] =
+  const [profile, schools, enrollments, progress, attempts, masteryConcepts, masteryPractice, certificates, posts, preferences, products, live, portfolio, portfolioSources, portfolioEvidence, lessonHelp, demandFollows] =
     await Promise.all([
       env.DB.prepare(
         `SELECT id,email,display_name AS displayName,role,onboarding_path AS onboardingPath,
@@ -109,6 +109,14 @@ async function accountExport(userId: string) {
          FROM lesson_help_requests r JOIN courses c ON c.id=r.course_id
          JOIN lessons l ON l.id=r.lesson_id WHERE r.learner_id=? ORDER BY r.created_at DESC`,
       ).bind(userId).all(),
+      env.DB.prepare(
+        `SELECT f.id,f.email,f.name,f.status,f.created_at AS createdAt,
+          f.updated_at AS updatedAt,t.title AS topicTitle,t.slug AS topicSlug,
+          t.status AS topicStatus
+         FROM demand_followers f JOIN demand_topics t ON t.id=f.topic_id
+         JOIN profiles p ON lower(p.email)=lower(f.email)
+         WHERE p.id=? ORDER BY f.updated_at DESC`,
+      ).bind(userId).all(),
     ]);
   return {
     format: "northstarlabs-personal-data-export",
@@ -130,6 +138,7 @@ async function accountExport(userId: string) {
     portfolioSourceChoices: portfolioSources.results,
     portfolioEvidence: portfolioEvidence.results,
     lessonHelpRequests: lessonHelp.results,
+    demandBoardFollows: demandFollows.results,
   };
 }
 
@@ -266,6 +275,9 @@ export async function DELETE(request: Request) {
       env.DB.prepare(
         "DELETE FROM report_schedules WHERE created_by=?",
       ).bind(user.id),
+      env.DB.prepare(
+        "DELETE FROM demand_followers WHERE lower(email)=lower(?)",
+      ).bind(user.email),
       env.DB.prepare(
         "UPDATE product_entitlements SET granted_by=NULL WHERE granted_by=?",
       ).bind(user.id),

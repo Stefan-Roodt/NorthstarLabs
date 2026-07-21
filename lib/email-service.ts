@@ -16,6 +16,8 @@ export type EmailTemplateKey =
   | "creator_summary"
   | "lesson_question"
   | "lesson_question_answered"
+  | "demand_following"
+  | "demand_update"
   | "test";
 
 type EmailVariables = Record<string, string | number | null | undefined>;
@@ -213,6 +215,26 @@ function templateContent(templateKey: EmailTemplateKey, values: EmailVariables) 
       detail: "Open the lesson to read the response alongside the course material and your private notes.",
     };
   }
+  if (templateKey === "demand_following") {
+    return {
+      subject: `You are following ${values.topic || "a Northstar learning topic"}`,
+      heading: "You are following the roadmap",
+      intro: `NorthstarLabs will email you when “${values.topic || "this topic"}” changes status or becomes available.`,
+      actionLabel: "View topic or manage updates",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: "The management link lets you stop these emails at any time. A public topic is a demand signal, not a guaranteed release.",
+    };
+  }
+  if (templateKey === "demand_update") {
+    return {
+      subject: `${values.topic || "A learning topic"} is now ${values.status || "updated"}`,
+      heading: `Roadmap update: ${values.status || "new information"}`,
+      intro: `NorthstarLabs updated “${values.topic || "the topic you follow"}”.`,
+      actionLabel: "Read the update or stop emails",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: String(values.note || "Open the Demand Board for the current status and any matched course, coach, or live learning option."),
+    };
+  }
   return {
     subject: `${academy} email delivery test`,
     heading: "Email delivery is connected",
@@ -276,6 +298,7 @@ async function emailAllowed(userId: string | null | undefined, templateKey: Emai
   if (templateKey === "tutor_booking_cancelled") return true;
   if (templateKey === "creator_summary") return Boolean(preferences.creatorSummaries);
   if (templateKey === "lesson_question" || templateKey === "lesson_question_answered") return true;
+  if (templateKey === "demand_following" || templateKey === "demand_update") return true;
   return true;
 }
 

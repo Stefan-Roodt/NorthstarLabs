@@ -23,6 +23,23 @@ type PlatformData = {
     createdAt: number;
     updatedAt: number;
   }>;
+  demandTopics: Array<{
+    id: string;
+    learningRequestId: string | null;
+    title: string;
+    summary: string;
+    category: string;
+    preferredFormat: string;
+    status: string;
+    visibility: string;
+    publicNote: string;
+    matchedUrl: string | null;
+    score: number;
+    supporters: number;
+    followers: number;
+    createdAt: number;
+    updatedAt: number;
+  }>;
   audit: Array<{ id: string; actor: string; action: string; targetType: string; schoolName: string | null; createdAt: number }>;
 };
 type ReliabilityData = {
@@ -165,6 +182,8 @@ export default function PlatformAdministration() {
   const [reliability, setReliability] = useState<ReliabilityData | null>(null);
   const [tutorTrust, setTutorTrust] = useState<TutorTrustData | null>(null);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  const [demandNotes, setDemandNotes] = useState<Record<string, string>>({});
+  const [demandUrls, setDemandUrls] = useState<Record<string, string>>({});
   const supabase = getSupabaseBrowser();
 
   const token = useCallback(async () => {
@@ -186,6 +205,8 @@ export default function PlatformAdministration() {
       return;
     }
     setData(result);
+    setDemandNotes(Object.fromEntries((result.demandTopics || []).map((topic: PlatformData["demandTopics"][number]) => [topic.id, topic.publicNote || ""])));
+    setDemandUrls(Object.fromEntries((result.demandTopics || []).map((topic: PlatformData["demandTopics"][number]) => [topic.id, topic.matchedUrl || ""])));
     setMessage("");
   }, [token]);
 
@@ -279,6 +300,25 @@ export default function PlatformAdministration() {
           : "Reliability action completed."
       : result.error || "Reliability action failed.");
     if (response.ok) await loadReliability();
+  }
+
+  async function demandAction(topicId: string, action: string) {
+    const topic = data?.demandTopics.find((item) => item.id === topicId);
+    if (!topic) return;
+    if (action === "released" && !demandUrls[topicId]?.trim()) {
+      setMessage("Add the public course, coach, or live-learning URL before marking this topic available.");
+      return;
+    }
+    setBusy(`demand-${topicId}`);
+    const response = await fetch("/api/platform/overview", {
+      method: "PATCH",
+      headers: { "content-type": "application/json", authorization: `Bearer ${await token()}` },
+      body: JSON.stringify({ targetType: "demand_topic", targetId: topicId, action, note: demandNotes[topicId] || "", url: demandUrls[topicId] || "" }),
+    });
+    const result = await response.json();
+    setMessage(response.ok ? `Demand topic updated to ${action}. Followers were notified where appropriate.` : result.error || "Demand topic update failed.");
+    if (response.ok) await load();
+    setBusy("");
   }
 
   async function reviewCredential(credentialId: string, status: "verified" | "rejected") {
@@ -394,8 +434,27 @@ export default function PlatformAdministration() {
       {tab === "Requests" && <article className="platform-panel">
         <div className="operations-heading">
           <div><p className="sys-kicker">UNMET LEARNING DEMAND</p><h2>Find the right course, coach, or expert</h2></div>
-          <span>{data.learningRequests.filter((item) => ["new", "reviewing"].includes(item.status)).length} open</span>
+          <span>{data.demandTopics.filter((item) => item.visibility === "pending").length} awaiting publication</span>
         </div>
+        <section className="demand-admin-section">
+          <header><div><p className="sys-kicker">PUBLIC DEMAND BOARD</p><h3>Turn private need into a visible, honest roadmap</h3><p>Moderate the public wording, explain decisions, and link a real course, coach, or live programme before marking anything available.</p></div><Link href="/demand">Open public board →</Link></header>
+          <div className="demand-admin-list">{data.demandTopics.length ? data.demandTopics.map((item) => <article key={item.id}>
+            <header><div><span className={`delivery-status ${item.visibility}`}>{item.visibility}</span><span className={`delivery-status ${item.status}`}>{item.status}</span></div><div><b>{item.score} score</b><small>{item.supporters} supporting · {item.followers} following</small></div></header>
+            <p className="sys-kicker">{item.category.toUpperCase()} · {item.preferredFormat.toUpperCase()}</p><h4>{item.title}</h4><p>{item.summary}</p>
+            <label>Public Northstar update<textarea maxLength={1_000} value={demandNotes[item.id] || ""} onChange={(event) => setDemandNotes((current) => ({ ...current, [item.id]: event.target.value }))} placeholder="Explain the decision, current research, or what must happen next." /></label>
+            <label>Matched public URL<input maxLength={500} value={demandUrls[item.id] || ""} onChange={(event) => setDemandUrls((current) => ({ ...current, [item.id]: event.target.value }))} placeholder="/courses/... or https://..." /></label>
+            <footer><small>Submitted {new Date(item.createdAt).toLocaleDateString("en-ZA")}</small><div>
+              {item.visibility !== "published" && <button className="sys-primary" disabled={busy === `demand-${item.id}`} onClick={() => void demandAction(item.id, "publish")}>Publish to board</button>}
+              {item.visibility === "published" && <button disabled={busy === `demand-${item.id}`} onClick={() => void demandAction(item.id, "hide")}>Hide</button>}
+              {item.status !== "open" && <button disabled={busy === `demand-${item.id}`} onClick={() => void demandAction(item.id, "open")}>Open</button>}
+              {item.status !== "planned" && <button disabled={busy === `demand-${item.id}`} onClick={() => void demandAction(item.id, "planned")}>Plan</button>}
+              {item.status !== "building" && <button disabled={busy === `demand-${item.id}`} onClick={() => void demandAction(item.id, "building")}>Building</button>}
+              {item.status !== "released" && <button className="sys-primary" disabled={busy === `demand-${item.id}`} onClick={() => void demandAction(item.id, "released")}>Mark available</button>}
+              {item.status !== "declined" && <button disabled={busy === `demand-${item.id}`} onClick={() => void demandAction(item.id, "declined")}>Decline honestly</button>}
+            </div></footer>
+          </article>) : <p>No Demand Board topics yet.</p>}</div>
+        </section>
+        <div className="operations-heading private-request-heading"><div><p className="sys-kicker">PRIVATE REQUEST DETAILS</p><h3>Contact and match queue</h3></div><span>{data.learningRequests.filter((item) => ["new", "reviewing"].includes(item.status)).length} open</span></div>
         <div className="learning-request-admin-list">{data.learningRequests.length
           ? data.learningRequests.map((item) => <section key={item.id}>
             <header>

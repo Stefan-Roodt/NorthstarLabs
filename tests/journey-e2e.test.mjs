@@ -944,6 +944,59 @@ test("persists private lesson questions and educator responses in their academy 
   db.close();
 });
 
+test("publishes honest starter demand and preserves one vote per browser identity", async () => {
+  const db = await migratedDatabase();
+  const tables = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'demand_%' ORDER BY name",
+  ).all().map((row) => row.name);
+  assert.deepEqual(tables, ["demand_followers", "demand_topics", "demand_votes"]);
+  const starters = db.prepare(`
+    SELECT COUNT(*) AS topics,
+      SUM(CASE WHEN visibility='published' AND status='open' THEN 1 ELSE 0 END) AS openTopics
+    FROM demand_topics WHERE id LIKE 'starter-demand-%'
+  `).get();
+  assert.deepEqual({ ...starters }, { topics: 6, openTopics: 6 });
+  assert.equal(db.prepare("SELECT COUNT(*) AS votes FROM demand_votes").get().votes, 0);
+  const now = 1784630000000;
+  db.prepare(`
+    INSERT INTO demand_votes (id,topic_id,voter_key_hash,value,created_at,updated_at)
+    VALUES ('vote-one','starter-demand-bitcoin-custody','browser-hash-one',1,?,?)
+  `).run(now, now);
+  assert.throws(() => db.prepare(`
+    INSERT INTO demand_votes (id,topic_id,voter_key_hash,value,created_at,updated_at)
+    VALUES ('vote-duplicate','starter-demand-bitcoin-custody','browser-hash-one',-1,?,?)
+  `).run(now, now), /UNIQUE constraint failed/);
+  db.prepare(`UPDATE demand_votes SET value=-1,updated_at=? WHERE topic_id=? AND voter_key_hash=?`)
+    .run(now + 1, "starter-demand-bitcoin-custody", "browser-hash-one");
+  assert.equal(db.prepare("SELECT value FROM demand_votes WHERE id='vote-one'").get().value, -1);
+  db.prepare(`
+    INSERT INTO demand_followers
+      (id,topic_id,email,name,status,unsubscribe_token_hash,created_at,updated_at)
+    VALUES ('follow-one','starter-demand-bitcoin-custody','learner@example.com','Learner','active','token-hash-one',?,?)
+  `).run(now, now);
+  assert.throws(() => db.prepare(`
+    INSERT INTO demand_followers
+      (id,topic_id,email,name,status,unsubscribe_token_hash,created_at,updated_at)
+    VALUES ('follow-duplicate','starter-demand-bitcoin-custody','learner@example.com','','active','token-hash-two',?,?)
+  `).run(now, now), /UNIQUE constraint failed/);
+  db.prepare(`UPDATE demand_topics SET status='building',public_note='Curriculum research is under way.',updated_at=? WHERE id='starter-demand-bitcoin-custody'`)
+    .run(now + 2);
+  const topic = db.prepare(`
+    SELECT t.status,t.public_note AS publicNote,
+      COALESCE(SUM(v.value),0) AS score,
+      (SELECT COUNT(*) FROM demand_followers f WHERE f.topic_id=t.id AND f.status='active') AS followers
+    FROM demand_topics t LEFT JOIN demand_votes v ON v.topic_id=t.id
+    WHERE t.id='starter-demand-bitcoin-custody' GROUP BY t.id
+  `).get();
+  assert.deepEqual({ ...topic }, {
+    status: "building",
+    publicNote: "Curriculum research is under way.",
+    score: -1,
+    followers: 1,
+  });
+  db.close();
+});
+
 test("security policy limits abusive writes and rejects oversized JSON", async () => {
   assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/uploads", { method: "POST" })),
@@ -968,6 +1021,10 @@ test("security policy limits abusive writes and rejects oversized JSON", async (
   assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/learning-requests", { method: "POST" })),
     { scope: "learning_request", limit: 5, windowMs: 3_600_000 },
+  );
+  assert.deepEqual(
+    rateLimitPolicy(new Request("https://northstarlabs.co.za/api/demand", { method: "POST" })),
+    { scope: "demand_board", limit: 60, windowMs: 3_600_000 },
   );
   assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/tutor-reviews", { method: "POST" })),

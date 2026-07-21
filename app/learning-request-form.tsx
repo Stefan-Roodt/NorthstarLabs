@@ -61,7 +61,7 @@ export function LearningRequestForm({
       <div>
         <h3>We have your request.</h3>
         <p>{notice}</p>
-        <div><Link href="/courses">Explore courses</Link><Link href="/tutors">Search coaches</Link></div>
+        <div><Link href="/courses">Explore courses</Link><Link href="/tutors">Search coaches</Link><Link href="/demand">Open Demand Board</Link></div>
       </div>
     </div>;
   }
@@ -103,7 +103,7 @@ export function LearningRequestForm({
     {notice && <p className="learning-request-notice" role="alert">{notice}</p>}
     <div className="learning-request-submit">
       <button className="button" disabled={sending}>{sending ? "Sending request..." : "Ask Northstar to help →"}</button>
-      <small>We will use these details only to respond to your request. See our <Link href="/legal/privacy">privacy policy</Link>.</small>
+      <small>We will use these details only to respond. Want a public demand signal instead? <Link href="/demand">Use the moderated Demand Board</Link>.</small>
     </div>
   </form>;
 }

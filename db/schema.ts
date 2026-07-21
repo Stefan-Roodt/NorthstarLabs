@@ -505,6 +505,52 @@ export const learningRequests = sqliteTable("learning_requests", {
   index("learning_requests_email_created_idx").on(table.requesterEmail, table.createdAt),
   index("learning_requests_type_status_idx").on(table.requestType, table.status),
 ]);
+export const demandTopics = sqliteTable("demand_topics", {
+  id: text("id").primaryKey(),
+  learningRequestId: text("learning_request_id"),
+  title: text("title").notNull(),
+  slug: text("slug").notNull(),
+  summary: text("summary").notNull(),
+  category: text("category").notNull().default("other"),
+  preferredFormat: text("preferred_format").notNull().default("either"),
+  status: text("status").notNull().default("open"),
+  visibility: text("visibility").notNull().default("pending"),
+  publicNote: text("public_note").notNull().default(""),
+  matchedUrl: text("matched_url"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+  releasedAt: integer("released_at"),
+}, (table) => [
+  uniqueIndex("demand_topics_slug_unique").on(table.slug),
+  index("demand_topics_visibility_status_updated_idx").on(table.visibility, table.status, table.updatedAt),
+  index("demand_topics_category_visibility_idx").on(table.category, table.visibility, table.updatedAt),
+  uniqueIndex("demand_topics_learning_request_unique").on(table.learningRequestId),
+]);
+export const demandVotes = sqliteTable("demand_votes", {
+  id: text("id").primaryKey(),
+  topicId: text("topic_id").notNull(),
+  voterKeyHash: text("voter_key_hash").notNull(),
+  value: integer("value").notNull(),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("demand_votes_topic_voter_unique").on(table.topicId, table.voterKeyHash),
+  index("demand_votes_topic_value_idx").on(table.topicId, table.value, table.updatedAt),
+]);
+export const demandFollowers = sqliteTable("demand_followers", {
+  id: text("id").primaryKey(),
+  topicId: text("topic_id").notNull(),
+  email: text("email").notNull(),
+  name: text("name").notNull().default(""),
+  status: text("status").notNull().default("active"),
+  unsubscribeTokenHash: text("unsubscribe_token_hash").notNull(),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("demand_followers_topic_email_unique").on(table.topicId, table.email),
+  uniqueIndex("demand_followers_unsubscribe_token_unique").on(table.unsubscribeTokenHash),
+  index("demand_followers_topic_status_idx").on(table.topicId, table.status, table.updatedAt),
+]);
 export const tutorCredentials = sqliteTable("tutor_credentials", {
   id: text("id").primaryKey(),
   tutorId: text("tutor_id").notNull(),

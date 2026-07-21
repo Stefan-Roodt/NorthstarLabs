@@ -43,6 +43,7 @@ export default function TermsPage() {
         <section>
           <h2>5. Acceptable use</h2>
           <p>You may not use NorthstarLabs to break the law, infringe rights, harass others, distribute malware, probe or bypass security, interfere with service operation, scrape protected areas, impersonate another person, or publish unlawful, deceptive, hateful, or exploitative material.</p>
+          <p>Demand Board submissions and votes are signals, not purchases, contracts, or promises that NorthstarLabs will create a course or service. We may moderate, edit for clarity, merge duplicates, hide, decline, or reclassify submissions. Roadmap labels describe current intent and may change as feasibility, rights, safety, demand, and available expertise are assessed.</p>
         </section>
 
         <section>

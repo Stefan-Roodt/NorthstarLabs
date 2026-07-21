@@ -56,6 +56,9 @@ export function rateLimitPolicy(request: Request): RateLimitPolicy | null {
   if (path === "/api/learning-requests") {
     return { scope: "learning_request", limit: 5, windowMs: 60 * 60_000 };
   }
+  if (path === "/api/demand") {
+    return { scope: "demand_board", limit: 60, windowMs: 60 * 60_000 };
+  }
   if (path === "/api/tutor-reviews") {
     return { scope: "tutor_review", limit: 5, windowMs: 24 * 60 * 60_000 };
   }

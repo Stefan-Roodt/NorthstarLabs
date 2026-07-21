@@ -169,7 +169,7 @@ export default function Home() {
           <Link className="nav-route" href="/courses"><small>LEARN</small><b>Browse courses</b></Link>
           <Link className="nav-route" href="/tutors"><small>GET UNSTUCK</small><b>Find a coach</b></Link>
           <a className="nav-route" href={creatorSignupHref}><small>TEACH</small><b>Build an academy</b></a>
-          <a className="nav-how" href="#value">Why Northstar?</a>
+          <Link className="nav-how" href="/demand">Demand board</Link>
         </nav>
         <div className="nav-actions"><a className="login" href="/login?mode=login">Sign in</a><Link className="button small" href="/find">Explore academies <span>→</span></Link></div>
         <button className="menu" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-label="Toggle navigation">{menuOpen ? "Close" : "Menu"}</button>
@@ -491,6 +491,7 @@ export default function Home() {
           <p className="section-kicker">THE NORTHSTAR PROMISE</p>
           <h2>If we do not have what you need, tell us exactly what you are looking for.</h2>
           <p>We will check the current course catalogue and coach network, then do our best to find the right course, coach, or subject expert. If we cannot find a credible match, we will tell you honestly.</p>
+          <Link className="northstar-demand-link" href="/demand">See what other learners want—and support the best ideas →</Link>
           <div className="northstar-memory" aria-label="The NorthstarLabs learning approach">
             <span><b>Learn.</b> Get the path.</span>
             <span><b>Ask.</b> Find human help.</span>
@@ -523,7 +524,7 @@ export default function Home() {
 
       <section className="cta"><div className="shell"><p className="eyebrow">YOUR KNOWLEDGE DESERVES A WORKING SYSTEM</p><h2>Build it once.<br/>Help people grow.</h2><p>Give your expertise a clear structure, a memorable home, and a learner experience you can improve over time.</p><div><a className="button" href={creatorSignupHref}>Build my academy free <span>↗</span></a><Link className="text-link light" href="/courses">Experience a real course →</Link></div><small className="cta-reassurance">No credit card · Guided setup · Switch between creating and learning anytime</small></div></section>
 
-      <footer className="footer shell"><div className="brand"><span className="brand-mark" aria-hidden="true">✦</span><span className="brand-wordmark">NORTHSTARLABS</span></div><p>Courses for the path. Human coaching for the roadblocks.</p><div className="footer-links"><Link href="/about">About NorthstarLabs</Link><a href="#platform">How it works</a><Link href="/solutions">Solutions</Link><Link href="/courses">Courses</Link><Link href="/tutors">Coaches</Link><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><Link href="/legal/terms">Terms</Link><Link href="/legal/privacy">Privacy</Link></div><small>© 2026 Northstar Labs. All rights reserved.</small></footer>
+      <footer className="footer shell"><div className="brand"><span className="brand-mark" aria-hidden="true">✦</span><span className="brand-wordmark">NORTHSTARLABS</span></div><p>Courses for the path. Human coaching for the roadblocks.</p><div className="footer-links"><Link href="/about">About NorthstarLabs</Link><a href="#platform">How it works</a><Link href="/solutions">Solutions</Link><Link href="/courses">Courses</Link><Link href="/tutors">Coaches</Link><Link href="/demand">Demand Board</Link><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><Link href="/legal/terms">Terms</Link><Link href="/legal/privacy">Privacy</Link></div><small>© 2026 Northstar Labs. All rights reserved.</small></footer>
     </main>
   );
 }

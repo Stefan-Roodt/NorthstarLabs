@@ -21,6 +21,7 @@ export default function PrivacyPage() {
           <h2>1. Information we collect</h2>
           <p>We collect information you provide directly, including your name, email address, account profile, course content, community posts, learner records, support notes, portfolio projects and links, tutor profiles, tutoring enquiries, preferred contact method, and communications. We also process account activity such as enrolments, lesson progress, quiz results, private concept-mastery and practice records, certificates, portfolio visibility choices, and administrative actions.</p>
           <p>Technical information may include device and browser details, IP address, timestamps, security events, and diagnostic data needed to operate and protect the service.</p>
+          <p>When you use the Demand Board, we keep your submitted name, email address, and detailed request private during moderation. If accepted, only the topic title and public summary are published. Voting uses a random browser identifier stored in a secure cookie and retained only as a one-way hash; it is not tied to a public profile. If you follow a topic, we store your email address and an unsubscribe token so we can send roadmap updates.</p>
         </section>
 
         <section>
@@ -30,6 +31,7 @@ export default function PrivacyPage() {
             <li>Authenticate users, prevent abuse, investigate security incidents, and enforce platform rules.</li>
             <li>Process requested transactions and maintain financial and operational records.</li>
             <li>Improve reliability, accessibility, performance, and the user experience.</li>
+            <li>Moderate Demand Board ideas, measure community interest, and notify followers when a topic moves through the roadmap.</li>
             <li>Meet legal obligations and protect the rights of NorthstarLabs, creators, and learners.</li>
           </ul>
         </section>

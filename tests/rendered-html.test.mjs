@@ -1415,3 +1415,60 @@ test("turns assessment mistakes into a private, spaced personal mastery loop", a
   assert.match(home, /A wrong answer should improve tomorrow/);
   assert.match(home, /Start learning with mastery/);
 });
+
+test("turns public learning demand into a moderated, honest product roadmap", async () => {
+  const [schema, migration, page, board, api, adminApi, admin, home, sitemap, robots, security, accountData, backup, privacy, terms, email, styles] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0042_red_living_mummy.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/demand/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/demand/demand-board.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/demand/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/platform/overview/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/sitemap.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/robots.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/security.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/account/data/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/platform-backup.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/legal/privacy/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/legal/terms/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/email-service.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/system.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(schema, /export const demandTopics/);
+  assert.match(schema, /export const demandVotes/);
+  assert.match(schema, /export const demandFollowers/);
+  assert.match(migration, /CREATE TABLE `demand_topics`/);
+  assert.match(migration, /CREATE UNIQUE INDEX `demand_votes_topic_voter_unique`/);
+  assert.match(migration, /starter-demand-bitcoin-custody/);
+  assert.doesNotMatch(migration, /INSERT INTO `demand_votes`/);
+  assert.match(page, /Demand Board/);
+  assert.match(board, /Real signals\./);
+  assert.match(board, /No fake votes\./);
+  assert.match(board, /Help decide what Northstar builds next\./);
+  assert.match(board, /Upvote|Support/);
+  assert.match(board, /Follow/);
+  assert.match(api, /__Host-northstar-demand-voter/);
+  assert.match(api, /HttpOnly; Secure; SameSite=Lax/);
+  assert.match(api, /sha256Hex\(`demand-voter:/);
+  assert.match(api, /only the topic and summary can become public/);
+  assert.match(api, /visibility='published'/);
+  assert.match(adminApi, /targetType === "demand_topic"/);
+  assert.match(adminApi, /demand_update/);
+  assert.match(admin, /PUBLIC DEMAND BOARD/);
+  assert.match(admin, /Mark available/);
+  assert.match(home, /href="\/demand"/);
+  assert.match(sitemap, /\/demand/);
+  assert.match(robots, /\/demand/);
+  assert.match(security, /scope: "demand_board"/);
+  assert.match(accountData, /demandBoardFollows/);
+  assert.match(accountData, /DELETE FROM demand_followers/);
+  assert.match(backup, /"demand_topics"/);
+  assert.match(privacy, /random browser identifier/);
+  assert.match(terms, /signals, not purchases/);
+  assert.match(email, /demand_following/);
+  assert.match(email, /demand_update/);
+  assert.match(styles, /\.demand-page/);
+  assert.match(styles, /\.demand-admin-section/);
+});
