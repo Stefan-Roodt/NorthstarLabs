@@ -6,6 +6,7 @@ import { LearningRequestForm } from "./learning-request-form";
 
 const creatorSignupHref = "/login?mode=signup&role=creator&next=%2Fwelcome%3Fpath%3Dcreator";
 const coachSignupHref = "/login?mode=signup&role=coach&next=%2Fwelcome%3Fpath%3Dcoach";
+const learnerPortfolioSignupHref = "/login?mode=signup&role=learner&next=%2Fportfolio";
 const homeSearchPaths = [
   { slug: "online-courses-south-africa", title: "Online courses in South Africa", description: "Choose practical courses by outcome, effort, evidence, and available human support." },
   { slug: "find-business-coach-south-africa", title: "Find a business coach", description: "Compare topic fit, rates, credentials, availability, and verified-session proof." },
@@ -373,6 +374,24 @@ export default function Home() {
             <li><b>Improve</b><span>Progress, learner support, reporting, unmet demand, and trusted feedback</span></li>
           </ul>
           <a className="button" href={creatorSignupHref}>Open my creator workspace <span>→</span></a>
+        </div>
+      </section>
+
+      <section className="portfolio-advantage shell" aria-labelledby="portfolio-advantage-title">
+        <div className="portfolio-advantage-copy">
+          <p className="section-kicker">FREE FOR EVERY LEARNER</p>
+          <h2 id="portfolio-advantage-title">A certificate says finished. Your portfolio shows capable.</h2>
+          <p>Select verified certificates and passed assessments, add practical projects, and share one proof-of-learning page. You control every item and whether a score is visible.</p>
+          <ul><li><b>Verified</b><span>Live academy certificate status</span></li><li><b>Recorded</b><span>Assessments actually passed</span></li><li><b>Submitted</b><span>Projects clearly labelled as your evidence</span></li></ul>
+          <a className="button" href={learnerPortfolioSignupHref}>Build my free proof portfolio <span>→</span></a>
+          <small>No public page until you publish · No email or private notes exposed</small>
+        </div>
+        <div className="portfolio-advantage-demo" aria-label="Example proof-of-learning portfolio">
+          <header><span>SR</span><div><small>PROOF-OF-LEARNING PORTFOLIO</small><b>Evidence, not attendance.</b></div></header>
+          <article className="verified"><span>✓</span><div><small>ACADEMY-VERIFIED</small><b>Bitcoin Intelligence</b><p>Certificate status active</p></div><strong>VERIFY →</strong></article>
+          <article><span>%</span><div><small>NORTHSTAR-RECORDED</small><b>Scenario analysis</b><p>Assessment passed · score private</p></div><strong>PASSED</strong></article>
+          <article><span>01</span><div><small>LEARNER-SUBMITTED</small><b>Board intelligence briefing</b><p>Research · risk analysis · communication</p></div><strong>OPEN ↗</strong></article>
+          <footer><span>1 verified certificate · 1 assessment · 1 project</span><b>SHAREABLE</b></footer>
         </div>
       </section>
 

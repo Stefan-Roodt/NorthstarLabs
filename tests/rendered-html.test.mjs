@@ -1249,3 +1249,56 @@ test("makes narration and branded cinematic intros usable without an external pr
   assert.match(styles, /\.self-media-studio/);
   assert.match(styles, /@keyframes northstar-wave/);
 });
+
+test("gives learners a private, shareable proof-of-learning portfolio", async () => {
+  const [schema, migration, privateApi, publicApi, studio, publicPage, publicLayout, learnerHome, certificate, accountData, backup, deletion, styles, home] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0037_gigantic_tombstone.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/portfolio/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/portfolio/[slug]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/portfolio/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/portfolio/[slug]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/portfolio/[slug]/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/certificates/[code]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/account/data/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/platform-backup.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/course-deletion.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/system.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(schema, /export const learningPortfolios/);
+  assert.match(schema, /export const portfolioSourceVisibility/);
+  assert.match(schema, /export const portfolioEvidence/);
+  assert.match(migration, /CREATE TABLE `learning_portfolios`/);
+  assert.match(migration, /CREATE UNIQUE INDEX `learning_portfolios_slug_unique`/);
+  assert.match(migration, /CREATE TABLE `portfolio_source_visibility`/);
+  assert.match(migration, /CREATE TABLE `portfolio_evidence`/);
+  assert.match(privateApi, /requireApiUser/);
+  assert.match(privateApi, /Nothing is shared by default|portfolio_source_visibility/);
+  assert.match(privateApi, /Only a currently valid certificate can be shared/);
+  assert.match(privateApi, /qa\.passed=1/);
+  assert.match(privateApi, /url\.protocol === "https:"/);
+  assert.match(publicApi, /lp\.visibility='published'/);
+  assert.match(publicApi, /psv\.visible=1/);
+  assert.match(publicApi, /cert\.status='active'/);
+  assert.doesNotMatch(publicApi, /email/);
+  assert.match(studio, /Your learning should be visible/);
+  assert.match(studio, /Show score/);
+  assert.match(studio, /learner-submitted/);
+  assert.match(publicPage, /ACADEMY-VERIFIED/);
+  assert.match(publicPage, /NORTHSTAR-RECORDED/);
+  assert.match(publicPage, /LEARNER-SUBMITTED/);
+  assert.match(publicPage, /Score kept private/);
+  assert.match(publicLayout, /index: false/);
+  assert.match(learnerHome, /Proof portfolio/);
+  assert.match(certificate, /Add to proof portfolio/);
+  assert.match(accountData, /portfolioSourceChoices/);
+  assert.match(accountData, /portfolioEvidence/);
+  assert.match(backup, /"learning_portfolios"/);
+  assert.match(deletion, /DELETE FROM portfolio_source_visibility/);
+  assert.match(styles, /\.portfolio-studio/);
+  assert.match(styles, /\.public-portfolio/);
+  assert.match(home, /A certificate says finished\. Your portfolio shows capable/);
+  assert.match(home, /Build my free proof portfolio/);
+});

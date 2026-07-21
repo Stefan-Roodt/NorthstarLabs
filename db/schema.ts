@@ -635,6 +635,52 @@ export const certificates = sqliteTable("certificates", {
   index("certificates_course_status_idx").on(table.courseId, table.status, table.issuedAt),
 ]);
 
+export const learningPortfolios = sqliteTable("learning_portfolios", {
+  userId: text("user_id").primaryKey(),
+  slug: text("slug").notNull(),
+  headline: text("headline").notNull().default("Learning made visible"),
+  bio: text("bio").notNull().default(""),
+  visibility: text("visibility").notNull().default("draft"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("learning_portfolios_slug_unique").on(table.slug),
+  index("learning_portfolios_visibility_updated_idx").on(table.visibility, table.updatedAt),
+]);
+
+export const portfolioSourceVisibility = sqliteTable("portfolio_source_visibility", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  sourceType: text("source_type").notNull(),
+  sourceId: text("source_id").notNull(),
+  visible: integer("visible", { mode: "boolean" }).notNull().default(false),
+  showScore: integer("show_score", { mode: "boolean" }).notNull().default(false),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("portfolio_source_user_type_id_unique").on(table.userId, table.sourceType, table.sourceId),
+  index("portfolio_source_user_visible_idx").on(table.userId, table.visible, table.updatedAt),
+]);
+
+export const portfolioEvidence = sqliteTable("portfolio_evidence", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  courseId: text("course_id"),
+  evidenceType: text("evidence_type").notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  skills: text("skills").notNull().default(""),
+  evidenceUrl: text("evidence_url"),
+  achievedAt: integer("achieved_at"),
+  visible: integer("visible", { mode: "boolean" }).notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  index("portfolio_evidence_user_visible_sort_idx").on(table.userId, table.visible, table.sortOrder),
+  index("portfolio_evidence_course_idx").on(table.courseId),
+]);
+
 export const emailMessages = sqliteTable("email_messages", {
   id: text("id").primaryKey(),
   schoolId: text("school_id"),

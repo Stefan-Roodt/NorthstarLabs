@@ -40,6 +40,7 @@ export default function CertificatePage({ params }: { params: Promise<{ code: st
     <div className="certificate-toolbar">
       <Link href="/learn">← My learning</Link>
       <div>
+        <Link href="/portfolio">Add to proof portfolio</Link>
         <button onClick={() => window.print()}>Print</button>
         {certificate.valid && <a href={`/api/certificates/${certificate.code}/pdf`}>Download PDF</a>}
       </div>

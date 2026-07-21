@@ -6,7 +6,7 @@ import { requireApiUser } from "../../../../lib/server-auth";
 import { recordSystemEvent, safeErrorMessage } from "../../../../lib/system-monitor";
 
 async function accountExport(userId: string) {
-  const [profile, schools, enrollments, progress, attempts, certificates, posts, preferences, products, live] =
+  const [profile, schools, enrollments, progress, attempts, certificates, posts, preferences, products, live, portfolio, portfolioSources, portfolioEvidence] =
     await Promise.all([
       env.DB.prepare(
         `SELECT id,email,display_name AS displayName,role,onboarding_path AS onboardingPath,
@@ -72,6 +72,21 @@ async function accountExport(userId: string) {
          FROM live_attendance la JOIN live_sessions ls ON ls.id=la.session_id
          WHERE la.user_id=? ORDER BY ls.starts_at DESC`,
       ).bind(userId).all(),
+      env.DB.prepare(
+        `SELECT slug,headline,bio,visibility,created_at AS createdAt,updated_at AS updatedAt
+         FROM learning_portfolios WHERE user_id=?`,
+      ).bind(userId).first(),
+      env.DB.prepare(
+        `SELECT source_type AS sourceType,source_id AS sourceId,visible,
+          show_score AS showScore,created_at AS createdAt,updated_at AS updatedAt
+         FROM portfolio_source_visibility WHERE user_id=? ORDER BY updated_at DESC`,
+      ).bind(userId).all(),
+      env.DB.prepare(
+        `SELECT id,course_id AS courseId,evidence_type AS evidenceType,title,
+          description,skills,evidence_url AS evidenceUrl,achieved_at AS achievedAt,
+          visible,sort_order AS sortOrder,created_at AS createdAt,updated_at AS updatedAt
+         FROM portfolio_evidence WHERE user_id=? ORDER BY sort_order,created_at DESC`,
+      ).bind(userId).all(),
     ]);
   return {
     format: "northstarlabs-personal-data-export",
@@ -87,6 +102,9 @@ async function accountExport(userId: string) {
     notificationPreferences: preferences,
     productEntitlements: products.results,
     liveAttendance: live.results,
+    learningPortfolio: portfolio,
+    portfolioSourceChoices: portfolioSources.results,
+    portfolioEvidence: portfolioEvidence.results,
   };
 }
 
@@ -163,6 +181,15 @@ export async function DELETE(request: Request) {
   ).bind(requestId).run();
   try {
     await env.DB.batch([
+      env.DB.prepare(
+        "DELETE FROM portfolio_source_visibility WHERE user_id=?",
+      ).bind(user.id),
+      env.DB.prepare(
+        "DELETE FROM portfolio_evidence WHERE user_id=?",
+      ).bind(user.id),
+      env.DB.prepare(
+        "DELETE FROM learning_portfolios WHERE user_id=?",
+      ).bind(user.id),
       env.DB.prepare(
         "DELETE FROM lesson_progress WHERE user_id=?",
       ).bind(user.id),

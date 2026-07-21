@@ -813,6 +813,53 @@ test("protects two-way session ratings until the blind reveal condition is met",
   `), /UNIQUE constraint failed/);
 });
 
+test("keeps proof portfolios private until the learner explicitly publishes evidence", async () => {
+  const db = await migratedDatabase();
+  const now = Date.UTC(2026, 6, 21, 8);
+  db.exec(`
+    INSERT INTO profiles (id,email,display_name,role,status,created_at)
+    VALUES ('portfolio-learner','proof@example.com','Proof Learner','learner','active',${now});
+    INSERT INTO learning_portfolios
+      (user_id,slug,headline,bio,visibility,created_at,updated_at)
+    VALUES
+      ('portfolio-learner','proof-learner-demo','Evidence, not attendance','',
+       'draft',${now},${now});
+    INSERT INTO portfolio_source_visibility
+      (id,user_id,source_type,source_id,visible,show_score,created_at,updated_at)
+    VALUES
+      ('portfolio-source-private','portfolio-learner','assessment','assessment-private',0,0,${now},${now}),
+      ('portfolio-source-visible','portfolio-learner','certificate','certificate-visible',1,0,${now},${now});
+    INSERT INTO portfolio_evidence
+      (id,user_id,evidence_type,title,description,skills,visible,sort_order,created_at,updated_at)
+    VALUES
+      ('portfolio-work-visible','portfolio-learner','project','Board briefing',
+       'A decision-grade briefing.','Research, communication',1,0,${now},${now}),
+      ('portfolio-work-private','portfolio-learner','feedback','Private feedback',
+       'Personal instructor note.','',0,1,${now},${now});
+  `);
+  assert.equal(
+    db.prepare("SELECT COUNT(*) AS count FROM learning_portfolios WHERE slug='proof-learner-demo' AND visibility='published'").get().count,
+    0,
+  );
+  db.exec("UPDATE learning_portfolios SET visibility='published' WHERE user_id='portfolio-learner'");
+  assert.deepEqual({ ...db.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM portfolio_source_visibility WHERE user_id='portfolio-learner' AND visible=1) AS selectedSources,
+      (SELECT COUNT(*) FROM portfolio_evidence WHERE user_id='portfolio-learner' AND visible=1) AS selectedEvidence
+  `).get() }, { selectedSources: 1, selectedEvidence: 1 });
+  assert.throws(() => db.exec(`
+    INSERT INTO learning_portfolios
+      (user_id,slug,headline,bio,visibility,created_at,updated_at)
+    VALUES ('portfolio-other','proof-learner-demo','Duplicate','','draft',${now},${now});
+  `), /UNIQUE constraint failed/);
+  assert.throws(() => db.exec(`
+    INSERT INTO portfolio_source_visibility
+      (id,user_id,source_type,source_id,visible,show_score,created_at,updated_at)
+    VALUES ('portfolio-source-duplicate','portfolio-learner','certificate',
+      'certificate-visible',1,0,${now},${now});
+  `), /UNIQUE constraint failed/);
+});
+
 test("security policy limits abusive writes and rejects oversized JSON", async () => {
   assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/uploads", { method: "POST" })),

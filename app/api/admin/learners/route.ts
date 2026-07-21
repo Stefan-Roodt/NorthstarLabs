@@ -147,6 +147,18 @@ export async function PATCH(request: Request) {
   if (body.action === "reset") {
     await env.DB.batch([
       env.DB.prepare(
+        `DELETE FROM portfolio_source_visibility
+         WHERE user_id=? AND source_type='assessment' AND source_id IN (
+           SELECT q.id FROM quizzes q JOIN lessons l ON l.id=q.lesson_id WHERE l.course_id=?
+         )`,
+      ).bind(enrollment.userId, enrollment.courseId),
+      env.DB.prepare(
+        `DELETE FROM portfolio_source_visibility
+         WHERE user_id=? AND source_type='certificate' AND source_id IN (
+           SELECT code FROM certificates WHERE user_id=? AND course_id=?
+         )`,
+      ).bind(enrollment.userId, enrollment.userId, enrollment.courseId),
+      env.DB.prepare(
         "DELETE FROM lesson_progress WHERE user_id=? AND lesson_id IN (SELECT id FROM lessons WHERE course_id=?)",
       ).bind(enrollment.userId, enrollment.courseId),
       env.DB.prepare(

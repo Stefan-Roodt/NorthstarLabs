@@ -78,6 +78,7 @@ export default function LearnerHome() {
         <Link href="/courses">Explore modules</Link>
         <Link href="/live">My live classes</Link>
         <Link href="/community">My communities</Link>
+        <Link href="/portfolio">Proof portfolio</Link>
         <Link href="/account">Account</Link>
         <button onClick={signOut}>Sign out</button>
       </nav>
@@ -187,7 +188,8 @@ export default function LearnerHome() {
 
       {completed.length > 0 && <section className="learner-completed">
         <div className="library-heading">
-          <div><p className="sys-kicker">COMPLETED</p><h2>Progress worth keeping.</h2><p>Revisit a course or open its certificate whenever you need it.</p></div>
+          <div><p className="sys-kicker">COMPLETED</p><h2>Progress worth keeping.</h2><p>Revisit a course, verify its certificate, or add the evidence to your public learning portfolio.</p></div>
+          <Link className="builder-preview" href="/portfolio">Build my proof portfolio →</Link>
         </div>
         <div className="learner-completed-list">
           {completed.map(item => <article className="panel" key={item.courseId}>
