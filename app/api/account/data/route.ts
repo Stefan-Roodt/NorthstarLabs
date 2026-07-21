@@ -270,6 +270,9 @@ export async function DELETE(request: Request) {
         "UPDATE course_import_projects SET created_by='deleted-user' WHERE created_by=?",
       ).bind(user.id),
       env.DB.prepare(
+        "UPDATE academy_exports SET requested_by='deleted-user',download_token_hash=NULL,download_token_expires_at=NULL WHERE requested_by=?",
+      ).bind(user.id),
+      env.DB.prepare(
         "UPDATE invitations SET accepted_by=NULL WHERE accepted_by=?",
       ).bind(user.id),
       env.DB.prepare(

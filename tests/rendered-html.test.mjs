@@ -20,6 +20,8 @@ test("publishes complete terms and privacy pages", async () => {
   assert.match(terms, /Creator responsibilities/);
   assert.match(privacy, /Privacy Policy/);
   assert.match(privacy, /Creators and learner data/);
+  assert.match(terms, /Freedom Guarantee and academy exports/);
+  assert.match(privacy, /Complete academy exports/);
 });
 
 test("adds browser security headers to every response", async () => {

@@ -872,3 +872,30 @@ export const dataRequests = sqliteTable("data_requests", {
   index("data_requests_user_created_idx").on(table.userId, table.createdAt),
   index("data_requests_status_created_idx").on(table.status, table.createdAt),
 ]);
+
+export const academyExports = sqliteTable("academy_exports", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull(),
+  requestedBy: text("requested_by").notNull(),
+  status: text("status").notNull().default("preparing"),
+  formatVersion: integer("format_version").notNull().default(1),
+  objectKey: text("object_key"),
+  filename: text("filename").notNull(),
+  sizeBytes: integer("size_bytes").notNull().default(0),
+  fileCount: integer("file_count").notNull().default(0),
+  recordCount: integer("record_count").notNull().default(0),
+  originalFileCount: integer("original_file_count").notNull().default(0),
+  manifestChecksum: text("manifest_checksum"),
+  failureMessage: text("failure_message"),
+  downloadTokenHash: text("download_token_hash"),
+  downloadTokenExpiresAt: integer("download_token_expires_at"),
+  createdAt: integer("created_at").notNull(),
+  completedAt: integer("completed_at"),
+  expiresAt: integer("expires_at"),
+  downloadedAt: integer("downloaded_at"),
+  deletedAt: integer("deleted_at"),
+}, (table) => [
+  index("academy_exports_school_created_idx").on(table.schoolId, table.createdAt),
+  index("academy_exports_status_expiry_idx").on(table.status, table.expiresAt),
+  uniqueIndex("academy_exports_download_token_unique").on(table.downloadTokenHash),
+]);

@@ -922,6 +922,10 @@ test("security policy limits abusive writes and rejects oversized JSON", async (
     { scope: "uploads", limit: 20, windowMs: 3_600_000 },
   );
   assert.deepEqual(
+    rateLimitPolicy(new Request("https://northstarlabs.co.za/api/academy-exports", { method: "POST" })),
+    { scope: "academy_exports", limit: 8, windowMs: 3_600_000 },
+  );
+  assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/community", { method: "POST" })),
     { scope: "community_write", limit: 30, windowMs: 60_000 },
   );

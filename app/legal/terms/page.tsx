@@ -15,7 +15,7 @@ export default function TermsPage() {
         <p>These terms describe the responsibilities shared by NorthstarLabs, creators, administrators, and learners who use the platform.</p>
       </section>
       <article className="legal-document">
-        <p className="legal-updated">Effective and last updated: 20 July 2026</p>
+        <p className="legal-updated">Effective and last updated: 21 July 2026</p>
 
         <section>
           <h2>1. Accepting these terms</h2>
@@ -65,25 +65,29 @@ export default function TermsPage() {
           <p>Migration Studio can interpret creator-supplied course exports, curriculum outlines, ordered documents, media manifests, and learner lists. Creators must own the material or have a lawful licence, permission, or other authority to migrate it. They are responsible for checking the preview, course order, assessment answers, media rights, learner-email accuracy, and the lawful basis for contacting imported learners.</p>
           <p>Imported courses are created as private drafts and are not automatically published. Existing courses are not intentionally overwritten. A creator who explicitly chooses to create learner invitations authorises NorthstarLabs to generate secure, expiring invitations for the supplied addresses.</p>
           <p>Selected AI and media providers may process submitted instructions and source material to perform the requested generation. Their availability and acceptable-use rules may affect the feature. NorthstarLabs records the provider and model used where practical so that creators can review the provenance of a draft.</p>
+          <h2>10. Freedom Guarantee and academy exports</h2>
+          <p>Academy owners and administrators may prepare a self-service portable archive of academy content and records at no charge. The archive is intended to include structured teaching, learner, business, community, coaching, assessment and operational records together with academy-owned original uploads. It is provided in commonly readable formats, but another provider may require field mapping because platform schemas differ.</p>
+          <p>For security, an export does not include passwords, authentication credentials, active invitation links or token hashes, integration signing secrets, internal object-storage paths, or short-lived playback grants. Exports can contain personal and confidential information. The person creating or downloading one must store it securely, restrict access, and handle it in accordance with applicable privacy law.</p>
+          <p>Completed archives are retained temporarily for download and then removed. A fresh archive can be prepared while the academy account remains accessible. The Freedom Guarantee does not require NorthstarLabs to transfer a creator&apos;s data directly into another provider&apos;s proprietary system or to provide content owned by NorthstarLabs or another licensor.</p>
         </section>
 
         <section>
-          <h2>10. Suspension and termination</h2>
+          <h2>11. Suspension and termination</h2>
           <p>You may stop using the service at any time. We may restrict or suspend access when reasonably necessary to address security risk, non-payment, unlawful activity, material breach, or harm to the platform or its users. Where practical, we will provide notice and an opportunity to resolve the issue.</p>
         </section>
 
         <section>
-          <h2>11. Service availability and disclaimers</h2>
+          <h2>12. Service availability and disclaimers</h2>
           <p>We work to provide a reliable service but cannot promise uninterrupted or error-free operation. Features may evolve, and third-party services may affect availability. To the fullest extent permitted by law, the service is provided without implied warranties beyond those that cannot legally be excluded.</p>
         </section>
 
         <section>
-          <h2>12. Liability</h2>
+          <h2>13. Liability</h2>
           <p>Nothing in these terms excludes liability that cannot lawfully be limited. To the extent permitted by law, NorthstarLabs is not responsible for indirect or consequential loss, lost profits, lost opportunity, creator-provided content, or independently delivered tutoring services and arrangements. Any aggregate liability will be limited to the amount paid for the service during the twelve months before the event giving rise to the claim.</p>
         </section>
 
         <section>
-          <h2>13. Changes and contact</h2>
+          <h2>14. Changes and contact</h2>
           <p>We may update these terms to reflect service, legal, or security changes. We will revise the date above and provide additional notice for material changes. Questions or formal requests can be submitted through the support channel available in your account.</p>
         </section>
       </article>

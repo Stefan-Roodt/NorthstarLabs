@@ -9,6 +9,7 @@ const coachSignupHref = "/login?mode=signup&role=coach&next=%2Fwelcome%3Fpath%3D
 const learnerPortfolioSignupHref = "/login?mode=signup&role=learner&next=%2Fportfolio";
 const learnerMasterySignupHref = "/login?mode=signup&role=learner&next=%2Fmastery";
 const migrationSignupHref = "/login?mode=signup&role=creator&next=%2Fdashboard%2Fimport";
+const freedomSignupHref = "/login?mode=signup&role=creator&next=%2Fdashboard%2Fexports";
 const homeSearchPaths = [
   { slug: "online-courses-south-africa", title: "Online courses in South Africa", description: "Choose practical courses by outcome, effort, evidence, and available human support." },
   { slug: "find-business-coach-south-africa", title: "Find a business coach", description: "Compare topic fit, rates, credentials, availability, and verified-session proof." },
@@ -139,6 +140,10 @@ const faqs = [
   {
     question: "Can I manage individual learners?",
     answer: "Yes. Creators can grant or pause access, review progress, reset progress when needed, keep private support notes, and export learner records.",
+  },
+  {
+    question: "What happens to my academy if I decide to leave?",
+    answer: "Your academy remains yours. Owners and administrators can prepare a complete self-service ZIP at no charge, including structured JSON, CSV tables, readable course files, business history, learner records, coaching data, and every academy-owned original upload. Security credentials are deliberately excluded.",
   },
   {
     question: "Does NorthstarLabs work on mobile?",
@@ -394,6 +399,24 @@ export default function Home() {
           <div><strong>02</strong><p><small>MODULE</small><b>Bitcoin architecture</b><span>8 lessons</span></p></div>
           <div><strong>03</strong><p><small>MODULE</small><b>Risk and application</b><span>5 lessons</span></p></div>
           <footer><span>3 modules · 19 lessons · 4 assessments</span><b>CREATE PRIVATE DRAFT →</b></footer>
+        </div>
+      </section>
+
+      <section className="freedom-advantage shell" aria-labelledby="freedom-advantage-title">
+        <div className="freedom-advantage-copy">
+          <p className="section-kicker">THE NORTHSTAR FREEDOM GUARANTEE</p>
+          <h2 id="freedom-advantage-title">Easy to join. Free to leave with your work.</h2>
+          <p>Your academy should stay because Northstar earns its place—not because your content or data is trapped. Prepare one portable ZIP whenever you choose, without a support ticket or exit fee.</p>
+          <ul><li><b>Readable</b><span>JSON, CSV and course-by-course Markdown</span></li><li><b>Complete</b><span>Teaching, learners, business, community and coaching</span></li><li><b>Original</b><span>Academy-owned uploads copied unchanged</span></li></ul>
+          <a className="button" href={freedomSignupHref}>Own my academy from day one <span>→</span></a>
+          <small>Self-service · No artificial lock-in · Private download links</small>
+        </div>
+        <div className="freedom-advantage-demo" aria-label="Example Northstar complete academy export">
+          <header><span>COMPLETE ACADEMY EXPORT</span><b>READY</b></header>
+          <article><span>JSON</span><div><b>Complete relationships</b><small>Courses · learners · products · coaching</small></div><strong>✓</strong></article>
+          <article><span>CSV</span><div><b>Spreadsheet-friendly tables</b><small>One clear file per data area</small></div><strong>✓</strong></article>
+          <article><span>FILE</span><div><b>Original uploads</b><small>Documents · video · audio · images</small></div><strong>✓</strong></article>
+          <footer><span>Portable ZIP · manifest checksum</span><b>R0</b></footer>
         </div>
       </section>
 
