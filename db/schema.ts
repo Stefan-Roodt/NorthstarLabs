@@ -146,6 +146,7 @@ export const lessons = sqliteTable("lessons", {
   sectionId: text("section_id"), lessonType: text("lesson_type").notNull().default("text"),
   content: text("content").notNull().default(""), contentFormat: text("content_format").notNull().default("markdown"),
   videoKey: text("video_key"), primaryAssetId: text("primary_asset_id"),
+  introAssetId: text("intro_asset_id"),
   durationMinutes: integer("duration_minutes").notNull().default(0),
   isPreview: integer("is_preview", { mode: "boolean" }).notNull().default(false),
   availableAfterDays: integer("available_after_days").notNull().default(0),

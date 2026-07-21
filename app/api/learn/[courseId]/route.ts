@@ -49,7 +49,8 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
   const lessons = await env.DB.prepare(
     `SELECT l.id,l.section_id AS sectionId,l.title,l.lesson_type AS lessonType,
       l.content,l.content_format AS contentFormat,l.video_key AS videoKey,
-      l.primary_asset_id AS primaryAssetId,l.duration_minutes AS durationMinutes,
+      l.primary_asset_id AS primaryAssetId,l.intro_asset_id AS introAssetId,
+      l.duration_minutes AS durationMinutes,
       l.is_preview AS isPreview,l.available_after_days AS availableAfterDays,
       l.required_watch_percent AS requiredWatchPercent,l.transcript,l.position,
       COALESCE(lp.completed,0) AS completed,
@@ -57,11 +58,15 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
       COALESCE(lp.notes,'') AS notes,COALESCE(lp.bookmarked,0) AS bookmarked,
       ma.key AS primaryKey,ma.filename AS primaryFilename,
       ma.content_type AS primaryContentType,ma.kind AS primaryKind,
-      ma.alt_text AS primaryAltText
+      ma.alt_text AS primaryAltText,
+      ima.key AS introKey,ima.filename AS introFilename,
+      ima.content_type AS introContentType,ima.kind AS introKind,
+      ima.alt_text AS introAltText
      FROM lessons l
      LEFT JOIN course_sections cs ON cs.id=l.section_id
      LEFT JOIN lesson_progress lp ON lp.lesson_id=l.id AND lp.user_id=?
      LEFT JOIN media_assets ma ON ma.id=l.primary_asset_id
+     LEFT JOIN media_assets ima ON ima.id=l.intro_asset_id
      WHERE l.course_id=? ORDER BY COALESCE(cs.position,0),l.position,l.id`
   ).bind(user.id,courseId).all();
   const resourceRows = await env.DB.prepare(
@@ -192,6 +197,14 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
         contentType: "video/mp4",
         kind: "video",
         altText: "",
+      } : null,
+      introAsset: lesson.introAssetId ? {
+        id: lesson.introAssetId,
+        key: learnerMediaKey(lesson.introKey),
+        filename: lesson.introFilename,
+        contentType: lesson.introContentType,
+        kind: lesson.introKind,
+        altText: lesson.introAltText,
       } : null,
       resources: resources.get(String(lesson.id)) || [],
       quiz:quizzes.get(String(lesson.id))||null

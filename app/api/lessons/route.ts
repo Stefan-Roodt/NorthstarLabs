@@ -13,6 +13,7 @@ type LessonInput = {
   contentFormat?: string;
   videoKey?: string;
   primaryAssetId?: string | null;
+  introAssetId?: string | null;
   resourceIds?: string[];
   durationMinutes?: number;
   isPreview?: boolean;
@@ -55,6 +56,13 @@ export async function POST(request: Request) {
     ).bind(primaryAssetId, courseAccess.schoolId).first();
     if (!asset) return Response.json({ error: "Primary media not found." }, { status: 404 });
   }
+  const introAssetId = lesson.introAssetId || null;
+  if (introAssetId) {
+    const introAsset = await env.DB.prepare(
+      "SELECT id FROM media_assets WHERE id=? AND school_id=? AND kind='video'",
+    ).bind(introAssetId, courseAccess.schoolId).first();
+    if (!introAsset) return Response.json({ error: "Lesson intro video not found." }, { status: 404 });
+  }
 
   const resourceIds = Array.from(new Set(lesson.resourceIds || [])).slice(0, 20);
   let resourceAssets: Array<{ id: string; filename: string }> = [];
@@ -94,7 +102,7 @@ export async function POST(request: Request) {
   const lessonStatement = existing
     ? env.DB.prepare(
         `UPDATE lessons SET section_id=?,title=?,lesson_type=?,content=?,
-          content_format='markdown',video_key=?,primary_asset_id=?,duration_minutes=?,
+          content_format='markdown',video_key=?,primary_asset_id=?,intro_asset_id=?,duration_minutes=?,
           is_preview=?,available_after_days=?,required_watch_percent=?,transcript=?,
           position=?,updated_at=?
          WHERE id=? AND course_id=?`,
@@ -105,6 +113,7 @@ export async function POST(request: Request) {
         (lesson.content || "").slice(0, 100000),
         externalMedia,
         primaryAssetId,
+        introAssetId,
         Math.max(0, Math.min(1440, Number(lesson.durationMinutes || 0))),
         lesson.isPreview ? 1 : 0,
         Math.max(0, Math.min(3650, Math.round(Number(lesson.availableAfterDays || 0)))),
@@ -118,9 +127,9 @@ export async function POST(request: Request) {
     : env.DB.prepare(
         `INSERT INTO lessons
          (id,course_id,section_id,title,lesson_type,content,content_format,video_key,
-          primary_asset_id,duration_minutes,is_preview,available_after_days,
+          primary_asset_id,intro_asset_id,duration_minutes,is_preview,available_after_days,
           required_watch_percent,transcript,position,updated_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       ).bind(
         id,
         body.courseId,
@@ -131,6 +140,7 @@ export async function POST(request: Request) {
         "markdown",
         externalMedia,
         primaryAssetId,
+        introAssetId,
         Math.max(0, Math.min(1440, Number(lesson.durationMinutes || 0))),
         lesson.isPreview ? 1 : 0,
         Math.max(0, Math.min(3650, Math.round(Number(lesson.availableAfterDays || 0)))),

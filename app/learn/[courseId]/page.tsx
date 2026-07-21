@@ -55,6 +55,7 @@ type Lesson = {
   locked: boolean;
   lockReason: string | null;
   primaryAsset?: Asset | null;
+  introAsset?: Asset | null;
   resources: Resource[];
   quiz?: Quiz | null;
 };
@@ -80,36 +81,66 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(bytes > 10 * 1024 * 1024 ? 0 : 1)} MB`;
 }
 
+function vttTime(totalSeconds: number) {
+  const safe = Math.max(0, totalSeconds);
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const seconds = Math.floor(safe % 60);
+  const milliseconds = Math.floor((safe % 1) * 1000);
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(milliseconds).padStart(3, "0")}`;
+}
+
+function captionVtt(transcript: string, durationSeconds: number) {
+  const words = transcript.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  if (!words.length) return "";
+  const cues: string[] = [];
+  for (let index = 0; index < words.length; index += 12) {
+    cues.push(words.slice(index, index + 12).join(" ").replace(/-->/g, "→"));
+  }
+  const usableDuration = Math.max(cues.length * 1.5, durationSeconds || cues.length * 4);
+  const cueDuration = usableDuration / cues.length;
+  return `WEBVTT\n\n${cues.map((text, index) => `${index + 1}\n${vttTime(index * cueDuration)} --> ${vttTime(Math.min(usableDuration, (index + 1) * cueDuration - 0.08))}\n${text}\n`).join("\n")}`;
+}
+
 function MediaViewer({
   asset,
+  introAsset,
+  transcript,
   lessonId,
   accessToken,
   onWatch,
 }: {
   asset: Asset;
+  introAsset?: Asset | null;
+  transcript: string;
   lessonId: string;
   accessToken: () => Promise<string>;
   onWatch: (percent: number) => void;
 }) {
-  const [source, setSource] = useState(() => asset.key.startsWith("r2:") ? "" : asset.key);
+  const [activeAsset, setActiveAsset] = useState(() => introAsset || asset);
+  const [playingIntro, setPlayingIntro] = useState(Boolean(introAsset));
+  const [source, setSource] = useState(() => (introAsset || asset).key.startsWith("r2:") ? "" : (introAsset || asset).key);
   const [error, setError] = useState("");
   const [renewal, setRenewal] = useState(0);
+  const [captionUrl, setCaptionUrl] = useState("");
   const lastWatchReport = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
-    if (!asset.key.startsWith("r2:")) {
+    setError("");
+    if (!activeAsset.key.startsWith("r2:")) {
+      setSource(activeAsset.key);
       return;
     }
+    setSource("");
     (async () => {
-      setError("");
       const response = await fetch("/api/media/playback", {
         method: "POST",
         headers: {
           "content-type": "application/json",
           authorization: `Bearer ${await accessToken()}`,
         },
-        body: JSON.stringify({ lessonId }),
+        body: JSON.stringify({ lessonId, assetId: activeAsset.id || undefined }),
       });
       const result = await response.json() as { url?: string; error?: string };
       if (!response.ok) {
@@ -121,15 +152,35 @@ function MediaViewer({
     return () => {
       cancelled = true;
     };
-  }, [accessToken, asset.key, lessonId, renewal]);
+  }, [accessToken, activeAsset.id, activeAsset.key, lessonId, renewal]);
+
+  useEffect(() => () => {
+    if (captionUrl) URL.revokeObjectURL(captionUrl);
+  }, [captionUrl]);
 
   function playbackFailed() {
-    if (asset.key.startsWith("r2:") && renewal < 1) {
+    if (activeAsset.key.startsWith("r2:") && renewal < 1) {
       setSource("");
       setRenewal(renewal + 1);
       return;
     }
     setError("This media could not be played.");
+  }
+
+  function prepareCaptions(event: SyntheticEvent<HTMLVideoElement>) {
+    if (playingIntro || !transcript.trim() || captionUrl) return;
+    const vtt = captionVtt(transcript, event.currentTarget.duration);
+    if (vtt) setCaptionUrl(URL.createObjectURL(new Blob([vtt], { type: "text/vtt" })));
+  }
+
+  function finishVideo() {
+    if (playingIntro) {
+      setPlayingIntro(false);
+      setActiveAsset(asset);
+      setRenewal(0);
+      return;
+    }
+    onWatch(100);
   }
 
   function reportVideoProgress(event: SyntheticEvent<HTMLVideoElement>) {
@@ -144,23 +195,24 @@ function MediaViewer({
 
   if (error) return <div className="media-placeholder"><p>{error}</p></div>;
   if (!source) return <div className="media-placeholder"><p>Loading lesson media…</p></div>;
-  if (asset.kind === "image") {
+  if (activeAsset.kind === "image") {
     return <figure className="lesson-image">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={source} alt={asset.altText || asset.filename} onError={playbackFailed} />
-      {asset.altText && <figcaption>{asset.altText}</figcaption>}
+      <img src={source} alt={activeAsset.altText || activeAsset.filename} onError={playbackFailed} />
+      {activeAsset.altText && <figcaption>{activeAsset.altText}</figcaption>}
     </figure>;
   }
-  if (asset.kind === "audio") {
+  if (activeAsset.kind === "audio") {
     return <div className="lesson-audio">
-      <b>{asset.filename}</b>
+      <b>{activeAsset.filename}</b>
       <audio controls controlsList="nodownload" preload="metadata" src={source} onError={playbackFailed}>
         Your browser does not support audio playback.
       </audio>
     </div>;
   }
-  if (asset.kind === "video") {
+  if (activeAsset.kind === "video") {
     return <div className="lesson-video">
+      {playingIntro && <p className="lesson-opening-label">Opening clip · the lesson begins next</p>}
       <video
         controls
         controlsList="nodownload"
@@ -168,12 +220,16 @@ function MediaViewer({
         playsInline
         preload="metadata"
         src={source}
-        onTimeUpdate={reportVideoProgress}
-        onEnded={() => onWatch(100)}
+        autoPlay={!playingIntro && Boolean(introAsset)}
+        onLoadedMetadata={prepareCaptions}
+        onTimeUpdate={playingIntro ? undefined : reportVideoProgress}
+        onEnded={finishVideo}
         onError={playbackFailed}
       >
+        {!playingIntro && captionUrl && <track default kind="captions" src={captionUrl} srcLang="en" label="English" />}
         Your browser does not support video playback.
       </video>
+      {!playingIntro && transcript.trim() && <p className="lesson-caption-note">CC captions available · select captions in the video controls</p>}
     </div>;
   }
   return null;
@@ -627,8 +683,10 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
         </div> : <>
         {lesson.primaryAsset
           ? <MediaViewer
-              key={`${lesson.id}:${lesson.primaryAsset.key}`}
+              key={`${lesson.id}:${lesson.introAsset?.key || "no-intro"}:${lesson.primaryAsset.key}`}
               asset={lesson.primaryAsset}
+              introAsset={lesson.introAsset}
+              transcript={lesson.transcript}
               lessonId={lesson.id}
               accessToken={token}
               onWatch={recordWatch}

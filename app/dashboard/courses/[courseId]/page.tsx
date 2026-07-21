@@ -50,6 +50,8 @@ type Lesson = {
   videoKey?: string;
   primaryAssetId?: string | null;
   primaryAsset?: Asset | null;
+  introAssetId?: string | null;
+  introAsset?: Asset | null;
   durationMinutes: number;
   isPreview: number | boolean;
   availableAfterDays: number;
@@ -758,6 +760,24 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     setMessage(saved ? successMessage : `${asset.filename} is safe in the media library, but could not be attached automatically.`);
   }
 
+  async function attachProducedIntro(asset: Asset, lesson: Lesson) {
+    const updatedLesson: Lesson = {
+      ...lesson,
+      introAssetId: asset.id,
+      introAsset: asset,
+    };
+    setCourse((current) => current ? {
+      ...current,
+      lessons: current.lessons.map((item) => item.id === lesson.id ? updatedLesson : item),
+    } : current);
+    setSelectedId(lesson.id);
+    setDirty((current) => current?.id === lesson.id ? null : current);
+    const saved = await persistLesson(updatedLesson);
+    setMessage(saved
+      ? "Branded intro created and placed before the lesson media. The teaching video was left untouched."
+      : `${asset.filename} is safe in the media library, but could not be attached as the intro automatically.`);
+  }
+
   async function startNarrationRecording() {
     if (!selected || mediaProduction) return;
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
@@ -835,7 +855,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       setMessage("Local video creation is not supported in this browser. Use Upload finished video instead.");
       return;
     }
-    if (selected.primaryAsset && !confirm("Replace this lesson’s current primary media with the new branded intro?")) return;
+    if (selected.introAsset && !confirm("Replace this lesson's existing opening clip with a new branded intro?")) return;
     const lesson = selected;
     const lessonNumber = course.lessons.findIndex((item) => item.id === lesson.id) + 1;
     const mimeType = supportedRecorderType(["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]);
@@ -876,7 +896,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       const extension = resolvedType === "video/mp4" ? "mp4" : "webm";
       const file = new File([blob], `${safeMediaFilename(lesson.title)}-northstar-intro.${extension}`, { type: resolvedType });
       const asset = await uploadFile(file);
-      if (asset) await attachProducedMedia(asset, lesson, "Branded cinematic intro created, protected, and attached to this lesson.");
+      if (asset) await attachProducedIntro(asset, lesson);
     } catch {
       setMessage("The branded intro could not be created in this browser. Upload a finished MP4 or WebM instead.");
     } finally {
@@ -1366,15 +1386,17 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               <textarea
                 value={selected.transcript || ""}
                 onChange={(event) => editLesson({ transcript: event.target.value })}
-                placeholder="Paste a readable transcript for video or audio learners. It will appear beneath the lesson."
+                placeholder="Paste a reviewed transcript. Video lessons use it for selectable captions and every learner can read it below the lesson."
               />
-              <small>Transcripts improve accessibility and make the lesson searchable.</small>
+              <small>{selected.primaryAsset?.kind === "video" && selected.transcript.trim()
+                ? "Ready: Northstar turns this transcript into selectable captions in the learner video player."
+                : "Add a reviewed transcript to improve accessibility, search and revision. Video transcripts become selectable captions automatically."}</small>
             </label>
 
             <section className="self-media-studio" id="media-production">
               <header>
-                <div><p className="sys-kicker">SELF-SERVICE MEDIA STUDIO</p><h2>Give this lesson a voice—or a cinematic opening.</h2></div>
-                <span>Created in your browser<br/>Protected in your academy</span>
+                <div><p className="sys-kicker">SELF-SERVICE MEDIA STUDIO</p><h2>Record, caption and open every lesson professionally.</h2></div>
+                <span>Core tools included<br/>AI generation optional</span>
               </header>
               <div className="self-media-grid">
                 <article className="narration-production-card">
@@ -1398,23 +1420,45 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                   {selected.transcript.trim() && <button className="advanced-media-action" type="button" disabled={studioBusy || Boolean(mediaProduction)} onClick={generateStudioNarration}>{studioBusy ? "AI narrator is working…" : "Use a connected AI narrator →"}</button>}
                 </article>
 
+                <article className="caption-production-card">
+                  <div className="caption-preview" aria-hidden="true">
+                    <span>CC</span>
+                    <p>{selected.transcript.trim()
+                      ? selected.transcript.trim().split(/\s+/).slice(0, 15).join(" ") + (selected.transcript.trim().split(/\s+/).length > 15 ? "…" : "")
+                      : "Add a reviewed transcript to create learner captions."}</p>
+                  </div>
+                  <p className="sys-kicker">CAPTIONS</p>
+                  <h3>Make the lesson easier to follow.</h3>
+                  <p>Northstar converts the reviewed transcript into selectable English captions and keeps the full transcript available below the lesson.</p>
+                  <div className="media-production-status">
+                    {selected.primaryAsset?.kind !== "video" ? <><b>Add lesson video</b><span>Captions need video</span></>
+                      : selected.transcript.trim() ? <><b>Captions ready</b><span>Included</span></>
+                      : <><b>Transcript needed</b><span>Paste it above</span></>}
+                  </div>
+                  <div className="media-production-actions">
+                    <Link className="production-link" href={`/learn/${course.id}?preview=1`}>Preview learner captions</Link>
+                  </div>
+                </article>
+
                 <article className="cinematic-production-card">
                   <div className="cinematic-preview" aria-hidden="true"><span>✦ NORTHSTARLABS</span><b>{selected.title}</b><i /></div>
                   <p className="sys-kicker">CINEMATIC INTRO</p>
                   <h3>Generate a branded opening clip.</h3>
-                  <p>Create a polished six-second 16:9 lesson title animation using the course and lesson names. No model, credits or external key required.</p>
+                  <p>Create a polished six-second 16:9 title animation that plays before the main lesson media. No model, credits or external key required.</p>
                   <div className="media-production-status" aria-live="polite">
                     {mediaProduction === "cinematic" ? <><b>Rendering video</b><span>About 6 seconds…</span></>
+                      : selected.introAsset ? <><b>Opening attached</b><span>Main media preserved</span></>
                       : <><b>1280 × 720 WebM</b><span>Northstar branded</span></>}
                   </div>
                   <div className="media-production-actions">
-                    <button className="production-primary" type="button" disabled={Boolean(mediaProduction)} onClick={createCinematicIntro}>{mediaProduction === "cinematic" ? "Creating intro…" : "✦ Create branded intro"}</button>
-                    <button type="button" disabled={Boolean(mediaProduction)} onClick={() => videoInput.current?.click()}>Upload video</button>
+                    <button className="production-primary" type="button" disabled={Boolean(mediaProduction)} onClick={createCinematicIntro}>{mediaProduction === "cinematic" ? "Creating intro…" : selected.introAsset ? "Replace branded intro" : "Create branded intro"}</button>
+                    <button type="button" disabled={Boolean(mediaProduction)} onClick={() => videoInput.current?.click()}>Upload main video</button>
                   </div>
+                  {selected.introAsset && <button className="advanced-media-action" type="button" onClick={() => editLesson({ introAssetId: null, introAsset: null })}>Remove opening clip</button>}
                   <Link className="advanced-media-action" href="/dashboard/integrations#creator-studio-providers">Advanced AI production options →</Link>
                 </article>
               </div>
-              <footer><b>Nothing is published automatically.</b><span>Review the result in the lesson preview, add a transcript or captions, and publish only when it is ready.</span></footer>
+              <footer><b>Nothing is published automatically.</b><span>Preview the complete sequence as a learner. The opening, main media and captions remain separate so one can never destroy another.</span></footer>
               <input
                 hidden
                 ref={narrationInput}

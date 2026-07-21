@@ -57,17 +57,23 @@ export async function GET(
     env.DB.prepare(
       `SELECT l.id,l.section_id AS sectionId,l.title,l.lesson_type AS lessonType,
         l.content,l.content_format AS contentFormat,l.video_key AS videoKey,
-        l.primary_asset_id AS primaryAssetId,l.duration_minutes AS durationMinutes,
+        l.primary_asset_id AS primaryAssetId,l.intro_asset_id AS introAssetId,
+        l.duration_minutes AS durationMinutes,
         l.is_preview AS isPreview,l.available_after_days AS availableAfterDays,
         l.required_watch_percent AS requiredWatchPercent,l.transcript,
         l.position,l.updated_at AS updatedAt,
         ma.filename AS primaryFilename,ma.content_type AS primaryContentType,
         ma.size_bytes AS primarySizeBytes,ma.kind AS primaryKind,
         ma.alt_text AS primaryAltText,ma.created_at AS primaryCreatedAt,
-        ma.updated_at AS primaryUpdatedAt
+        ma.updated_at AS primaryUpdatedAt,
+        ima.filename AS introFilename,ima.content_type AS introContentType,
+        ima.size_bytes AS introSizeBytes,ima.kind AS introKind,
+        ima.alt_text AS introAltText,ima.created_at AS introCreatedAt,
+        ima.updated_at AS introUpdatedAt
        FROM lessons l
        LEFT JOIN course_sections cs ON cs.id=l.section_id
        LEFT JOIN media_assets ma ON ma.id=l.primary_asset_id
+       LEFT JOIN media_assets ima ON ima.id=l.intro_asset_id
        WHERE l.course_id=?
        ORDER BY COALESCE(cs.position,0),l.position,l.id`,
     ).bind(courseId).all(),
@@ -156,9 +162,22 @@ export async function GET(
             updatedAt: row.primaryUpdatedAt,
           }
         : null;
+      const introAsset = row.introAssetId
+        ? {
+            id: row.introAssetId,
+            filename: row.introFilename,
+            contentType: row.introContentType,
+            sizeBytes: row.introSizeBytes,
+            kind: row.introKind,
+            altText: row.introAltText,
+            createdAt: row.introCreatedAt,
+            updatedAt: row.introUpdatedAt,
+          }
+        : null;
       return {
         ...lesson,
         primaryAsset,
+        introAsset,
         resources: resources.get(String(row.id)) || [],
         quiz: quizzes.get(String(row.id)) || null,
       };

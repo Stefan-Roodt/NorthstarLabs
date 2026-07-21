@@ -1,0 +1,1 @@
+ALTER TABLE `lessons` ADD `intro_asset_id` text;

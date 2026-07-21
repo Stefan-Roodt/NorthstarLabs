@@ -20,8 +20,9 @@ export async function POST(request: Request) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await request.json().catch(() => null) as { lessonId?: string } | null;
+  const body = await request.json().catch(() => null) as { lessonId?: string; assetId?: string } | null;
   const lessonId = body?.lessonId?.trim() || "";
+  const assetId = body?.assetId?.trim() || "";
   if (!lessonId) return Response.json({ error: "Lesson required." }, { status: 400 });
   const gate = await getLessonGate(env.DB, user.id, lessonId);
   if (!gate) {
@@ -33,13 +34,15 @@ export async function POST(request: Request) {
 
   const asset = await env.DB.prepare(
     `SELECT l.id AS lessonId,l.course_id AS courseId,
-      COALESCE(ma.key,l.video_key) AS assetKey,
-      COALESCE(ma.filename,'Lesson video') AS filename,
-      COALESCE(ma.content_type,'video/mp4') AS contentType,
-      COALESCE(ma.kind,'video') AS kind
+      CASE WHEN ?<>'' THEN requested.key ELSE COALESCE(primary_media.key,l.video_key) END AS assetKey,
+      CASE WHEN ?<>'' THEN requested.filename ELSE COALESCE(primary_media.filename,'Lesson video') END AS filename,
+      CASE WHEN ?<>'' THEN requested.content_type ELSE COALESCE(primary_media.content_type,'video/mp4') END AS contentType,
+      CASE WHEN ?<>'' THEN requested.kind ELSE COALESCE(primary_media.kind,'video') END AS kind
      FROM lessons l
      JOIN courses c ON c.id=l.course_id
-     LEFT JOIN media_assets ma ON ma.id=l.primary_asset_id
+     LEFT JOIN media_assets primary_media ON primary_media.id=l.primary_asset_id
+     LEFT JOIN media_assets requested ON requested.id=?
+       AND requested.id IN (l.primary_asset_id,l.intro_asset_id)
      LEFT JOIN enrollments e ON e.course_id=l.course_id
        AND e.user_id=? AND e.status='active'
      LEFT JOIN school_members sm ON sm.school_id=c.school_id
@@ -47,7 +50,7 @@ export async function POST(request: Request) {
        AND sm.role IN ('owner','admin','instructor')
      WHERE l.id=? AND (e.id IS NOT NULL OR sm.id IS NOT NULL)
      LIMIT 1`,
-  ).bind(user.id, user.id, lessonId).first<PlaybackAsset>();
+  ).bind(assetId, assetId, assetId, assetId, assetId, user.id, user.id, lessonId).first<PlaybackAsset>();
 
   if (!asset) {
     return Response.json({ error: "You do not have access to this lesson." }, { status: 403 });
