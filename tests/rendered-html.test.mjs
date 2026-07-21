@@ -639,6 +639,62 @@ test("ships bundles, memberships, live learning, mobile installation, and integr
   assert.match(storefront, /PROGRAMMES & MEMBERSHIPS/);
 });
 
+test("connects Zoom, Mailchimp, Zapier, and consent-based Google Analytics", async () => {
+  const [
+    schema,
+    migration,
+    integrationsApi,
+    provider,
+    integrationEvents,
+    liveApi,
+    liveStudio,
+    integrationStudio,
+    analyticsApi,
+    analyticsClient,
+    layout,
+    academyExport,
+    privacy,
+  ] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0044_native_provider_integrations.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/integrations/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/provider-integrations.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/integrations.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/live-sessions/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/live/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/integrations/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/analytics-config/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/google-analytics.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/academy-export.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/legal/privacy/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(schema, /settingsJson: text\("settings_json"\)/);
+  assert.match(schema, /credentialsJson: text\("credentials_json"\)/);
+  assert.match(migration, /ALTER TABLE `integrations` ADD `settings_json`/);
+  assert.match(migration, /ALTER TABLE `integrations` ADD `credentials_json`/);
+  assert.match(integrationsApi, /connect_provider/);
+  assert.match(integrationsApi, /test_provider/);
+  assert.match(integrationsApi, /zoom.*mailchimp.*zapier.*google_analytics/s);
+  assert.match(provider, /AES-GCM/);
+  assert.match(provider, /grant_type=account_credentials/);
+  assert.match(provider, /\/meetings/);
+  assert.match(provider, /status: "pending"/);
+  assert.match(integrationEvents, /provider IN \('webhook','zapier'\)/);
+  assert.match(integrationEvents, /syncMailchimpLearner/);
+  assert.match(liveApi, /createZoomMeeting/);
+  assert.match(liveStudio, /Leave this blank to create the Zoom meeting automatically/);
+  for (const label of ["Zoom", "Mailchimp", "Zapier", "Google Analytics"]) {
+    assert.match(integrationStudio, new RegExp(label));
+  }
+  assert.match(analyticsApi, /provider='google_analytics'/);
+  assert.match(analyticsClient, /northstar_analytics_consent/);
+  assert.match(analyticsClient, /send_page_view: false/);
+  assert.match(layout, /GoogleAnalytics/);
+  assert.doesNotMatch(academyExport, /credentials_json/);
+  assert.match(privacy, /pending subscription/);
+});
+
 test("guides creators, learners, and academy visitors to their next useful action", async () => {
   const [dashboard, learnerHome, storefront, styles] = await Promise.all([
     readFile(new URL("../app/dashboard/page.tsx", import.meta.url), "utf8"),

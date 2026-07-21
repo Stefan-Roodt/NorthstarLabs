@@ -10,6 +10,7 @@ import {
   requireCreatorSchool,
 } from "../../../lib/school-access";
 import { requireApiUser } from "../../../lib/server-auth";
+import { createZoomMeeting } from "../../../lib/provider-integrations";
 
 const sessionColumns = `ls.id,ls.school_id AS schoolId,
   ls.product_id AS productId,ls.course_id AS courseId,ls.host_id AS hostId,
@@ -179,13 +180,16 @@ export async function POST(request: Request) {
   const school = await requireCreatorSchool(user, requestedSchoolId(request));
   if (!school) return Response.json({ error: "Creator access required." }, { status: 403 });
   const title = typeof body.title === "string" ? body.title.trim().slice(0, 120) : "";
-  const meetingUrl = validUrl(body.meetingUrl);
+  const provider = ["zoom", "google_meet", "microsoft_teams", "other"].includes(String(body.meetingProvider))
+    ? String(body.meetingProvider)
+    : "other";
+  let meetingUrl = validUrl(body.meetingUrl);
   const startsAt = Number(body.startsAt);
   const endsAt = Number(body.endsAt);
-  if (title.length < 2 || !meetingUrl || !Number.isFinite(startsAt) ||
+  if (title.length < 2 || !Number.isFinite(startsAt) ||
     !Number.isFinite(endsAt) || endsAt <= startsAt) {
     return Response.json(
-      { error: "Add a title, secure meeting link, start time, and later end time." },
+      { error: "Add a title, start time, and later end time." },
       { status: 400 },
     );
   }
@@ -209,12 +213,33 @@ export async function POST(request: Request) {
     ).bind(courseId, school.id).first();
     if (!course) return Response.json({ error: "Course not found." }, { status: 404 });
   }
+  const timezone = typeof body.timezone === "string"
+    ? body.timezone.slice(0, 80)
+    : "Africa/Johannesburg";
+  if (!meetingUrl && provider === "zoom") {
+    try {
+      meetingUrl = await createZoomMeeting(env.DB, school.id, {
+        title,
+        description: typeof body.description === "string" ? body.description.trim().slice(0, 1_200) : "",
+        startsAt,
+        endsAt,
+        timezone,
+      });
+    } catch (error) {
+      return Response.json({
+        error: error instanceof Error ? error.message : "Zoom could not create this meeting.",
+      }, { status: 400 });
+    }
+  }
+  if (!meetingUrl) {
+    return Response.json(
+      { error: "Paste a secure meeting link, or connect Zoom so Northstar can create one." },
+      { status: 400 },
+    );
+  }
   const id = crypto.randomUUID();
   const now = Date.now();
   const capacity = Math.max(0, Math.min(Math.round(Number(body.capacity || 0)), 100_000));
-  const provider = ["zoom", "google_meet", "microsoft_teams", "other"].includes(String(body.meetingProvider))
-    ? String(body.meetingProvider)
-    : "other";
   await env.DB.prepare(
     `INSERT INTO live_sessions
       (id,school_id,product_id,course_id,host_id,title,description,starts_at,
@@ -231,7 +256,7 @@ export async function POST(request: Request) {
     typeof body.description === "string" ? body.description.trim().slice(0, 1_200) : "",
     startsAt,
     endsAt,
-    typeof body.timezone === "string" ? body.timezone.slice(0, 80) : "Africa/Johannesburg",
+    timezone,
     provider,
     meetingUrl,
     capacity,

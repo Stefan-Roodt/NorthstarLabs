@@ -10,6 +10,7 @@ type Integration = {
   name: string;
   endpointUrl: string;
   eventTypes: string[];
+  settings: Record<string, string>;
   status: string;
   lastDeliveryAt: number | null;
   lastDeliveryStatus: string | null;
@@ -60,6 +61,10 @@ export default function IntegrationsPage() {
   const [revealedSecret, setRevealedSecret] = useState("");
   const [message, setMessage] = useState("Loading integrations...");
   const [busy, setBusy] = useState("");
+  const [zoom, setZoom] = useState({ accountId: "", clientId: "", clientSecret: "", hostEmail: "" });
+  const [mailchimp, setMailchimp] = useState({ apiKey: "", audienceId: "", tag: "Northstar learner" });
+  const [zapierUrl, setZapierUrl] = useState("");
+  const [measurementId, setMeasurementId] = useState("");
 
   const token = useCallback(async () => {
     return (await supabase?.auth.getSession())?.data.session?.access_token || "";
@@ -175,7 +180,39 @@ export default function IntegrationsPage() {
     setBusy(integration.id);
     const response = await authed(`/api/integrations?id=${encodeURIComponent(integration.id)}`, { method: "DELETE" });
     const result = await response.json();
-    setMessage(response.ok ? "Webhook deleted." : result.error || "The webhook could not be deleted.");
+    setMessage(response.ok ? "Connection removed." : result.error || "The connection could not be removed.");
+    await load();
+    setBusy("");
+  }
+
+  async function connectProvider(provider: string, values: Record<string, unknown>) {
+    setBusy(provider);
+    const response = await authed("/api/integrations", {
+      method: "POST",
+      body: JSON.stringify({ action: "connect_provider", provider, ...values }),
+    });
+    const result = await response.json();
+    setMessage(response.ok
+      ? `${provider.replaceAll("_", " ")} connected: ${result.connectedLabel}.`
+      : result.error || "The provider could not be connected.");
+    if (response.ok) {
+      if (provider === "zoom") setZoom({ accountId: "", clientId: "", clientSecret: "", hostEmail: "" });
+      if (provider === "mailchimp") setMailchimp({ apiKey: "", audienceId: "", tag: "Northstar learner" });
+      if (provider === "zapier") setZapierUrl("");
+      if (provider === "google_analytics") setMeasurementId("");
+      await load();
+    }
+    setBusy("");
+  }
+
+  async function testProvider(integration: Integration) {
+    setBusy(integration.id);
+    const response = await authed("/api/integrations", {
+      method: "POST",
+      body: JSON.stringify({ action: "test_provider", integrationId: integration.id }),
+    });
+    const result = await response.json();
+    setMessage(response.ok ? result.label : result.error || "The connection test failed.");
     await load();
     setBusy("");
   }
@@ -194,15 +231,57 @@ export default function IntegrationsPage() {
     </header>
     <section className="integration-hero">
       <div><p className="sys-kicker">MOBILE & INTEGRATIONS</p><h1>Connect learning to the rest of the work.</h1><p>Calendar downloads, meeting links and installable mobile access work immediately. Signed webhooks connect NorthStarLabs events to automation tools, CRMs and your own systems.</p></div>
-      <span><strong>{data.integrations.filter((item) => item.status === "active").length}</strong> active webhooks</span>
+      <span><strong>{data.integrations.filter((item) => item.status === "active").length}</strong> active connections</span>
     </section>
 
     <section className="integration-grid">
       {message && <div className="notice integration-notice" role="status">{message}</div>}
       <section className="native-integrations">
         <article className="panel native-integration-card"><span>01</span><div><p className="sys-kicker">CALENDAR</p><h2>Apple, Google & Outlook</h2><p>Every eligible live session can be downloaded as a standards-based calendar file with its secure meeting link.</p><b>READY</b></div></article>
-        <article className="panel native-integration-card"><span>02</span><div><p className="sys-kicker">MEETINGS</p><h2>Zoom, Meet & Teams</h2><p>Creators attach their secure provider link. NorthStarLabs reveals it only to staff and eligible signed-in learners.</p><b>READY</b></div></article>
+        <article className="panel native-integration-card"><span>02</span><div><p className="sys-kicker">AUTOMATION</p><h2>Signed event delivery</h2><p>Northstar can send verified product, learner and live-session activity to compatible HTTPS endpoints.</p><b>READY</b></div></article>
         <article className="panel native-integration-card"><span>03</span><div><p className="sys-kicker">MOBILE</p><h2>Installable learning app</h2><p>Phones and tablets can install NorthStarLabs from the browser, launch full-screen and keep the learning shell available during brief network interruptions.</p><b>READY</b></div></article>
+      </section>
+
+      <section className="provider-connections" id="provider-connections">
+        <div className="product-section-heading"><span>PROVIDERS</span><div><h2>Connect the services you already use</h2><p>Each connection is academy-specific. Secrets are encrypted, never shown again, and excluded from exports.</p></div></div>
+        <div className="provider-connection-grid">
+          <article className="panel provider-connection-card">
+            <div className="provider-card-heading"><span>Z</span><div><p className="sys-kicker">LIVE LEARNING</p><h3>Zoom</h3></div>{providerStatus(data.integrations, "zoom")}</div>
+            <p>Create scheduled Zoom meetings directly from Live Learning. A manually pasted meeting URL remains available as a fallback.</p>
+            <label>Account ID<input value={zoom.accountId} onChange={(event) => setZoom({ ...zoom, accountId: event.target.value })} /></label>
+            <label>Client ID<input value={zoom.clientId} onChange={(event) => setZoom({ ...zoom, clientId: event.target.value })} /></label>
+            <label>Client secret<input type="password" autoComplete="new-password" value={zoom.clientSecret} onChange={(event) => setZoom({ ...zoom, clientSecret: event.target.value })} /></label>
+            <label>Host email <small>Optional; defaults to the Zoom account owner.</small><input type="email" value={zoom.hostEmail} onChange={(event) => setZoom({ ...zoom, hostEmail: event.target.value })} /></label>
+            <ProviderActions provider="zoom" integrations={data.integrations} busy={busy} connectDisabled={!zoom.accountId || !zoom.clientId || !zoom.clientSecret} onConnect={() => connectProvider("zoom", zoom)} onTest={testProvider} onDelete={deleteWebhook} />
+          </article>
+
+          <article className="panel provider-connection-card">
+            <div className="provider-card-heading"><span>M</span><div><p className="sys-kicker">AUDIENCE</p><h3>Mailchimp</h3></div>{providerStatus(data.integrations, "mailchimp")}</div>
+            <p>Send newly granted learners to one Mailchimp audience as pending contacts. Mailchimp asks them to confirm before marketing starts.</p>
+            <label>API key<input type="password" autoComplete="new-password" value={mailchimp.apiKey} onChange={(event) => setMailchimp({ ...mailchimp, apiKey: event.target.value })} /></label>
+            <label>Audience ID<input value={mailchimp.audienceId} onChange={(event) => setMailchimp({ ...mailchimp, audienceId: event.target.value })} /></label>
+            <label>Tag<input value={mailchimp.tag} onChange={(event) => setMailchimp({ ...mailchimp, tag: event.target.value })} /></label>
+            <ProviderActions provider="mailchimp" integrations={data.integrations} busy={busy} connectDisabled={!mailchimp.apiKey || !mailchimp.audienceId} onConnect={() => connectProvider("mailchimp", mailchimp)} onTest={testProvider} onDelete={deleteWebhook} />
+          </article>
+
+          <article className="panel provider-connection-card">
+            <div className="provider-card-heading"><span>↯</span><div><p className="sys-kicker">NO-CODE AUTOMATION</p><h3>Zapier</h3></div>{providerStatus(data.integrations, "zapier")}</div>
+            <p>Paste a Webhooks by Zapier Catch Hook URL, choose events, and test the Zap before relying on it.</p>
+            <label>Catch Hook URL<input type="url" value={zapierUrl} onChange={(event) => setZapierUrl(event.target.value)} placeholder="https://hooks.zapier.com/hooks/catch/..." /></label>
+            <fieldset className="webhook-events compact"><legend>Send these events</legend>
+              <label><input type="checkbox" checked={selectedEvents.includes("*")} onChange={() => toggleEvent("*")} /><span><b>All events</b></span></label>
+              {Object.entries(eventLabels).map(([eventType, label]) => <label key={eventType}><input type="checkbox" checked={selectedEvents.includes(eventType)} onChange={() => toggleEvent(eventType)} /><span><b>{label}</b></span></label>)}
+            </fieldset>
+            <ProviderActions provider="zapier" integrations={data.integrations} busy={busy} connectDisabled={!zapierUrl || selectedEvents.length === 0} onConnect={() => connectProvider("zapier", { endpointUrl: zapierUrl, eventTypes: selectedEvents })} onTest={testProvider} onDelete={deleteWebhook} />
+          </article>
+
+          <article className="panel provider-connection-card">
+            <div className="provider-card-heading"><span>G</span><div><p className="sys-kicker">MEASUREMENT</p><h3>Google Analytics</h3></div>{providerStatus(data.integrations, "google_analytics")}</div>
+            <p>Measure academy and course page usage only after the visitor allows analytics. Private learning data is excluded.</p>
+            <label>Google tag ID<input value={measurementId} onChange={(event) => setMeasurementId(event.target.value.toUpperCase())} placeholder="G-XXXXXXXXXX" /></label>
+            <ProviderActions provider="google_analytics" integrations={data.integrations} busy={busy} connectDisabled={!measurementId} onConnect={() => connectProvider("google_analytics", { measurementId })} onTest={testProvider} onDelete={deleteWebhook} />
+          </article>
+        </div>
       </section>
 
       <section className="panel creator-provider-panel" id="creator-studio-providers">
@@ -236,7 +315,7 @@ export default function IntegrationsPage() {
 
       <section className="webhook-list">
         <div className="product-section-heading"><span>CONNECTED</span><div><h2>Your webhooks</h2><p>Pause, test or remove endpoints without exposing their secret.</p></div></div>
-        {data.integrations.length ? data.integrations.map((integration) => <article className="panel webhook-card" key={integration.id}>
+        {data.integrations.filter((item) => item.provider === "webhook").length ? data.integrations.filter((item) => item.provider === "webhook").map((integration) => <article className="panel webhook-card" key={integration.id}>
           <div><span className={`status ${integration.status}`}>{integration.status}</span><h3>{integration.name}</h3><p>{integration.endpointUrl}</p></div>
           <ul>{integration.eventTypes.map((eventType) => <li key={eventType}>{eventType === "*" ? "All events" : eventLabels[eventType] || eventType}</li>)}</ul>
           <small>{integration.lastDeliveryAt ? `Last delivery ${new Date(integration.lastDeliveryAt).toLocaleString("en-ZA")} · ${integration.lastDeliveryStatus}` : "No deliveries yet"}</small>
@@ -250,4 +329,33 @@ export default function IntegrationsPage() {
       </section>}
     </section>
   </main>;
+}
+
+function providerStatus(integrations: Integration[], provider: string) {
+  const integration = integrations.find((item) => item.provider === provider);
+  return <b className={`provider-status ${integration?.status || "available"}`}>{integration?.status || "available"}</b>;
+}
+
+function ProviderActions({
+  provider,
+  integrations,
+  busy,
+  connectDisabled,
+  onConnect,
+  onTest,
+  onDelete,
+}: {
+  provider: string;
+  integrations: Integration[];
+  busy: string;
+  connectDisabled: boolean;
+  onConnect: () => void;
+  onTest: (integration: Integration) => void;
+  onDelete: (integration: Integration) => void;
+}) {
+  const integration = integrations.find((item) => item.provider === provider);
+  return <div className="provider-actions">
+    <button className="sys-primary" type="button" disabled={busy === provider || connectDisabled} onClick={onConnect}>{integration ? "Replace connection" : "Connect"}</button>
+    {integration && <><button type="button" disabled={busy === integration.id || integration.status !== "active"} onClick={() => onTest(integration)}>Test</button><button type="button" className="danger-text" disabled={busy === integration.id} onClick={() => onDelete(integration)}>Disconnect</button></>}
+  </div>;
 }

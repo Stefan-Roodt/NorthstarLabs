@@ -129,6 +129,7 @@ export async function POST(request: Request) {
     productId: product.id,
     productName: product.name,
     userId: user.id,
+    email: user.email,
     source: "self_service",
   });
   return Response.json({

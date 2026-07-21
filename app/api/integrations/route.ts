@@ -6,6 +6,13 @@ import {
   requireCreatorSchool,
 } from "../../../lib/school-access";
 import { requireApiUser } from "../../../lib/server-auth";
+import {
+  decryptIntegrationCredentials,
+  encryptIntegrationCredentials,
+  mailchimpSettings,
+  testMailchimpConnection,
+  testZoomConnection,
+} from "../../../lib/provider-integrations";
 
 const supportedEvents = new Set([
   "*",
@@ -78,6 +85,23 @@ function signingSecret() {
     .join("")}`;
 }
 
+function providerSettings(value: unknown) {
+  try {
+    const parsed = JSON.parse(String(value || "{}"));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function zapierUrl(value: unknown) {
+  const endpoint = webhookUrl(value);
+  if (!endpoint) return null;
+  const parsed = new URL(endpoint);
+  if (!["hooks.zapier.com", "zapier.com"].includes(parsed.hostname.toLowerCase())) return null;
+  return parsed.pathname.includes("/hooks/catch/") ? endpoint : null;
+}
+
 export async function GET(request: Request) {
   const context = await creatorContext(request);
   if ("error" in context) return context.error;
@@ -85,6 +109,7 @@ export async function GET(request: Request) {
     env.DB.prepare(
       `SELECT id,provider,name,endpoint_url AS endpointUrl,
         event_types_json AS eventTypesJson,status,
+        settings_json AS settingsJson,
         last_delivery_at AS lastDeliveryAt,
         last_delivery_status AS lastDeliveryStatus,
         created_at AS createdAt,updated_at AS updatedAt
@@ -101,11 +126,16 @@ export async function GET(request: Request) {
     ).bind(context.school.id).all(),
   ]);
   return Response.json({
-    integrations: integrations.results.map((integration) => ({
-      ...integration,
-      eventTypes: JSON.parse(String(integration.eventTypesJson || "[]")),
-      eventTypesJson: undefined,
-    })),
+    integrations: integrations.results.map((integration: Record<string, unknown>) => {
+      const parsedEvents = JSON.parse(String(integration.eventTypesJson || "[]"));
+      return {
+        ...integration,
+        eventTypes: Array.isArray(parsedEvents) ? parsedEvents : [],
+        settings: providerSettings(integration.settingsJson),
+        eventTypesJson: undefined,
+        settingsJson: undefined,
+      };
+    }),
     deliveries: deliveries.results,
     supportedEvents: [...supportedEvents],
   });
@@ -132,6 +162,171 @@ export async function POST(request: Request) {
       String(body.integrationId),
     );
     return Response.json({ tested: true, deliveries });
+  }
+
+  if (body.action === "connect_provider") {
+    const provider = String(body.provider || "");
+    if (!["zoom", "mailchimp", "zapier", "google_analytics"].includes(provider)) {
+      return Response.json({ error: "Unsupported provider." }, { status: 400 });
+    }
+    let name = "";
+    let endpointUrl: string | null = null;
+    let events: string[] = [];
+    let secret: string | null = null;
+    let settings: Record<string, string> = {};
+    let credentials: string | null = null;
+    let connectedLabel = "Connection verified";
+    try {
+      if (provider === "zoom") {
+        const zoomCredentials = {
+          accountId: String(body.accountId || "").trim(),
+          clientId: String(body.clientId || "").trim(),
+          clientSecret: String(body.clientSecret || "").trim(),
+        };
+        settings = { hostEmail: String(body.hostEmail || "").trim().slice(0, 200) };
+        if (!zoomCredentials.accountId || !zoomCredentials.clientId || !zoomCredentials.clientSecret) {
+          throw new Error("Add the Zoom account ID, client ID and client secret.");
+        }
+        connectedLabel = await testZoomConnection(zoomCredentials, settings as { hostEmail: string });
+        credentials = await encryptIntegrationCredentials(zoomCredentials);
+        name = "Zoom meetings";
+      } else if (provider === "mailchimp") {
+        const configured = mailchimpSettings(
+          String(body.apiKey || ""),
+          String(body.audienceId || ""),
+          String(body.tag || ""),
+        );
+        connectedLabel = await testMailchimpConnection(configured.credentials, configured.settings);
+        credentials = await encryptIntegrationCredentials(configured.credentials);
+        settings = configured.settings;
+        events = ["entitlement.granted"];
+        name = "Mailchimp audience";
+      } else if (provider === "zapier") {
+        endpointUrl = zapierUrl(body.endpointUrl);
+        if (!endpointUrl) throw new Error("Paste a valid Webhooks by Zapier Catch Hook URL.");
+        events = eventTypes(body.eventTypes);
+        secret = signingSecret();
+        name = "Zapier automation";
+      } else {
+        const measurementId = String(body.measurementId || "").trim().toUpperCase();
+        if (!/^(G|GT)-[A-Z0-9]+$/.test(measurementId)) {
+          throw new Error("Add a valid Google tag ID such as G-XXXXXXXXXX.");
+        }
+        settings = { measurementId };
+        connectedLabel = measurementId;
+        name = "Google Analytics";
+      }
+    } catch (error) {
+      return Response.json({
+        error: error instanceof Error ? error.message : "The provider could not be connected.",
+      }, { status: 400 });
+    }
+
+    const existing = await env.DB.prepare(
+      "SELECT id FROM integrations WHERE school_id=? AND provider=? ORDER BY updated_at DESC LIMIT 1",
+    ).bind(context.school.id, provider).first<{ id: string }>();
+    const id = existing?.id || crypto.randomUUID();
+    const now = Date.now();
+    if (existing) {
+      await env.DB.prepare(
+        `UPDATE integrations SET name=?,endpoint_url=?,event_types_json=?,signing_secret=?,
+          settings_json=?,credentials_json=?,status='active',last_delivery_at=?,
+          last_delivery_status='connected',updated_at=? WHERE id=?`,
+      ).bind(
+        name,
+        endpointUrl,
+        JSON.stringify(events),
+        secret,
+        JSON.stringify(settings),
+        credentials,
+        now,
+        now,
+        id,
+      ).run();
+    } else {
+      await env.DB.prepare(
+        `INSERT INTO integrations
+          (id,school_id,created_by,provider,name,endpoint_url,event_types_json,
+           signing_secret,settings_json,credentials_json,status,last_delivery_at,
+           last_delivery_status,created_at,updated_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,'active',?,'connected',?,?)`,
+      ).bind(
+        id,
+        context.school.id,
+        context.user.id,
+        provider,
+        name,
+        endpointUrl,
+        JSON.stringify(events),
+        secret,
+        JSON.stringify(settings),
+        credentials,
+        now,
+        now,
+        now,
+      ).run();
+    }
+    await writeAuditLog({
+      actorId: context.user.id,
+      schoolId: context.school.id,
+      action: `integration.${provider}.connect`,
+      targetType: "integration",
+      targetId: id,
+      detail: { provider, connectedLabel },
+    });
+    return Response.json({ connected: true, id, provider, connectedLabel });
+  }
+
+  if (body.action === "test_provider") {
+    const integration = await env.DB.prepare(
+      `SELECT id,provider,endpoint_url AS endpointUrl,event_types_json AS eventTypesJson,
+        credentials_json AS credentialsJson,settings_json AS settingsJson
+       FROM integrations WHERE id=? AND school_id=? AND status='active'`,
+    ).bind(String(body.integrationId || ""), context.school.id).first<{
+      id: string;
+      provider: string;
+      endpointUrl: string | null;
+      eventTypesJson: string;
+      credentialsJson: string | null;
+      settingsJson: string;
+    }>();
+    if (!integration) return Response.json({ error: "Connection not found." }, { status: 404 });
+    try {
+      let label = "Configuration is valid";
+      if (integration.provider === "zoom") {
+        label = await testZoomConnection(
+          await decryptIntegrationCredentials(integration.credentialsJson),
+          providerSettings(integration.settingsJson) as { hostEmail: string },
+        );
+      } else if (integration.provider === "mailchimp") {
+        label = await testMailchimpConnection(
+          await decryptIntegrationCredentials(integration.credentialsJson),
+          providerSettings(integration.settingsJson) as {
+            audienceId: string; dataCenter: string; tag: string;
+          },
+        );
+      } else if (integration.provider === "zapier") {
+        const deliveries = await emitIntegrationEvent(
+          env.DB,
+          context.school.id,
+          "integration.test",
+          { schoolId: context.school.id, schoolName: context.school.name },
+          integration.id,
+        );
+        if (!deliveries.some((delivery: { status: string }) => delivery.status === "delivered")) {
+          throw new Error("Zapier did not accept the test. Make sure the Zap is listening or switched on.");
+        }
+        label = "Test event delivered to Zapier";
+      }
+      await env.DB.prepare(
+        "UPDATE integrations SET last_delivery_at=?,last_delivery_status='connected',updated_at=? WHERE id=?",
+      ).bind(Date.now(), Date.now(), integration.id).run();
+      return Response.json({ tested: true, label });
+    } catch (error) {
+      return Response.json({
+        error: error instanceof Error ? error.message : "The connection test failed.",
+      }, { status: 400 });
+    }
   }
 
   const endpointUrl = webhookUrl(body.endpointUrl);
@@ -190,10 +385,11 @@ export async function PATCH(request: Request) {
   if ("error" in context) return context.error;
   const body = await request.json() as Record<string, unknown>;
   const integration = await env.DB.prepare(
-    `SELECT id,name,endpoint_url AS endpointUrl,event_types_json AS eventTypesJson,
+    `SELECT id,provider,name,endpoint_url AS endpointUrl,event_types_json AS eventTypesJson,
       status FROM integrations WHERE id=? AND school_id=?`,
   ).bind(String(body.id || ""), context.school.id).first<{
     id: string;
+    provider: string;
     name: string;
     endpointUrl: string | null;
     eventTypesJson: string;
@@ -203,16 +399,19 @@ export async function PATCH(request: Request) {
   const status = ["active", "paused"].includes(String(body.status))
     ? String(body.status)
     : integration.status;
-  const endpointUrl = body.endpointUrl === undefined
+  const webhookProvider = ["webhook", "zapier"].includes(integration.provider);
+  const endpointUrl = !webhookProvider
     ? integration.endpointUrl
-    : webhookUrl(body.endpointUrl);
-  if (!endpointUrl) {
+    : body.endpointUrl === undefined
+      ? integration.endpointUrl
+      : webhookUrl(body.endpointUrl);
+  if (webhookProvider && !endpointUrl) {
     return Response.json({ error: "A public HTTPS endpoint is required." }, { status: 400 });
   }
   const name = typeof body.name === "string"
     ? body.name.trim().slice(0, 100)
     : integration.name;
-  const events = body.eventTypes === undefined
+  const events = !webhookProvider || body.eventTypes === undefined
     ? JSON.parse(integration.eventTypesJson)
     : eventTypes(body.eventTypes);
   await env.DB.prepare(
@@ -235,8 +434,8 @@ export async function DELETE(request: Request) {
   if ("error" in context) return context.error;
   const id = new URL(request.url).searchParams.get("id") || "";
   const integration = await env.DB.prepare(
-    "SELECT id FROM integrations WHERE id=? AND school_id=?",
-  ).bind(id, context.school.id).first();
+    "SELECT id,provider FROM integrations WHERE id=? AND school_id=?",
+  ).bind(id, context.school.id).first<{ id: string; provider: string }>();
   if (!integration) return Response.json({ error: "Integration not found." }, { status: 404 });
   await env.DB.batch([
     env.DB.prepare("DELETE FROM integration_deliveries WHERE integration_id=?").bind(id),
@@ -245,7 +444,7 @@ export async function DELETE(request: Request) {
   await writeAuditLog({
     actorId: context.user.id,
     schoolId: context.school.id,
-    action: "integration.webhook.delete",
+    action: `integration.${integration.provider}.delete`,
     targetType: "integration",
     targetId: id,
   });

@@ -624,6 +624,8 @@ export const integrations = sqliteTable("integrations", {
   endpointUrl: text("endpoint_url"),
   eventTypesJson: text("event_types_json").notNull().default("[]"),
   signingSecret: text("signing_secret"),
+  settingsJson: text("settings_json").notNull().default("{}"),
+  credentialsJson: text("credentials_json"),
   status: text("status").notNull().default("active"),
   lastDeliveryAt: integer("last_delivery_at"),
   lastDeliveryStatus: text("last_delivery_status"),

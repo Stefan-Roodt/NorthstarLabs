@@ -1,3 +1,5 @@
+import { syncMailchimpLearner } from "./provider-integrations";
+
 type WebhookIntegration = {
   id: string;
   endpointUrl: string;
@@ -47,10 +49,10 @@ export async function emitIntegrationEvent(
     `SELECT id,endpoint_url AS endpointUrl,event_types_json AS eventTypesJson,
       signing_secret AS signingSecret
      FROM integrations
-     WHERE school_id=? AND provider='webhook' AND status='active'
+     WHERE school_id=? AND provider IN ('webhook','zapier') AND status='active'
        AND endpoint_url IS NOT NULL AND signing_secret IS NOT NULL`,
   ).bind(schoolId).all<WebhookIntegration>();
-  const integrations = rows.results.filter((integration) =>
+  const integrations = rows.results.filter((integration: WebhookIntegration) =>
     onlyIntegrationId
       ? integration.id === onlyIntegrationId
       : enabledFor(integration.eventTypesJson, eventType)
@@ -64,7 +66,7 @@ export async function emitIntegrationEvent(
     data,
   });
 
-  return Promise.all(integrations.map(async (integration) => {
+  const webhookDeliveries = await Promise.all(integrations.map(async (integration: WebhookIntegration) => {
     const deliveryId = crypto.randomUUID();
     await db.prepare(
       `INSERT INTO integration_deliveries
@@ -126,4 +128,53 @@ export async function emitIntegrationEvent(
       return { integrationId: integration.id, status: "failed" };
     }
   }));
+
+  if (eventType !== "entitlement.granted" || onlyIntegrationId) return webhookDeliveries;
+  const mailchimpRows = await db.prepare(
+    `SELECT id,credentials_json AS credentialsJson,settings_json AS settingsJson
+     FROM integrations
+     WHERE school_id=? AND provider='mailchimp' AND status='active'`,
+  ).bind(schoolId).all<{
+    id: string;
+    credentialsJson: string | null;
+    settingsJson: string;
+  }>();
+  const mailchimpDeliveries = await Promise.all(mailchimpRows.results.map(async (integration: {
+    id: string;
+    credentialsJson: string | null;
+    settingsJson: string;
+  }) => {
+    const deliveryId = crypto.randomUUID();
+    await db.prepare(
+      `INSERT INTO integration_deliveries
+        (id,integration_id,event_type,payload_json,status,created_at)
+       VALUES (?,?,?,?,?,?)`,
+    ).bind(deliveryId, integration.id, eventType, payload, "pending", createdAt).run();
+    try {
+      const responseStatus = await syncMailchimpLearner(integration, data);
+      await db.batch([
+        db.prepare(
+          `UPDATE integration_deliveries SET status='delivered',response_status=?,delivered_at=?
+           WHERE id=?`,
+        ).bind(responseStatus, Date.now(), deliveryId),
+        db.prepare(
+          `UPDATE integrations SET last_delivery_at=?,last_delivery_status='delivered',updated_at=?
+           WHERE id=?`,
+        ).bind(Date.now(), Date.now(), integration.id),
+      ]);
+      return { integrationId: integration.id, status: "delivered", responseStatus };
+    } catch (error) {
+      const message = error instanceof Error ? error.message.slice(0, 240) : "Mailchimp delivery failed.";
+      await db.batch([
+        db.prepare(
+          `UPDATE integration_deliveries SET status='failed',error_message=?,delivered_at=? WHERE id=?`,
+        ).bind(message, Date.now(), deliveryId),
+        db.prepare(
+          `UPDATE integrations SET last_delivery_at=?,last_delivery_status='failed',updated_at=? WHERE id=?`,
+        ).bind(Date.now(), Date.now(), integration.id),
+      ]);
+      return { integrationId: integration.id, status: "failed" };
+    }
+  }));
+  return [...webhookDeliveries, ...mailchimpDeliveries];
 }

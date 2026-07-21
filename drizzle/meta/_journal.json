@@ -309,6 +309,13 @@
       "when": 1784646000000,
       "tag": "0043_remove_empty_bitcoin_placeholder",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "6",
+      "when": 1784649600000,
+      "tag": "0044_native_provider_integrations",
+      "breakpoints": true
     }
   ]
 }

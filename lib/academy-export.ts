@@ -61,7 +61,7 @@ const EXPORT_DATASETS = [
   { name: "learner_session_ratings", sql: "SELECT * FROM learner_session_ratings WHERE school_id=?" },
   {
     name: "integrations",
-    sql: `SELECT id,school_id,created_by,provider,name,endpoint_url,event_types_json,status,
+    sql: `SELECT id,school_id,created_by,provider,name,endpoint_url,event_types_json,settings_json,status,
       last_delivery_at,last_delivery_status,created_at,updated_at FROM integrations WHERE school_id=?`,
   },
   { name: "integration_deliveries", sql: "SELECT d.* FROM integration_deliveries d JOIN integrations i ON i.id=d.integration_id WHERE i.school_id=?" },

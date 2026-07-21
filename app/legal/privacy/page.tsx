@@ -48,6 +48,8 @@ export default function PrivacyPage() {
         <section>
           <h2>4. Service providers and sharing</h2>
           <p>We use service providers for hosting, authentication, storage, communications, analytics, and payment processing. They may process information only to provide their services to us and under appropriate confidentiality and security obligations.</p>
+          <p>Google Analytics is loaded only after a visitor chooses to allow anonymous usage measurement on that device. We do not intentionally send lesson content, private notes, assessment answers, email addresses, or learner identifiers to Analytics. The device stores the visitor&apos;s choice so the question is not repeatedly shown.</p>
+          <p>Academy owners may connect Zoom, Mailchimp, Zapier, or another supported service. Northstar sends information only for the feature or automation they enable. Mailchimp learner sync uses a pending subscription so the learner must confirm before marketing messages begin. Provider credentials are encrypted and are never included in academy exports.</p>
           <p>We may also disclose information when required by law, to protect people or the platform, in connection with a corporate transaction, or when you direct or consent to the disclosure. We do not sell personal information.</p>
           <p>If you call, message, or book with a tutor using an external phone, WhatsApp, calendar, or other service, that provider and the tutor process the information you share under their own privacy practices.</p>
         </section>
@@ -77,6 +79,7 @@ export default function PrivacyPage() {
         <section>
           <h2>10. Your choices and rights</h2>
           <p>You can review and update core account information from Account settings. Depending on your location, you may have rights to access, correct, delete, restrict, or receive a copy of personal information, or to object to certain processing. Requests can be submitted through the support channel available in your account. We may need to verify your identity before completing a request.</p>
+          <p>You can decline optional Analytics when the choice appears. You can reset the stored choice by clearing site data in your browser.</p>
         </section>
 
         <section>

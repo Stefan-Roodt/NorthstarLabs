@@ -217,7 +217,7 @@ export default function LiveLearningPage() {
           <label>Meeting provider<select value={meetingProvider} onChange={(event) => setMeetingProvider(event.target.value)}>
             <option value="zoom">Zoom</option><option value="google_meet">Google Meet</option><option value="microsoft_teams">Microsoft Teams</option><option value="other">Other secure link</option>
           </select></label>
-          <label>Secure meeting URL<input required type="url" value={meetingUrl} onChange={(event) => setMeetingUrl(event.target.value)} placeholder="https://..." /></label>
+          <label>Secure meeting URL<input required={meetingProvider !== "zoom"} type="url" value={meetingUrl} onChange={(event) => setMeetingUrl(event.target.value)} placeholder={meetingProvider === "zoom" ? "Optional when Zoom is connected" : "https://..."} /><small>{meetingProvider === "zoom" ? "Leave this blank to create the Zoom meeting automatically. You can connect Zoom under Integrations." : "Learners only see this after they have access."}</small></label>
           <label>Capacity<input min={0} max={100000} type="number" value={capacity} onChange={(event) => setCapacity(event.target.value)} /><small>Use 1 for a 1:1 session, or 0 for an unlimited group.</small></label>
         </div>
         <button className="sys-primary" disabled={busy === "create" || !accessTarget}>{busy === "create" ? "Scheduling..." : "Schedule live session"}</button>
