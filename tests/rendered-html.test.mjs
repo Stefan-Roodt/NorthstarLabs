@@ -74,6 +74,27 @@ test("publishes honest Course Truth Cards and secure no-account lesson previews"
   assert.match(migration, /SET `is_preview`=1/);
 });
 
+test("provides course-grounded lesson help with a human educator escalation path", async () => {
+  const [learnerPage, learnerHelp, helpApi, creatorDesk, schema, migration] = await Promise.all([
+    readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/[courseId]/lesson-help.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/lesson-help/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/questions/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0041_glorious_krista_starr.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(learnerPage, /ContextualLessonHelp/);
+  assert.match(learnerHelp, /Built only from/);
+  assert.match(learnerHelp, /Ask a person, not a bot/);
+  assert.match(helpApi, /getLessonGate/);
+  assert.match(helpApi, /allowedLessons/);
+  assert.match(helpApi, /lesson_help\.question_created/);
+  assert.doesNotMatch(helpApi, /correct_index AS|correctIndex/);
+  assert.match(creatorDesk, /Educator response desk/i);
+  assert.match(schema, /export const lessonHelpRequests/);
+  assert.match(migration, /CREATE TABLE `lesson_help_requests`/);
+});
+
 test("isolates creator schools, memberships, courses, and communities", async () => {
   const [schema, migration, profile, welcome, community] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),

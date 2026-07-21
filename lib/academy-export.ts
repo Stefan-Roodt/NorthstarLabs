@@ -66,6 +66,7 @@ const EXPORT_DATASETS = [
   },
   { name: "integration_deliveries", sql: "SELECT d.* FROM integration_deliveries d JOIN integrations i ON i.id=d.integration_id WHERE i.school_id=?" },
   { name: "lesson_progress", sql: "SELECT lp.* FROM lesson_progress lp JOIN lessons l ON l.id=lp.lesson_id JOIN courses c ON c.id=l.course_id WHERE c.school_id=?" },
+  { name: "lesson_help_requests", sql: "SELECT * FROM lesson_help_requests WHERE school_id=?" },
   { name: "quizzes", sql: "SELECT q.* FROM quizzes q JOIN lessons l ON l.id=q.lesson_id JOIN courses c ON c.id=l.course_id WHERE c.school_id=?" },
   { name: "quiz_questions", sql: "SELECT qq.* FROM quiz_questions qq JOIN quizzes q ON q.id=qq.quiz_id JOIN lessons l ON l.id=q.lesson_id JOIN courses c ON c.id=l.course_id WHERE c.school_id=?" },
   { name: "quiz_attempts", sql: "SELECT qa.* FROM quiz_attempts qa JOIN quizzes q ON q.id=qa.quiz_id JOIN lessons l ON l.id=q.lesson_id JOIN courses c ON c.id=l.course_id WHERE c.school_id=?" },

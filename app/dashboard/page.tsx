@@ -221,6 +221,7 @@ export default function Dashboard() {
         <Link href={profile?.activeSchool ? `/schools/${profile.activeSchool.slug}` : "/courses"}><span>↗</span><b>Preview academy</b><small>See what a visitor experiences.</small></Link>
         <Link href="/dashboard/learners"><span>+</span><b>Invite learners</b><small>Grant access and welcome people in.</small></Link>
         <Link href="/dashboard/tutors"><span>◎</span><b>Manage tutors</b><small>Publish personal support and handle enquiries.</small></Link>
+        <Link href="/dashboard/questions"><span>?</span><b>Answer lesson questions</b><small>Respond where learners become stuck.</small></Link>
       </div>
     </section>
   </>}

@@ -611,6 +611,24 @@ export const lessonProgress = sqliteTable("lesson_progress", {
   uniqueIndex("lesson_progress_user_lesson_unique").on(table.userId, table.lessonId),
   index("lesson_progress_user_bookmarked_idx").on(table.userId, table.bookmarked, table.updatedAt),
 ]);
+export const lessonHelpRequests = sqliteTable("lesson_help_requests", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull(),
+  courseId: text("course_id").notNull(),
+  lessonId: text("lesson_id").notNull(),
+  learnerId: text("learner_id").notNull(),
+  question: text("question").notNull(),
+  status: text("status").notNull().default("open"),
+  response: text("response").notNull().default(""),
+  respondedBy: text("responded_by"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+  respondedAt: integer("responded_at"),
+}, (table) => [
+  index("lesson_help_requests_school_status_updated_idx").on(table.schoolId, table.status, table.updatedAt),
+  index("lesson_help_requests_course_lesson_created_idx").on(table.courseId, table.lessonId, table.createdAt),
+  index("lesson_help_requests_learner_status_created_idx").on(table.learnerId, table.status, table.createdAt),
+]);
 export const quizzes = sqliteTable("quizzes", {
   id: text("id").primaryKey(), lessonId: text("lesson_id").notNull(), title: text("title").notNull(),
   passingScore: integer("passing_score").notNull().default(80),

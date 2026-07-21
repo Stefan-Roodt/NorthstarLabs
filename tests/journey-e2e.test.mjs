@@ -916,6 +916,34 @@ test("persists one private mastery record per learner and concept", async () => 
   db.close();
 });
 
+test("persists private lesson questions and educator responses in their academy context", async () => {
+  const db = await migratedDatabase();
+  const now = 1784625000000;
+  db.exec(`
+    INSERT INTO lesson_help_requests
+      (id,school_id,course_id,lesson_id,learner_id,question,status,response,created_at,updated_at)
+    SELECT 'help-request-fixture',c.school_id,c.id,l.id,'learner-fixture',
+      'How does this idea connect to the worked example?','open','',${now},${now}
+    FROM courses c JOIN lessons l ON l.course_id=c.id
+    WHERE c.school_id='northstarlabs' ORDER BY l.position,l.id LIMIT 1;
+  `);
+  const open = db.prepare(`SELECT status,question,response FROM lesson_help_requests WHERE id='help-request-fixture'`).get();
+  assert.deepEqual({ ...open }, {
+    status: "open",
+    question: "How does this idea connect to the worked example?",
+    response: "",
+  });
+  db.prepare(`UPDATE lesson_help_requests SET status='answered',response=?,responded_by=?,responded_at=?,updated_at=? WHERE id=?`)
+    .run("Connect the definition to the first decision in the example, then test the result.", "creator-fixture", now + 1_000, now + 1_000, "help-request-fixture");
+  const answered = db.prepare(`SELECT status,response,responded_by AS respondedBy FROM lesson_help_requests WHERE id='help-request-fixture'`).get();
+  assert.deepEqual({ ...answered }, {
+    status: "answered",
+    response: "Connect the definition to the first decision in the example, then test the result.",
+    respondedBy: "creator-fixture",
+  });
+  db.close();
+});
+
 test("security policy limits abusive writes and rejects oversized JSON", async () => {
   assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/uploads", { method: "POST" })),
@@ -924,6 +952,10 @@ test("security policy limits abusive writes and rejects oversized JSON", async (
   assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/academy-exports", { method: "POST" })),
     { scope: "academy_exports", limit: 8, windowMs: 3_600_000 },
+  );
+  assert.deepEqual(
+    rateLimitPolicy(new Request("https://northstarlabs.co.za/api/lesson-help", { method: "POST" })),
+    { scope: "lesson_help", limit: 120, windowMs: 3_600_000 },
   );
   assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/community", { method: "POST" })),

@@ -29,6 +29,7 @@ const BACKUP_TABLES = [
   "integrations",
   "integration_deliveries",
   "lesson_progress",
+  "lesson_help_requests",
   "quizzes",
   "quiz_questions",
   "quiz_attempts",

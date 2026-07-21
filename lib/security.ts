@@ -38,6 +38,9 @@ export function rateLimitPolicy(request: Request): RateLimitPolicy | null {
   if (path === "/api/academy-exports") {
     return { scope: "academy_exports", limit: 8, windowMs: 60 * 60_000 };
   }
+  if (path === "/api/lesson-help") {
+    return { scope: "lesson_help", limit: 120, windowMs: 60 * 60_000 };
+  }
   if (path.startsWith("/api/invitations")) {
     return { scope: "invitations", limit: 30, windowMs: 60 * 60_000 };
   }

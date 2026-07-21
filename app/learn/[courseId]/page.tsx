@@ -6,6 +6,7 @@ import { type CSSProperties, type SyntheticEvent, useCallback, useEffect, useRef
 import { LessonContent } from "../../../lib/lesson-content";
 import { getLessonGuide } from "../../../lib/lesson-guide";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
+import { ContextualLessonHelp } from "./lesson-help";
 
 type Quiz = {
   id: string;
@@ -726,6 +727,18 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
         {lesson.content
           ? <LessonContent content={lesson.content} omitLessonIntro />
           : <p className="lesson-empty-copy">Your creator is still adding the written guidance for this lesson.</p>}
+
+        {!preview && <ContextualLessonHelp
+          key={lesson.id}
+          lessonId={lesson.id}
+          lessonTitle={lesson.title}
+          courseTitle={title}
+          accessToken={token}
+          onSaveToNotes={async (text) => {
+            const nextNotes = [lesson.notes.trim(), text.trim()].filter(Boolean).join("\n\n").slice(0, 10_000);
+            await saveLearnerState(lesson.id, { notes: nextNotes });
+          }}
+        />}
 
         {lesson.transcript && <details className="lesson-transcript">
           <summary>Read captions / transcript</summary>

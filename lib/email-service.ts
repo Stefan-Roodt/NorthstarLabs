@@ -14,6 +14,8 @@ export type EmailTemplateKey =
   | "learning_request_admin"
   | "live_session_reminder"
   | "creator_summary"
+  | "lesson_question"
+  | "lesson_question_answered"
   | "test";
 
 type EmailVariables = Record<string, string | number | null | undefined>;
@@ -191,6 +193,26 @@ function templateContent(templateKey: EmailTemplateKey, values: EmailVariables) 
       detail: `Reporting period: ${values.period || "latest activity"}.`,
     };
   }
+  if (templateKey === "lesson_question") {
+    return {
+      subject: `A learner needs help in ${values.course || "a course"}`,
+      heading: "A lesson question is waiting",
+      intro: `A learner asked for help in “${values.lesson || "a lesson"}” from ${values.course || academy}.`,
+      actionLabel: "Open lesson questions",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: "Respond from the academy question desk. Your answer will be saved with the lesson and emailed to the learner.",
+    };
+  }
+  if (templateKey === "lesson_question_answered") {
+    return {
+      subject: `Your question about ${values.lesson || "a lesson"} was answered`,
+      heading: "Your educator responded",
+      intro: `${academy} answered your question in “${values.lesson || "your lesson"}”.`,
+      actionLabel: "Return to my learning",
+      actionUrl: safeUrl(values.actionUrl),
+      detail: "Open the lesson to read the response alongside the course material and your private notes.",
+    };
+  }
   return {
     subject: `${academy} email delivery test`,
     heading: "Email delivery is connected",
@@ -253,6 +275,7 @@ async function emailAllowed(userId: string | null | undefined, templateKey: Emai
   if (templateKey === "learner_rating_request") return true;
   if (templateKey === "tutor_booking_cancelled") return true;
   if (templateKey === "creator_summary") return Boolean(preferences.creatorSummaries);
+  if (templateKey === "lesson_question" || templateKey === "lesson_question_answered") return true;
   return true;
 }
 

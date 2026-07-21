@@ -6,7 +6,7 @@ import { requireApiUser } from "../../../../lib/server-auth";
 import { recordSystemEvent, safeErrorMessage } from "../../../../lib/system-monitor";
 
 async function accountExport(userId: string) {
-  const [profile, schools, enrollments, progress, attempts, masteryConcepts, masteryPractice, certificates, posts, preferences, products, live, portfolio, portfolioSources, portfolioEvidence] =
+  const [profile, schools, enrollments, progress, attempts, masteryConcepts, masteryPractice, certificates, posts, preferences, products, live, portfolio, portfolioSources, portfolioEvidence, lessonHelp] =
     await Promise.all([
       env.DB.prepare(
         `SELECT id,email,display_name AS displayName,role,onboarding_path AS onboardingPath,
@@ -102,6 +102,13 @@ async function accountExport(userId: string) {
           visible,sort_order AS sortOrder,created_at AS createdAt,updated_at AS updatedAt
          FROM portfolio_evidence WHERE user_id=? ORDER BY sort_order,created_at DESC`,
       ).bind(userId).all(),
+      env.DB.prepare(
+        `SELECT r.id,r.course_id AS courseId,c.title AS courseTitle,
+          r.lesson_id AS lessonId,l.title AS lessonTitle,r.question,r.status,r.response,
+          r.created_at AS createdAt,r.updated_at AS updatedAt,r.responded_at AS respondedAt
+         FROM lesson_help_requests r JOIN courses c ON c.id=r.course_id
+         JOIN lessons l ON l.id=r.lesson_id WHERE r.learner_id=? ORDER BY r.created_at DESC`,
+      ).bind(userId).all(),
     ]);
   return {
     format: "northstarlabs-personal-data-export",
@@ -122,6 +129,7 @@ async function accountExport(userId: string) {
     learningPortfolio: portfolio,
     portfolioSourceChoices: portfolioSources.results,
     portfolioEvidence: portfolioEvidence.results,
+    lessonHelpRequests: lessonHelp.results,
   };
 }
 
@@ -215,6 +223,12 @@ export async function DELETE(request: Request) {
       ).bind(user.id),
       env.DB.prepare(
         "DELETE FROM lesson_progress WHERE user_id=?",
+      ).bind(user.id),
+      env.DB.prepare(
+        "UPDATE lesson_help_requests SET learner_id='deleted-user',question='',response='' WHERE learner_id=?",
+      ).bind(user.id),
+      env.DB.prepare(
+        "UPDATE lesson_help_requests SET responded_by='deleted-user' WHERE responded_by=?",
       ).bind(user.id),
       env.DB.prepare(
         "DELETE FROM quiz_attempts WHERE user_id=?",
