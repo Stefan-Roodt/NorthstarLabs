@@ -4,6 +4,7 @@ import { updateCourseProgress } from "../../../../lib/course-progress";
 import { getLessonGate } from "../../../../lib/learner-controls";
 import { queueCertificateEmail } from "../../../../lib/email-service";
 import { buildQuizFeedback } from "../../../../lib/quiz-feedback";
+import { nextMasteryState, normaliseConceptLabel } from "../../../../lib/mastery";
 
 export async function POST(
   request: Request,
@@ -54,13 +55,16 @@ export async function POST(
   }
 
   const questions = await env.DB.prepare(
-    `SELECT id,options_json AS optionsJson,correct_index AS correctIndex,explanation
+    `SELECT id,prompt,options_json AS optionsJson,correct_index AS correctIndex,
+      explanation,concept_label AS conceptLabel
      FROM quiz_questions WHERE quiz_id=? ORDER BY position,id`,
   ).bind(quiz.id).all<{
     id: string;
+    prompt: string;
     optionsJson: string;
     correctIndex: number;
     explanation: string;
+    conceptLabel: string;
   }>();
   if (!questions.results.length) {
     return Response.json({ error: "This quiz has no questions." }, { status: 409 });
@@ -87,21 +91,78 @@ export async function POST(
   const score = Math.round((correct / questions.results.length) * 100);
   const passed = score >= quiz.passingScore;
   const submittedAt = Date.now();
+  const placeholders = questions.results.map(() => "?").join(",");
+  const currentRows = await env.DB.prepare(
+    `SELECT id,question_id AS questionId,status,wrong_count AS wrongCount,
+      correct_streak AS correctStreak,first_seen_at AS firstSeenAt
+     FROM learner_concept_mastery
+     WHERE user_id=? AND question_id IN (${placeholders})`,
+  ).bind(user.id, ...questions.results.map((question) => question.id)).all<{
+    id: string;
+    questionId: string;
+    status: string;
+    wrongCount: number;
+    correctStreak: number;
+    firstSeenAt: number;
+  }>();
+  const currentMastery = new Map(currentRows.results.map((row) => [row.questionId, row]));
+  let newConcepts = 0;
+  let masteredConcepts = 0;
+  const masteryStatements = questions.results.flatMap((question, index) => {
+    const correct = feedback[index]?.correct || false;
+    const current = currentMastery.get(question.id);
+    if (correct && !current) return [];
+    const next = nextMasteryState(current || null, correct, submittedAt);
+    if (!correct && !current) newConcepts += 1;
+    if (next.status === "mastered" && current?.status !== "mastered") masteredConcepts += 1;
+    return [env.DB.prepare(
+      `INSERT INTO learner_concept_mastery
+        (id,user_id,question_id,course_id,lesson_id,concept_label,status,
+         wrong_count,correct_streak,first_seen_at,last_reviewed_at,
+         next_review_at,mastered_at,updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(user_id,question_id) DO UPDATE SET
+         course_id=excluded.course_id,lesson_id=excluded.lesson_id,
+         concept_label=excluded.concept_label,status=excluded.status,
+         wrong_count=excluded.wrong_count,correct_streak=excluded.correct_streak,
+         last_reviewed_at=excluded.last_reviewed_at,
+         next_review_at=excluded.next_review_at,mastered_at=excluded.mastered_at,
+         updated_at=excluded.updated_at`,
+    ).bind(
+      current?.id || crypto.randomUUID(),
+      user.id,
+      question.id,
+      gate.courseId,
+      lessonId,
+      normaliseConceptLabel(question.conceptLabel, question.prompt),
+      next.status,
+      next.wrongCount,
+      next.correctStreak,
+      current?.firstSeenAt || submittedAt,
+      submittedAt,
+      next.nextReviewAt,
+      next.masteredAt,
+      submittedAt,
+    )];
+  });
 
-  await env.DB.prepare(
-    `INSERT INTO quiz_attempts
-      (id,quiz_id,user_id,attempt_number,answers_json,score,passed,submitted_at)
-     VALUES (?,?,?,?,?,?,?,?)`,
-  ).bind(
-    crypto.randomUUID(),
-    quiz.id,
-    user.id,
-    attemptCount + 1,
-    JSON.stringify(submitted),
-    score,
-    passed ? 1 : 0,
-    submittedAt,
-  ).run();
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO quiz_attempts
+        (id,quiz_id,user_id,attempt_number,answers_json,score,passed,submitted_at)
+       VALUES (?,?,?,?,?,?,?,?)`,
+    ).bind(
+      crypto.randomUUID(),
+      quiz.id,
+      user.id,
+      attemptCount + 1,
+      JSON.stringify(submitted),
+      score,
+      passed ? 1 : 0,
+      submittedAt,
+    ),
+    ...masteryStatements,
+  ]);
 
   if (passed) {
     await env.DB.prepare(
@@ -131,6 +192,11 @@ export async function POST(
       ? Math.max(0, quiz.maxAttempts - nextAttemptCount)
       : null,
     feedback,
+    mastery: {
+      weakConcepts: feedback.filter((item) => !item.correct).length,
+      newConcepts,
+      masteredConcepts,
+    },
     ...result,
   });
 }

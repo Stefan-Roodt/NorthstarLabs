@@ -15,6 +15,7 @@ type QuizRow = {
   optionsJson: string | null;
   correctIndex: number | null;
   explanation: string | null;
+  conceptLabel: string | null;
   position: number | null;
 };
 
@@ -86,7 +87,8 @@ export async function GET(
       `SELECT q.id,q.lesson_id AS lessonId,q.title,q.passing_score AS passingScore,
         q.max_attempts AS maxAttempts,
         qq.id AS questionId,qq.prompt,qq.options_json AS optionsJson,
-        qq.correct_index AS correctIndex,qq.explanation,qq.position
+        qq.correct_index AS correctIndex,qq.explanation,
+        qq.concept_label AS conceptLabel,qq.position
        FROM quizzes q
        JOIN lessons l ON l.id=q.lesson_id
        LEFT JOIN quiz_questions qq ON qq.quiz_id=q.id
@@ -121,6 +123,7 @@ export async function GET(
       options: string[];
       correctIndex: number;
       explanation: string;
+      conceptLabel: string;
     }>;
   }>();
   for (const row of quizRows.results) {
@@ -140,6 +143,7 @@ export async function GET(
         options: JSON.parse(row.optionsJson),
         correctIndex: Number(row.correctIndex || 0),
         explanation: row.explanation || "",
+        conceptLabel: row.conceptLabel || "",
       });
     }
   }

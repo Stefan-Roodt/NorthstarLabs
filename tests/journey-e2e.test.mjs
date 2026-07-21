@@ -860,6 +860,62 @@ test("keeps proof portfolios private until the learner explicitly publishes evid
   `), /UNIQUE constraint failed/);
 });
 
+test("persists one private mastery record per learner and concept", async () => {
+  const db = await migratedDatabase();
+  const now = 1784624500000;
+  db.exec(`
+    INSERT INTO profiles (id,email,display_name,role,status,created_at)
+    VALUES ('mastery-learner','mastery@example.com','Mastery Learner','learner','active',${now});
+  `);
+  const source = db.prepare(`
+    SELECT qq.id AS questionId,l.id AS lessonId,l.course_id AS courseId,
+      COALESCE(NULLIF(qq.concept_label,''),'Course concept') AS conceptLabel
+    FROM quiz_questions qq JOIN quizzes q ON q.id=qq.quiz_id
+    JOIN lessons l ON l.id=q.lesson_id
+    ORDER BY qq.id LIMIT 1
+  `).get();
+  assert.ok(source?.questionId);
+  db.prepare(`
+    INSERT INTO learner_concept_mastery
+      (id,user_id,question_id,course_id,lesson_id,concept_label,status,
+       wrong_count,correct_streak,first_seen_at,last_reviewed_at,next_review_at,updated_at)
+    VALUES ('mastery-record','mastery-learner',?,?,?,?,
+      'needs_review',1,0,?,?,?,?)
+  `).run(source.questionId, source.courseId, source.lessonId, source.conceptLabel, now, now, now, now);
+  assert.throws(() => db.prepare(`
+    INSERT INTO learner_concept_mastery
+      (id,user_id,question_id,course_id,lesson_id,concept_label,status,
+       wrong_count,correct_streak,first_seen_at,updated_at)
+    VALUES ('mastery-duplicate','mastery-learner',?,?,?,?,
+      'needs_review',1,0,?,?)
+  `).run(source.questionId, source.courseId, source.lessonId, source.conceptLabel, now, now), /UNIQUE constraint failed/);
+  db.prepare(`
+    INSERT INTO mastery_practice_attempts
+      (id,user_id,question_id,selected_index,correct,answered_at)
+    VALUES ('mastery-practice','mastery-learner',?,0,1,?)
+  `).run(source.questionId, now + 1_000);
+  db.prepare(`
+    UPDATE learner_concept_mastery SET status='practising',correct_streak=1,
+      last_reviewed_at=?,next_review_at=?,updated_at=?
+    WHERE id='mastery-record' AND user_id='mastery-learner'
+  `).run(now + 1_000, now + 86_401_000, now + 1_000);
+  const record = db.prepare(`
+    SELECT status,wrong_count AS wrongCount,correct_streak AS correctStreak,
+      next_review_at AS nextReviewAt,
+      (SELECT COUNT(*) FROM mastery_practice_attempts p
+       WHERE p.user_id=m.user_id AND p.question_id=m.question_id) AS practiceCount
+    FROM learner_concept_mastery m WHERE id='mastery-record'
+  `).get();
+  assert.deepEqual({ ...record }, {
+    status: "practising",
+    wrongCount: 1,
+    correctStreak: 1,
+    nextReviewAt: now + 86_401_000,
+    practiceCount: 1,
+  });
+  db.close();
+});
+
 test("security policy limits abusive writes and rejects oversized JSON", async () => {
   assert.deepEqual(
     rateLimitPolicy(new Request("https://northstarlabs.co.za/api/uploads", { method: "POST" })),

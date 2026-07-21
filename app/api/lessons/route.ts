@@ -178,6 +178,12 @@ export async function DELETE(request: Request) {
   if (!lesson) return Response.json({ error: "Lesson not found." }, { status: 404 });
   await env.DB.batch([
     env.DB.prepare(
+      "DELETE FROM mastery_practice_attempts WHERE question_id IN (SELECT qq.id FROM quiz_questions qq JOIN quizzes q ON q.id=qq.quiz_id WHERE q.lesson_id=?)",
+    ).bind(lessonId),
+    env.DB.prepare(
+      "DELETE FROM learner_concept_mastery WHERE lesson_id=?",
+    ).bind(lessonId),
+    env.DB.prepare(
       "DELETE FROM quiz_attempts WHERE quiz_id IN (SELECT id FROM quizzes WHERE lesson_id=?)",
     ).bind(lessonId),
     env.DB.prepare(

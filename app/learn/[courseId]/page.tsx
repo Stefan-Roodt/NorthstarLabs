@@ -249,6 +249,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
   const [answers, setAnswers] = useState<number[]>([]);
   const [quizResult, setQuizResult] = useState("");
   const [quizFeedback, setQuizFeedback] = useState<QuizAnswerFeedback[]>([]);
+  const [masteryImpact, setMasteryImpact] = useState<{ weakConcepts: number; newConcepts: number; masteredConcepts: number } | null>(null);
   const [resourceMessage, setResourceMessage] = useState("");
   const [learnerMessage, setLearnerMessage] = useState("");
   const [orientationDismissed, setOrientationDismissed] = useState(false);
@@ -334,6 +335,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
     setAnswers([]);
     setQuizResult("");
     setQuizFeedback([]);
+    setMasteryImpact(null);
     setResourceMessage("");
     setLearnerMessage("");
   }
@@ -459,12 +461,14 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       bestScore?: number;
       attemptsRemaining?: number | null;
       feedback?: QuizAnswerFeedback[];
+      mastery?: { weakConcepts: number; newConcepts: number; masteredConcepts: number };
     };
     if (!response.ok) {
       setQuizResult(result.error || "The quiz could not be submitted.");
       return;
     }
     setQuizFeedback(result.feedback || []);
+    setMasteryImpact(result.mastery || null);
     const updatedLessons = lessons.map((item, index) => {
       if (item.id === lesson.id) {
         return {
@@ -514,6 +518,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
     setAnswers([]);
     setQuizFeedback([]);
     setQuizResult("");
+    setMasteryImpact(null);
     document.querySelector<HTMLElement>(".learner-quiz")?.scrollIntoView({
       behavior: "smooth",
       block: "start",
@@ -783,6 +788,16 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
             </fieldset>;
           })}
           {quizResult && <p className="quiz-result" role="status">{quizResult}</p>}
+          {masteryImpact && (masteryImpact.weakConcepts > 0 || masteryImpact.masteredConcepts > 0) && <div className="quiz-mastery-callout">
+            <div>
+              <p className="sys-kicker">PERSONAL MASTERY LOOP</p>
+              <b>{masteryImpact.weakConcepts > 0
+                ? `${masteryImpact.weakConcepts} concept${masteryImpact.weakConcepts === 1 ? "" : "s"} saved for focused review.`
+                : `${masteryImpact.masteredConcepts} concept${masteryImpact.masteredConcepts === 1 ? "" : "s"} moved to mastered.`}</b>
+              <span>Your mistakes are not lost inside a percentage. Northstar will bring each weak concept back until you can answer it correctly twice.</span>
+            </div>
+            <Link href={`/mastery?courseId=${encodeURIComponent(id)}`}>Open my mastery loop â†’</Link>
+          </div>}
           {preview
             ? <div className="preview-completion-note">Quiz submission is disabled in creator preview.</div>
             : lesson.completed

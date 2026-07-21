@@ -1302,3 +1302,63 @@ test("gives learners a private, shareable proof-of-learning portfolio", async ()
   assert.match(home, /A certificate says finished\. Your portfolio shows capable/);
   assert.match(home, /Build my free proof portfolio/);
 });
+
+test("turns assessment mistakes into a private, spaced personal mastery loop", async () => {
+  const [schema, migration, submission, masteryApi, masteryPage, masteryLayout, learnerHome, courseEditor, accountData, backup, deletion, privacy, styles, home] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0038_adorable_komodo.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/quizzes/[lessonId]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/mastery/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/mastery/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/mastery/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/account/data/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/platform-backup.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/course-deletion.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/legal/privacy/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/system.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+  ]);
+  const { nextMasteryState, normaliseConceptLabel } = await import("../lib/mastery.ts");
+  const missed = nextMasteryState(null, false, 1_000);
+  assert.deepEqual(missed, {
+    status: "needs_review", wrongCount: 1, correctStreak: 0,
+    nextReviewAt: 1_000, masteredAt: null,
+  });
+  const strengthening = nextMasteryState(missed, true, 2_000);
+  assert.equal(strengthening.status, "practising");
+  assert.equal(strengthening.correctStreak, 1);
+  assert.equal(strengthening.nextReviewAt, 2_000 + 86_400_000);
+  const mastered = nextMasteryState(strengthening, true, 3_000);
+  assert.equal(mastered.status, "mastered");
+  assert.equal(mastered.correctStreak, 2);
+  assert.equal(mastered.masteredAt, 3_000);
+  assert.equal(normaliseConceptLabel("  Fixed   supply  ", "ignored"), "Fixed supply");
+  assert.match(schema, /export const learnerConceptMastery/);
+  assert.match(schema, /export const masteryPracticeAttempts/);
+  assert.match(migration, /CREATE TABLE `learner_concept_mastery`/);
+  assert.match(migration, /CREATE TABLE `mastery_practice_attempts`/);
+  assert.match(migration, /ADD `concept_label`/);
+  assert.match(submission, /nextMasteryState/);
+  assert.match(submission, /weakConcepts/);
+  assert.match(submission, /ON CONFLICT\(user_id,question_id\)/);
+  assert.match(masteryApi, /requireApiUser/);
+  assert.match(masteryApi, /private, no-store/);
+  assert.match(masteryApi, /mastery_practice_attempts/);
+  assert.match(masteryApi, /optionsJson: undefined/);
+  assert.match(masteryPage, /Turn every mistake into something you master/);
+  assert.match(masteryPage, /answer it correctly twice/);
+  assert.match(masteryLayout, /index: false/);
+  assert.match(learnerHome, /Personal Mastery Loop|PERSONAL MASTERY LOOP/);
+  assert.match(courseEditor, /Concept to master/);
+  assert.match(accountData, /masteryConcepts/);
+  assert.match(accountData, /masteryPracticeAttempts/);
+  assert.match(backup, /"learner_concept_mastery"/);
+  assert.match(deletion, /DELETE FROM learner_concept_mastery/);
+  assert.match(privacy, /private concept-mastery and practice records/);
+  assert.match(styles, /\.mastery-page/);
+  assert.match(styles, /\.quiz-mastery-callout/);
+  assert.match(home, /A wrong answer should improve tomorrow/);
+  assert.match(home, /Start learning with mastery/);
+});

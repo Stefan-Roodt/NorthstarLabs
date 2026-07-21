@@ -19,7 +19,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2>1. Information we collect</h2>
-          <p>We collect information you provide directly, including your name, email address, account profile, course content, community posts, learner records, support notes, portfolio projects and links, tutor profiles, tutoring enquiries, preferred contact method, and communications. We also process account activity such as enrolments, lesson progress, quiz results, certificates, portfolio visibility choices, and administrative actions.</p>
+          <p>We collect information you provide directly, including your name, email address, account profile, course content, community posts, learner records, support notes, portfolio projects and links, tutor profiles, tutoring enquiries, preferred contact method, and communications. We also process account activity such as enrolments, lesson progress, quiz results, private concept-mastery and practice records, certificates, portfolio visibility choices, and administrative actions.</p>
           <p>Technical information may include device and browser details, IP address, timestamps, security events, and diagnostic data needed to operate and protect the service.</p>
         </section>
 
@@ -38,6 +38,7 @@ export default function PrivacyPage() {
           <h2>3. Creators and learner data</h2>
           <p>Creators control the learning products they publish and may view information about learners enrolled in their courses, including progress and completion activity. Creators must use that information only for legitimate learning, administration, and support purposes and must comply with applicable privacy laws.</p>
           <p>Private support notes are visible only within the relevant creator administration area and should not contain unnecessary sensitive information.</p>
+          <p>The Personal Mastery Loop uses incorrect and later correct assessment answers to create a private revision queue, schedule follow-up checks, and record when a concept is mastered. These records are visible to the learner and are not added to a public portfolio or disclosed as public assessment evidence unless a separate feature clearly asks for the learnerâ€™s choice.</p>
           <p>Proof-of-learning portfolios are private by default. If a learner publishes a portfolio, the learnerâ€™s display name, portfolio introduction, and only the certificates, passed assessments, disclosed scores, projects, skills, feedback, and evidence links the learner deliberately marks visible become publicly accessible through the share link. Email addresses, private notes, quiz answers, failed attempts, and unselected evidence are not included. A learner can make the portfolio private again from the portfolio controls.</p>
           <p>When a learner sends a tutoring enquiry, the learner’s name, email address, optional phone number, requested subject, message, preferred times, selected appointment, and contact preference are shared with the selected tutor and the academy that published the profile. Private joining or venue details are shown to the learner only after the appointment is confirmed. Public phone, WhatsApp, or external booking links appear only when the academy enables direct contact for that tutor.</p>
         </section>

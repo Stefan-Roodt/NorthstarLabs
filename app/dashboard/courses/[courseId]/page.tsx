@@ -12,6 +12,7 @@ type QuizQuestion = {
   options: string[];
   correctIndex: number;
   explanation: string;
+  conceptLabel: string;
 };
 type Quiz = {
   id?: string;
@@ -100,6 +101,7 @@ const blankQuestion = (): QuizQuestion => ({
   options: ["", ""],
   correctIndex: 0,
   explanation: "",
+  conceptLabel: "",
 });
 
 function formatBytes(bytes: number) {
@@ -1596,6 +1598,16 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                         <input value={option} onChange={(event) => editOption(questionIndex, optionIndex, event.target.value)} placeholder={`Answer ${optionIndex + 1}`} />
                       </label>
                     )}
+                    <label className="quiz-explanation-editor">
+                      Concept to master
+                      <input
+                        maxLength={100}
+                        value={question.conceptLabel || ""}
+                        onChange={(event) => editQuestion(questionIndex, { conceptLabel: event.target.value })}
+                        placeholder="e.g. Bitcoin scarcity or constructive feedback"
+                      />
+                      <small>This becomes the learnerâ€™s named revision concept after an incorrect answer.</small>
+                    </label>
                     <label className="quiz-explanation-editor">
                       Why is the correct answer right?
                       <textarea

@@ -321,7 +321,7 @@ export default function AccountPage() {
 
       <article className="panel account-card account-data-card">
         <div><p className="sys-kicker">PRIVACY & YOUR DATA</p><h2>Export or remove your account</h2></div>
-        <p>Download the profile, learning activity, quiz attempts, certificates, community posts, and preferences NorthStarLabs stores for you.</p>
+        <p>Download the profile, learning activity, quiz attempts, mastery and practice history, certificates, community posts, and preferences NorthStarLabs stores for you.</p>
         <button className="sys-primary" disabled={Boolean(busy)} onClick={exportMyData}>
           {busy === "export" ? "Preparing export..." : "Download my data"}
         </button>

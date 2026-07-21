@@ -7,6 +7,7 @@ import { LearningRequestForm } from "./learning-request-form";
 const creatorSignupHref = "/login?mode=signup&role=creator&next=%2Fwelcome%3Fpath%3Dcreator";
 const coachSignupHref = "/login?mode=signup&role=coach&next=%2Fwelcome%3Fpath%3Dcoach";
 const learnerPortfolioSignupHref = "/login?mode=signup&role=learner&next=%2Fportfolio";
+const learnerMasterySignupHref = "/login?mode=signup&role=learner&next=%2Fmastery";
 const homeSearchPaths = [
   { slug: "online-courses-south-africa", title: "Online courses in South Africa", description: "Choose practical courses by outcome, effort, evidence, and available human support." },
   { slug: "find-business-coach-south-africa", title: "Find a business coach", description: "Compare topic fit, rates, credentials, availability, and verified-session proof." },
@@ -374,6 +375,24 @@ export default function Home() {
             <li><b>Improve</b><span>Progress, learner support, reporting, unmet demand, and trusted feedback</span></li>
           </ul>
           <a className="button" href={creatorSignupHref}>Open my creator workspace <span>→</span></a>
+        </div>
+      </section>
+
+      <section className="mastery-advantage shell" aria-labelledby="mastery-advantage-title">
+        <div className="mastery-advantage-demo" aria-label="Example personal mastery loop">
+          <header><small>PERSONAL MASTERY LOOP</small><b>Practise what needs attention.</b><span>3 READY</span></header>
+          <article className="needs-review"><span>01</span><div><small>NEEDS REVIEW</small><b>Bitcoinâ€™s fixed supply</b><p>Incorrect answer explained</p></div><strong>REVIEW NOW</strong></article>
+          <article className="strengthening"><span>02</span><div><small>STRENGTHENING</small><b>Public-key ownership</b><p>1 of 2 correct checks</p></div><strong>TOMORROW</strong></article>
+          <article className="mastered"><span>âœ“</span><div><small>MASTERED</small><b>Proof-of-work incentives</b><p>Confirmed across two reviews</p></div><strong>MASTERED</strong></article>
+          <footer><i><b style={{ width: "67%" }} /></i><span>Concept mastery, not only course completion</span></footer>
+        </div>
+        <div className="mastery-advantage-copy">
+          <p className="section-kicker">FREE FOR EVERY LEARNER</p>
+          <h2 id="mastery-advantage-title">A wrong answer should improve tomorrowâ€™s learning.</h2>
+          <p>Most platforms score a quiz and forget it. Northstar explains the mistake, saves the concept, and brings it back in a focused follow-up check until understanding is proven twice.</p>
+          <ul><li><b>Explain</b><span>See why the answer is right</span></li><li><b>Remember</b><span>Build a private weak-concept queue</span></li><li><b>Master</b><span>Confirm understanding across spaced checks</span></li></ul>
+          <a className="button" href={learnerMasterySignupHref}>Start learning with mastery <span>â†’</span></a>
+          <small>No paid AI add-on Â· Private to the learner Â· Built from real course assessments</small>
         </div>
       </section>
 

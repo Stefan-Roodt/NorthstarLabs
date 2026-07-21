@@ -30,6 +30,15 @@ export async function deleteCourseSafely(input: {
 
   await env.DB.batch([
     env.DB.prepare(
+      `DELETE FROM mastery_practice_attempts WHERE question_id IN (
+        SELECT qq.id FROM quiz_questions qq JOIN quizzes q ON q.id=qq.quiz_id
+        JOIN lessons l ON l.id=q.lesson_id WHERE l.course_id=?
+      )`,
+    ).bind(input.courseId),
+    env.DB.prepare(
+      "DELETE FROM learner_concept_mastery WHERE course_id=?",
+    ).bind(input.courseId),
+    env.DB.prepare(
       `DELETE FROM portfolio_source_visibility WHERE source_type='assessment'
        AND source_id IN (
          SELECT q.id FROM quizzes q JOIN lessons l ON l.id=q.lesson_id

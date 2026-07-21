@@ -30,6 +30,8 @@ const BACKUP_TABLES = [
   "quizzes",
   "quiz_questions",
   "quiz_attempts",
+  "learner_concept_mastery",
+  "mastery_practice_attempts",
   "certificates",
   "learning_portfolios",
   "portfolio_source_visibility",

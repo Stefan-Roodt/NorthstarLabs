@@ -597,7 +597,7 @@ export const quizzes = sqliteTable("quizzes", {
   uniqueIndex("quizzes_lesson_unique").on(table.lessonId),
 ]);
 export const quizQuestions = sqliteTable("quiz_questions", {
-  id: text("id").primaryKey(), quizId: text("quiz_id").notNull(), prompt: text("prompt").notNull(), optionsJson: text("options_json").notNull(), correctIndex: integer("correct_index").notNull(), explanation: text("explanation").notNull().default(""), position: integer("position").notNull().default(0),
+  id: text("id").primaryKey(), quizId: text("quiz_id").notNull(), prompt: text("prompt").notNull(), optionsJson: text("options_json").notNull(), correctIndex: integer("correct_index").notNull(), explanation: text("explanation").notNull().default(""), conceptLabel: text("concept_label").notNull().default(""), position: integer("position").notNull().default(0),
 }, (table) => [
   index("quiz_questions_quiz_position_idx").on(table.quizId, table.position),
 ]);
@@ -617,6 +617,37 @@ export const quizAttempts = sqliteTable("quiz_attempts", {
     table.attemptNumber,
   ),
   index("quiz_attempts_user_submitted_idx").on(table.userId, table.submittedAt),
+]);
+export const learnerConceptMastery = sqliteTable("learner_concept_mastery", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  questionId: text("question_id").notNull(),
+  courseId: text("course_id").notNull(),
+  lessonId: text("lesson_id").notNull(),
+  conceptLabel: text("concept_label").notNull(),
+  status: text("status").notNull().default("needs_review"),
+  wrongCount: integer("wrong_count").notNull().default(0),
+  correctStreak: integer("correct_streak").notNull().default(0),
+  firstSeenAt: integer("first_seen_at").notNull(),
+  lastReviewedAt: integer("last_reviewed_at"),
+  nextReviewAt: integer("next_review_at"),
+  masteredAt: integer("mastered_at"),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("learner_concept_mastery_user_question_unique").on(table.userId, table.questionId),
+  index("learner_concept_mastery_user_status_review_idx").on(table.userId, table.status, table.nextReviewAt),
+  index("learner_concept_mastery_course_user_idx").on(table.courseId, table.userId),
+]);
+export const masteryPracticeAttempts = sqliteTable("mastery_practice_attempts", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  questionId: text("question_id").notNull(),
+  selectedIndex: integer("selected_index").notNull(),
+  correct: integer("correct", { mode: "boolean" }).notNull().default(false),
+  answeredAt: integer("answered_at").notNull(),
+}, (table) => [
+  index("mastery_practice_attempts_user_answered_idx").on(table.userId, table.answeredAt),
+  index("mastery_practice_attempts_question_user_idx").on(table.questionId, table.userId),
 ]);
 export const certificates = sqliteTable("certificates", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), courseId: text("course_id").notNull(),

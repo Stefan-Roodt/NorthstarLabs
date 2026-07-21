@@ -6,7 +6,7 @@ import { requireApiUser } from "../../../../lib/server-auth";
 import { recordSystemEvent, safeErrorMessage } from "../../../../lib/system-monitor";
 
 async function accountExport(userId: string) {
-  const [profile, schools, enrollments, progress, attempts, certificates, posts, preferences, products, live, portfolio, portfolioSources, portfolioEvidence] =
+  const [profile, schools, enrollments, progress, attempts, masteryConcepts, masteryPractice, certificates, posts, preferences, products, live, portfolio, portfolioSources, portfolioEvidence] =
     await Promise.all([
       env.DB.prepare(
         `SELECT id,email,display_name AS displayName,role,onboarding_path AS onboardingPath,
@@ -39,6 +39,21 @@ async function accountExport(userId: string) {
           qa.submitted_at AS submittedAt
          FROM quiz_attempts qa JOIN quizzes q ON q.id=qa.quiz_id
          WHERE qa.user_id=? ORDER BY qa.submitted_at DESC`,
+      ).bind(userId).all(),
+      env.DB.prepare(
+        `SELECT m.question_id AS questionId,m.course_id AS courseId,c.title AS courseTitle,
+          m.lesson_id AS lessonId,l.title AS lessonTitle,m.concept_label AS conceptLabel,
+          m.status,m.wrong_count AS wrongCount,m.correct_streak AS correctStreak,
+          m.first_seen_at AS firstSeenAt,m.last_reviewed_at AS lastReviewedAt,
+          m.next_review_at AS nextReviewAt,m.mastered_at AS masteredAt,m.updated_at AS updatedAt
+         FROM learner_concept_mastery m
+         JOIN courses c ON c.id=m.course_id JOIN lessons l ON l.id=m.lesson_id
+         WHERE m.user_id=? ORDER BY m.updated_at DESC`,
+      ).bind(userId).all(),
+      env.DB.prepare(
+        `SELECT question_id AS questionId,selected_index AS selectedIndex,correct,
+          answered_at AS answeredAt
+         FROM mastery_practice_attempts WHERE user_id=? ORDER BY answered_at DESC`,
       ).bind(userId).all(),
       env.DB.prepare(
         `SELECT code,course_title AS courseTitle,certificate_title AS certificateTitle,
@@ -97,6 +112,8 @@ async function accountExport(userId: string) {
     enrollments: enrollments.results,
     lessonProgress: progress.results,
     quizAttempts: attempts.results,
+    masteryConcepts: masteryConcepts.results,
+    masteryPracticeAttempts: masteryPractice.results,
     certificates: certificates.results,
     communityPosts: posts.results,
     notificationPreferences: preferences,
@@ -181,6 +198,12 @@ export async function DELETE(request: Request) {
   ).bind(requestId).run();
   try {
     await env.DB.batch([
+      env.DB.prepare(
+        "DELETE FROM mastery_practice_attempts WHERE user_id=?",
+      ).bind(user.id),
+      env.DB.prepare(
+        "DELETE FROM learner_concept_mastery WHERE user_id=?",
+      ).bind(user.id),
       env.DB.prepare(
         "DELETE FROM portfolio_source_visibility WHERE user_id=?",
       ).bind(user.id),

@@ -13,6 +13,7 @@ type Enrolment = {
   schoolSlug: string;
 };
 type LearnerProfile = { displayName: string; email: string };
+type MasterySummary = { ready: number; strengthening: number; mastered: number; total: number };
 type LearnerProduct = {
   id: string;
   productId: string;
@@ -31,6 +32,7 @@ export default function LearnerHome() {
   const [items, setItems] = useState<Enrolment[]>([]);
   const [products, setProducts] = useState<LearnerProduct[]>([]);
   const [profile, setProfile] = useState<LearnerProfile | null>(null);
+  const [mastery, setMastery] = useState<MasterySummary>({ ready: 0, strengthening: 0, mastered: 0, total: 0 });
   const [loading, setLoading] = useState(true);
   const supabase = getSupabaseBrowser();
 
@@ -43,10 +45,11 @@ export default function LearnerHome() {
         return;
       }
       const headers = { authorization: `Bearer ${session.access_token}` };
-      const [coursesResponse, productsResponse, profileResponse] = await Promise.all([
+      const [coursesResponse, productsResponse, profileResponse, masteryResponse] = await Promise.all([
         fetch("/api/enrollments", { headers }),
         fetch("/api/products/claim", { headers }),
         fetch("/api/profile", { headers }),
+        fetch("/api/mastery?summary=1", { headers }),
       ]);
       if (coursesResponse.ok) setItems(await coursesResponse.json());
       if (productsResponse.ok) {
@@ -54,6 +57,10 @@ export default function LearnerHome() {
         setProducts(result.products);
       }
       if (profileResponse.ok) setProfile(await profileResponse.json());
+      if (masteryResponse.ok) {
+        const result = await masteryResponse.json() as { summary: MasterySummary };
+        setMastery(result.summary);
+      }
       setLoading(false);
     })();
   }, [supabase]);
@@ -78,6 +85,7 @@ export default function LearnerHome() {
         <Link href="/courses">Explore modules</Link>
         <Link href="/live">My live classes</Link>
         <Link href="/community">My communities</Link>
+        <Link href="/mastery">Mastery</Link>
         <Link href="/portfolio">Proof portfolio</Link>
         <Link href="/account">Account</Link>
         <button onClick={signOut}>Sign out</button>
@@ -96,6 +104,16 @@ export default function LearnerHome() {
         <div><dt>Live sessions</dt><dd>{upcomingLive}</dd></div>
       </dl>}
     </section>
+
+    {!loading && mastery.total > 0 && <section className="learner-mastery-strip">
+      <div>
+        <p className="sys-kicker">PERSONAL MASTERY LOOP</p>
+        <h2>{mastery.ready > 0 ? `${mastery.ready} concept${mastery.ready === 1 ? " is" : "s are"} ready for review.` : "Your understanding is strengthening."}</h2>
+        <p>Practise only what needs attention. Two correct follow-up checks move a concept to mastered.</p>
+      </div>
+      <dl><div><dt>Ready</dt><dd>{mastery.ready}</dd></div><div><dt>Strengthening</dt><dd>{mastery.strengthening}</dd></div><div><dt>Mastered</dt><dd>{mastery.mastered}</dd></div></dl>
+      <Link className="sys-primary" href="/mastery">{mastery.ready > 0 ? "Start focused review" : "See my concept map"} â†’</Link>
+    </section>}
 
     {!loading && <section className="learner-next-wrap">
       {nextCourse ? <article className="learner-next-card">

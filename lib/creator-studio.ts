@@ -12,6 +12,7 @@ export type StudioQuestion = {
   options: string[];
   correctIndex: number;
   explanation?: string;
+  conceptLabel?: string;
 };
 
 export type StudioLesson = {
@@ -464,6 +465,7 @@ function validateBlueprint(raw: unknown, input: GenerateBlueprintInput): StudioB
                   ? correctIndex
                   : 0,
                 explanation: cleanText(question.explanation, 1_000),
+                conceptLabel: cleanText(question.conceptLabel || question.prompt, 100),
               };
             }).filter((question) => question.prompt && question.options.length >= 2)
           : [];
@@ -545,7 +547,7 @@ Return JSON only with this exact shape:
       "content":"Complete learner-facing Markdown with a Sources section at the end",
       "transcript":"Complete narration for audio/video, otherwise empty",
       "citations":["[S1]"],
-      "questions":[{"prompt":"...","options":["..."],"correctIndex":0,"explanation":"Why the correct answer is right"}]
+      "questions":[{"conceptLabel":"The short concept being tested","prompt":"...","options":["..."],"correctIndex":0,"explanation":"Why the correct answer is right"}]
     }]
   }]
 }`;

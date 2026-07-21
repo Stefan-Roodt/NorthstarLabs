@@ -7,6 +7,7 @@ type QuizQuestionInput = {
   options?: string[];
   correctIndex?: number;
   explanation?: string;
+  conceptLabel?: string;
 };
 
 export async function POST(request: Request) {
@@ -37,6 +38,12 @@ export async function POST(request: Request) {
   if (!questionInputs.length) {
     if (existing) {
       await env.DB.batch([
+        env.DB.prepare(
+          "DELETE FROM mastery_practice_attempts WHERE question_id IN (SELECT id FROM quiz_questions WHERE quiz_id=?)",
+        ).bind(existing.id),
+        env.DB.prepare(
+          "DELETE FROM learner_concept_mastery WHERE question_id IN (SELECT id FROM quiz_questions WHERE quiz_id=?)",
+        ).bind(existing.id),
         env.DB.prepare("DELETE FROM quiz_attempts WHERE quiz_id=?").bind(existing.id),
         env.DB.prepare("DELETE FROM quiz_questions WHERE quiz_id=?").bind(existing.id),
         env.DB.prepare("DELETE FROM quizzes WHERE id=?").bind(existing.id),
@@ -50,6 +57,7 @@ export async function POST(request: Request) {
     options: (question.options || []).map((option) => option.trim()),
     correctIndex: Number(question.correctIndex || 0),
     explanation: question.explanation?.trim().slice(0, 1200) || "",
+    conceptLabel: question.conceptLabel?.trim().replace(/\s+/g, " ").slice(0, 100) || "",
   }));
   for (const question of questions) {
     if (
@@ -78,10 +86,16 @@ export async function POST(request: Request) {
       passingScore,
       maxAttempts,
     ),
+    env.DB.prepare(
+      "DELETE FROM mastery_practice_attempts WHERE question_id IN (SELECT id FROM quiz_questions WHERE quiz_id=?)",
+    ).bind(quizId),
+    env.DB.prepare(
+      "DELETE FROM learner_concept_mastery WHERE question_id IN (SELECT id FROM quiz_questions WHERE quiz_id=?)",
+    ).bind(quizId),
     env.DB.prepare("DELETE FROM quiz_questions WHERE quiz_id=?").bind(quizId),
     ...questions.map((question, index) =>
       env.DB.prepare(
-        "INSERT INTO quiz_questions (id,quiz_id,prompt,options_json,correct_index,explanation,position) VALUES (?,?,?,?,?,?,?)",
+        "INSERT INTO quiz_questions (id,quiz_id,prompt,options_json,correct_index,explanation,concept_label,position) VALUES (?,?,?,?,?,?,?,?)",
       ).bind(
         crypto.randomUUID(),
         quizId,
@@ -89,6 +103,7 @@ export async function POST(request: Request) {
         JSON.stringify(question.options),
         question.correctIndex,
         question.explanation,
+        question.conceptLabel,
         index,
       )
     ),

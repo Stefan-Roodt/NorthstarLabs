@@ -241,12 +241,13 @@ export async function POST(request: Request) {
           ).bind(quizId, lessonId, `${lesson.title} check`));
           lesson.questions.forEach((question, questionIndex) => statements.push(env.DB.prepare(
             `INSERT INTO quiz_questions
-             (id,quiz_id,prompt,options_json,correct_index,explanation,position)
-             VALUES (?,?,?,?,?,?,?)`,
+             (id,quiz_id,prompt,options_json,correct_index,explanation,concept_label,position)
+             VALUES (?,?,?,?,?,?,?,?)`,
           ).bind(
             crypto.randomUUID(), quizId, question.prompt, JSON.stringify(question.options),
             question.correctIndex,
             question.explanation?.trim() || "Review the approved source and lesson reasoning before retrying.",
+            question.conceptLabel?.trim().slice(0, 100) || question.prompt.slice(0, 100),
             questionIndex,
           )));
         }
