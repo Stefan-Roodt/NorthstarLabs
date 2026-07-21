@@ -239,6 +239,11 @@ const subscriptionPlans = [
 function SubscriptionPanel() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState<{
+    connected: boolean;
+    mode: "sandbox" | "live";
+    membership: { plan: string; status: string } | null;
+  } | null>(null);
   async function authenticatedPost(path: string, body?: object) {
     const supabase = getSupabaseBrowser();
     const { data } = await supabase?.auth.getSession() ?? { data: { session: null } };
@@ -258,5 +263,18 @@ function SubscriptionPanel() {
       document.body.appendChild(form); form.submit();
     } else { setMessage(result.error ?? "PayFast checkout is unavailable."); setBusy(""); }
   }
-  return <><div className="action-bar"><div><h2>Choose your NorthstarLabs plan</h2><p>Secure recurring billing in South African rand through PayFast.</p></div><span className="payment-provider">PAYFAST SANDBOX</span></div>{message&&<div className="notice">{message}</div>}<div className="subscription-grid">{subscriptionPlans.map(plan=><article className="panel subscription-card" key={plan.id}><p className="sys-kicker">{plan.name.toUpperCase()}</p><h3>R{plan.price.toLocaleString("en-ZA")}<span>/month</span></h3><p>{plan.note}</p><button className="sys-primary" disabled={!!busy} onClick={()=>checkout(plan.id)}>{busy===plan.id?"Opening PayFast…":"Continue with PayFast →"}</button></article>)}</div><p className="payment-note">Recurring PayFast subscriptions use card payments. No real payment is taken while sandbox mode is active.</p></>;
+  useEffect(() => {
+    const supabase = getSupabaseBrowser();
+    supabase?.auth.getSession().then(({ data }) => {
+      if (!data.session) return;
+      fetch("/api/payfast/status", {
+        headers: { authorization: `Bearer ${data.session.access_token}` },
+      }).then(async (response) => response.ok ? response.json() : null)
+        .then((result) => result && setPaymentStatus(result));
+    });
+  }, []);
+  const badge = !paymentStatus?.connected
+    ? "PAYFAST SETUP REQUIRED"
+    : paymentStatus.mode === "live" ? "PAYFAST LIVE" : "PAYFAST TEST MODE";
+  return <><div className="action-bar"><div><h2>Choose your NorthstarLabs plan</h2><p>Secure recurring billing in South African rand through PayFast.</p>{paymentStatus?.membership&&<small>Your current plan: <b>{paymentStatus.membership.plan}</b> · {paymentStatus.membership.status.replaceAll("_", " ")}</small>}</div><span className="payment-provider">{badge}</span></div>{message&&<div className="notice">{message}</div>}<div className="subscription-grid">{subscriptionPlans.map(plan=><article className="panel subscription-card" key={plan.id}><p className="sys-kicker">{plan.name.toUpperCase()}</p><h3>R{plan.price.toLocaleString("en-ZA")}<span>/month</span></h3><p>{plan.note}</p><button className="sys-primary" disabled={!!busy||paymentStatus?.connected===false} onClick={()=>checkout(plan.id)}>{busy===plan.id?"Opening PayFast…":"Continue with PayFast →"}</button></article>)}</div><p className="payment-note">{paymentStatus?.mode === "live" ? "Recurring subscriptions are charged securely by PayFast in South African rand." : "Test mode is safe to use: no real payment is taken until PayFast is switched to live."}</p></>;
 }

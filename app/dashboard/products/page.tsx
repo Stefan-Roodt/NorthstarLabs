@@ -287,7 +287,7 @@ export default function ProductsPage() {
       <div>
         <p className="sys-kicker">PRODUCTS & ACCESS</p>
         <h1>Sell the outcome, not just one course.</h1>
-        <p>Combine courses, community and live learning into bundles or recurring memberships. Free products can be joined immediately; paid checkout connects later.</p>
+        <p>Combine courses, community and live learning into bundles or recurring memberships. Free products open immediately; paid offers use verified PayFast checkout.</p>
       </div>
       <dl>
         <div><dt>Products</dt><dd>{data.products.filter((product) => product.status !== "archived").length}</dd></div>

@@ -92,7 +92,8 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
       location.href = `/login?next=${encodeURIComponent(returnTo)}`;
       return;
     }
-    const response = await fetch("/api/enrollments", {
+    const paid = Number(course?.priceCents || 0) > 0;
+    const response = await fetch(paid ? "/api/payfast/checkout" : "/api/enrollments", {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -104,13 +105,26 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
       error: "We could not enrol you. Please try again.",
       newEnrollment: false,
     }));
-    if (response.ok) {
+    if (response.ok && result.action && result.fields) {
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = result.action;
+      for (const [name, value] of Object.entries(result.fields as Record<string, string>)) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit();
+    } else if (response.ok) {
       location.href = `/learn/${id}${result.newEnrollment ? "?welcome=1" : ""}`;
     } else {
       setMessage(result.error || "We could not enrol you. Please try again.");
       setEnrolling(false);
     }
-  }, [enrolling, id]);
+  }, [course?.priceCents, enrolling, id]);
 
   useEffect(() => {
     if (!loaded || !course || autoEnrolAttempted.current) return;

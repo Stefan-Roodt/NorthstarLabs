@@ -325,6 +325,41 @@ export const memberships = sqliteTable("memberships", {
 }, (table) => [
   index("memberships_user_status_idx").on(table.userId, table.status),
 ]);
+export const paymentOrders = sqliteTable("payment_orders", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  schoolId: text("school_id"),
+  purpose: text("purpose").notNull(),
+  targetId: text("target_id").notNull(),
+  itemName: text("item_name").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  currency: text("currency").notNull().default("ZAR"),
+  billingInterval: text("billing_interval").notNull().default("one_time"),
+  status: text("status").notNull().default("pending"),
+  payfastPaymentId: text("payfast_payment_id"),
+  payfastToken: text("payfast_token"),
+  paymentStatus: text("payment_status"),
+  failureReason: text("failure_reason"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+  completedAt: integer("completed_at"),
+}, (table) => [
+  index("payment_orders_user_created_idx").on(table.userId, table.createdAt),
+  index("payment_orders_status_updated_idx").on(table.status, table.updatedAt),
+  index("payment_orders_target_idx").on(table.purpose, table.targetId),
+  uniqueIndex("payment_orders_payfast_payment_unique").on(table.payfastPaymentId),
+]);
+export const paymentEvents = sqliteTable("payment_events", {
+  id: text("id").primaryKey(),
+  orderId: text("order_id").notNull(),
+  payfastPaymentId: text("payfast_payment_id").notNull(),
+  paymentStatus: text("payment_status").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  uniqueIndex("payment_events_payfast_payment_unique").on(table.payfastPaymentId),
+  index("payment_events_order_created_idx").on(table.orderId, table.createdAt),
+]);
 export const products = sqliteTable("products", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),

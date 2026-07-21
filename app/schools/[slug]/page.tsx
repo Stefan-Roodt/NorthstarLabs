@@ -135,7 +135,7 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
         ? "Find a tutor"
         : "Explore courses";
 
-  async function joinProduct(productId: string) {
+  async function joinProduct(productId: string, paid = false) {
     if (!supabase) return;
     const session = (await supabase.auth.getSession()).data.session;
     if (!session) {
@@ -144,7 +144,7 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
     }
     setJoining(productId);
     setNotice("");
-    const response = await fetch("/api/products/claim", {
+    const response = await fetch(paid ? "/api/payfast/checkout" : "/api/products/claim", {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -156,6 +156,21 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
     if (!response.ok) {
       setNotice(result.error || "This product could not be joined.");
       setJoining("");
+      return;
+    }
+    if (result.action && result.fields) {
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = result.action;
+      for (const [name, value] of Object.entries(result.fields as Record<string, string>)) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit();
       return;
     }
     setNotice("Access granted. Your courses and live sessions are ready.");
@@ -265,11 +280,15 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
             {product.includesCommunity ? <li>Private community</li> : null}
             {product.accessDurationDays > 0 ? <li>{product.accessDurationDays} days of access</li> : <li>Ongoing access</li>}
           </ul>
-          {product.priceCents === 0
-            ? <button className="school-primary-action" disabled={joining === product.id} onClick={() => joinProduct(product.id)}>{joining === product.id ? "Joining..." : "Join free"}</button>
-            : school.supportEmail
-              ? <a className="school-primary-action" href={`mailto:${school.supportEmail}?subject=${encodeURIComponent(`Access to ${product.name}`)}`}>Ask about access</a>
-              : <button className="school-primary-action" disabled>Paid checkout coming next</button>}
+          <button
+            className="school-primary-action"
+            disabled={joining === product.id}
+            onClick={() => joinProduct(product.id, product.priceCents > 0)}
+          >
+            {joining === product.id
+              ? product.priceCents > 0 ? "Opening PayFast..." : "Joining..."
+              : product.priceCents > 0 ? "Pay securely with PayFast" : "Join free"}
+          </button>
           <small>{product.billingInterval === "monthly" ? "Billed monthly" : product.billingInterval === "yearly" ? "Billed yearly" : product.priceCents ? "One-time access" : "No payment required"}</small>
         </article>)}
       </section>

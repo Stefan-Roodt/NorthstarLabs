@@ -222,6 +222,8 @@ for (const table of [
   "live_attendance",
   "integrations",
   "integration_deliveries",
+  "payment_orders",
+  "payment_events",
 ]) {
   if (!tables.some((item) => item.name === table)) {
     throw new Error(`The ${table} product-growth table was not created.`);
