@@ -1472,3 +1472,35 @@ test("turns public learning demand into a moderated, honest product roadmap", as
   assert.match(styles, /\.demand-page/);
   assert.match(styles, /\.demand-admin-section/);
 });
+
+test("gives learners a persistent low-bandwidth, text-first course mode", async () => {
+  const [mode, player, learnerHome, learnApi, styles] = await Promise.all([
+    readFile(new URL("../lib/low-bandwidth.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/learn/[courseId]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/system.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(mode, /northstarlabs:low-bandwidth/);
+  assert.match(mode, /connection\?\.saveData/);
+  assert.match(mode, /window\.localStorage\.setItem/);
+  assert.match(learnApi, /url\.searchParams\.get\("compact"\) === "1"/);
+  assert.match(learnApi, /requestedLessonId/);
+  assert.match(learnApi, /content: includeDetail \? lesson\.content : ""/);
+  assert.match(learnApi, /resources: includeDetail/);
+  assert.match(learnApi, /detailLoaded: includeDetail/);
+  assert.match(learnApi, /publicLessonFields/);
+  assert.match(learnApi, /"videoKey", "primaryKey"/);
+  assert.ok(player.indexOf("if (!mediaRequested) return;") < player.indexOf('fetch("/api/media/playback"'));
+  assert.match(player, /setMediaRequested\(true\)/);
+  assert.match(player, /preload=\{lowBandwidth \? "none" : "metadata"\}/);
+  assert.match(player, /autoPlay=\{!lowBandwidth/);
+  assert.match(player, /Only the open lesson&apos;s text and activities are transferred/);
+  assert.match(player, /Text-first lesson ready/);
+  assert.match(player, /school\?\.logoUrl && !lowBandwidth/);
+  assert.match(learnerHome, /Low-data on/);
+  assert.match(learnerHome, /Courses will load text first/);
+  assert.match(styles, /\.low-bandwidth-media/);
+  assert.match(styles, /\.bandwidth-notice/);
+  assert.match(styles, /\.learner-bandwidth-notice/);
+});

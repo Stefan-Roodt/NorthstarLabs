@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useLowBandwidthMode } from "../../lib/low-bandwidth";
 import { getSupabaseBrowser } from "../../lib/supabase-client";
 
 type Enrolment = {
@@ -35,6 +36,7 @@ export default function LearnerHome() {
   const [mastery, setMastery] = useState<MasterySummary>({ ready: 0, strengthening: 0, mastered: 0, total: 0 });
   const [loading, setLoading] = useState(true);
   const supabase = getSupabaseBrowser();
+  const { enabled: lowBandwidth, toggle: toggleLowBandwidth } = useLowBandwidthMode();
 
   useEffect(() => {
     if (!supabase) return;
@@ -88,6 +90,7 @@ export default function LearnerHome() {
         <Link href="/mastery">Mastery</Link>
         <Link href="/portfolio">Proof portfolio</Link>
         <Link href="/account">Account</Link>
+        <button className={`learner-bandwidth-toggle ${lowBandwidth ? "active" : ""}`} aria-pressed={lowBandwidth} onClick={toggleLowBandwidth}>{lowBandwidth ? "Low-data on" : "Low-data off"}</button>
         <button onClick={signOut}>Sign out</button>
       </nav>
     </header>
@@ -104,6 +107,8 @@ export default function LearnerHome() {
         <div><dt>Live sessions</dt><dd>{upcomingLive}</dd></div>
       </dl>}
     </section>
+
+    {lowBandwidth && <section className="learner-bandwidth-notice"><div><p className="sys-kicker">LOW-BANDWIDTH MODE</p><h2>Courses will load text first.</h2><p>Only the lesson you open is transferred. Video, audio, and images stay paused until you choose to load them.</p></div><button onClick={toggleLowBandwidth}>Return to standard mode</button></section>}
 
     {!loading && mastery.total > 0 && <section className="learner-mastery-strip">
       <div>

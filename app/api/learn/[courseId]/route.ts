@@ -5,9 +5,21 @@ function learnerMediaKey(key: unknown) {
   return typeof key === "string" && key.startsWith("r2:") ? "r2:protected" : key;
 }
 
+function publicLessonFields(lesson: Record<string, unknown>) {
+  const safe = { ...lesson };
+  for (const key of [
+    "videoKey", "primaryKey", "primaryFilename", "primaryContentType", "primaryKind",
+    "primaryAltText", "introKey", "introFilename", "introContentType", "introKind", "introAltText",
+  ]) delete safe[key];
+  return safe;
+}
+
 export async function GET(request: Request, context: { params: Promise<{ courseId: string }> }) {
   const user = await requireApiUser(request);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const url = new URL(request.url);
+  const compact = url.searchParams.get("compact") === "1";
+  const requestedLessonId = url.searchParams.get("lessonId") || "";
   const { courseId } = await context.params;
   const access = await env.DB.prepare(
     `SELECT c.id,c.title,c.description,c.status,c.owner_id AS ownerId,
@@ -175,22 +187,35 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
     return { lesson, availableAt, locked, lockReason };
   });
 
+  const requestedLesson = controlledLessons.find(({ lesson, locked }) =>
+    String(lesson.id) === requestedLessonId && (!locked || isStaff)
+  );
+  const startingLesson = controlledLessons.find(({ lesson, locked }) =>
+    !locked && !Number((lesson as Record<string, unknown>).completed || 0)
+  ) || controlledLessons.find(({ locked }) => !locked);
+  const detailLessonId = String((requestedLesson || startingLesson)?.lesson.id || "");
+
   return Response.json({
     course: access,
     sections: sections.results,
-    lessons: controlledLessons.map(({lesson,availableAt,locked,lockReason})=>({
-      ...lesson,
+    lessons: controlledLessons.map(({lesson,availableAt,locked,lockReason})=>{
+      const includeDetail = !compact || String(lesson.id) === detailLessonId;
+      return {
+      ...publicLessonFields(lesson as Record<string, unknown>),
+      content: includeDetail ? lesson.content : "",
+      transcript: includeDetail ? lesson.transcript : "",
+      detailLoaded: includeDetail,
       availableAt,
       locked,
       lockReason,
-      primaryAsset: lesson.primaryAssetId ? {
+      primaryAsset: includeDetail && lesson.primaryAssetId ? {
         id: lesson.primaryAssetId,
         key: learnerMediaKey(lesson.primaryKey),
         filename: lesson.primaryFilename,
         contentType: lesson.primaryContentType,
         kind: lesson.primaryKind,
         altText: lesson.primaryAltText,
-      } : lesson.videoKey ? {
+      } : includeDetail && lesson.videoKey ? {
         id: null,
         key: learnerMediaKey(lesson.videoKey),
         filename: "Lesson video",
@@ -198,7 +223,7 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
         kind: "video",
         altText: "",
       } : null,
-      introAsset: lesson.introAssetId ? {
+      introAsset: includeDetail && lesson.introAssetId ? {
         id: lesson.introAssetId,
         key: learnerMediaKey(lesson.introKey),
         filename: lesson.introFilename,
@@ -206,9 +231,9 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
         kind: lesson.introKind,
         altText: lesson.introAltText,
       } : null,
-      resources: resources.get(String(lesson.id)) || [],
-      quiz:quizzes.get(String(lesson.id))||null
-    })),
+      resources: includeDetail ? resources.get(String(lesson.id)) || [] : [],
+      quiz:includeDetail ? quizzes.get(String(lesson.id))||null : null
+    }}),
     certificate
   });
 }

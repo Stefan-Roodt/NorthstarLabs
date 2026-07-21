@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { type CSSProperties, type SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 import { LessonContent } from "../../../lib/lesson-content";
 import { getLessonGuide } from "../../../lib/lesson-guide";
+import { useLowBandwidthMode } from "../../../lib/low-bandwidth";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 import { ContextualLessonHelp } from "./lesson-help";
 
@@ -59,6 +60,7 @@ type Lesson = {
   introAsset?: Asset | null;
   resources: Resource[];
   quiz?: Quiz | null;
+  detailLoaded?: boolean;
 };
 type Section = { id: string; title: string; position: number };
 type Certificate = {
@@ -110,6 +112,7 @@ function MediaViewer({
   lessonId,
   accessToken,
   onWatch,
+  lowBandwidth,
 }: {
   asset: Asset;
   introAsset?: Asset | null;
@@ -117,16 +120,22 @@ function MediaViewer({
   lessonId: string;
   accessToken: () => Promise<string>;
   onWatch: (percent: number) => void;
+  lowBandwidth: boolean;
 }) {
-  const [activeAsset, setActiveAsset] = useState(() => introAsset || asset);
-  const [playingIntro, setPlayingIntro] = useState(Boolean(introAsset));
-  const [source, setSource] = useState(() => (introAsset || asset).key.startsWith("r2:") ? "" : (introAsset || asset).key);
+  const [activeAsset, setActiveAsset] = useState(() => lowBandwidth ? asset : introAsset || asset);
+  const [playingIntro, setPlayingIntro] = useState(Boolean(introAsset) && !lowBandwidth);
+  const [mediaRequested, setMediaRequested] = useState(!lowBandwidth);
+  const [source, setSource] = useState(() => {
+    const openingAsset = lowBandwidth ? asset : introAsset || asset;
+    return !lowBandwidth && !openingAsset.key.startsWith("r2:") ? openingAsset.key : "";
+  });
   const [error, setError] = useState("");
   const [renewal, setRenewal] = useState(0);
   const [captionUrl, setCaptionUrl] = useState("");
   const lastWatchReport = useRef(0);
 
   useEffect(() => {
+    if (!mediaRequested) return;
     let cancelled = false;
     (async () => {
       await Promise.resolve();
@@ -155,7 +164,7 @@ function MediaViewer({
     return () => {
       cancelled = true;
     };
-  }, [accessToken, activeAsset.id, activeAsset.key, lessonId, renewal]);
+  }, [accessToken, activeAsset.id, activeAsset.key, lessonId, mediaRequested, renewal]);
 
   useEffect(() => () => {
     if (captionUrl) URL.revokeObjectURL(captionUrl);
@@ -196,6 +205,10 @@ function MediaViewer({
     }
   }
 
+  if (!mediaRequested) return <div className="low-bandwidth-media" role="region" aria-label="Lesson media paused to save data">
+    <div><span>LOW-BANDWIDTH MODE</span><h2>{activeAsset.kind === "image" ? "Image held back" : `${activeAsset.kind === "audio" ? "Audio" : "Video"} held back`}</h2><p>The written lesson and transcript are ready. This media will use data only when you choose to load it.</p></div>
+    <button onClick={() => setMediaRequested(true)}>Load {activeAsset.kind} now</button>
+  </div>;
   if (error) return <div className="media-placeholder"><p>{error}</p></div>;
   if (!source) return <div className="media-placeholder"><p>Loading lesson media…</p></div>;
   if (activeAsset.kind === "image") {
@@ -208,7 +221,7 @@ function MediaViewer({
   if (activeAsset.kind === "audio") {
     return <div className="lesson-audio">
       <b>{activeAsset.filename}</b>
-      <audio controls controlsList="nodownload" preload="metadata" src={source} onError={playbackFailed}>
+      <audio controls controlsList="nodownload" preload={lowBandwidth ? "none" : "metadata"} src={source} onError={playbackFailed}>
         Your browser does not support audio playback.
       </audio>
     </div>;
@@ -221,9 +234,9 @@ function MediaViewer({
         controlsList="nodownload"
         disablePictureInPicture
         playsInline
-        preload="metadata"
+        preload={lowBandwidth ? "none" : "metadata"}
         src={source}
-        autoPlay={!playingIntro && Boolean(introAsset)}
+        autoPlay={!lowBandwidth && !playingIntro && Boolean(introAsset)}
         onLoadedMetadata={prepareCaptions}
         onTimeUpdate={playingIntro ? undefined : reportVideoProgress}
         onEnded={finishVideo}
@@ -257,10 +270,12 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
   const [focusMode, setFocusMode] = useState(false);
   const [search, setSearch] = useState("");
   const [certificate, setCertificate] = useState<Certificate | null>(null);
+  const activeLessonId = useRef("");
   const searchParams = useSearchParams();
   const preview = searchParams.get("preview") === "1";
   const showOrientation = !preview && searchParams.get("welcome") === "1" && !orientationDismissed;
   const supabase = getSupabaseBrowser();
+  const { enabled: lowBandwidth, ready: bandwidthReady, toggle: toggleLowBandwidth } = useLowBandwidthMode();
 
   const token = useCallback(async () => {
     return (await supabase?.auth.getSession())?.data.session?.access_token || "";
@@ -271,14 +286,21 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
   }, [params]);
 
   useEffect(() => {
-    if (!id || !supabase) return;
+    activeLessonId.current = lessons[current]?.id || "";
+  }, [current, lessons]);
+
+  useEffect(() => {
+    if (!id || !supabase || !bandwidthReady) return;
     (async () => {
       const accessToken = await token();
       if (!accessToken) {
         location.href = `/login?next=${encodeURIComponent(`/learn/${id}${preview ? "?preview=1" : ""}`)}`;
         return;
       }
-      const response = await fetch(`/api/learn/${id}`, {
+      const compactQuery = lowBandwidth
+        ? `?compact=1${activeLessonId.current ? `&lessonId=${encodeURIComponent(activeLessonId.current)}` : ""}`
+        : "";
+      const response = await fetch(`/api/learn/${id}${compactQuery}`, {
         headers: { authorization: `Bearer ${accessToken}` },
       });
       const data = await response.json() as {
@@ -315,22 +337,50 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       setSections(data.sections || []);
       const loadedLessons = data.lessons || [];
       setLessons(loadedLessons);
+      const previousLesson = loadedLessons.findIndex((lesson) =>
+        lesson.id === activeLessonId.current && !lesson.locked
+      );
       const startingLesson = loadedLessons.findIndex((lesson) => !lesson.locked && !lesson.completed);
       const firstAvailable = loadedLessons.findIndex((lesson) => !lesson.locked);
-      setCurrent(startingLesson >= 0 ? startingLesson : Math.max(0, firstAvailable));
+      setCurrent(previousLesson >= 0
+        ? previousLesson
+        : startingLesson >= 0 ? startingLesson : Math.max(0, firstAvailable));
       setCertificate(data.certificate || null);
       setLoaded(true);
     })();
-  }, [id, preview, supabase, token]);
+  }, [bandwidthReady, id, lowBandwidth, preview, supabase, token]);
 
-  function continueToNext() {
-    if (current < lessons.length - 1) openLesson(current + 1);
+  async function loadLessonDetail(lessonId: string) {
+    if (!lowBandwidth) return true;
+    setLearnerMessage("Loading this lesson's text and activities…");
+    const response = await fetch(`/api/learn/${id}?compact=1&lessonId=${encodeURIComponent(lessonId)}`, {
+      headers: { authorization: `Bearer ${await token()}` },
+    });
+    const data = await response.json() as { lessons?: Lesson[]; error?: string };
+    const detail = data.lessons?.find((item) => item.id === lessonId && item.detailLoaded);
+    if (!response.ok || !detail) {
+      setLearnerMessage(data.error || "This lesson could not be loaded on the current connection.");
+      return false;
+    }
+    setLessons((currentLessons) => currentLessons.map((item) =>
+      item.id === lessonId ? { ...item, ...detail } : item
+    ));
+    setLearnerMessage("Text-first lesson ready. Media is still paused.");
+    return true;
   }
 
-  function openLesson(index: number) {
+  function continueToNext() {
+    if (current < lessons.length - 1) void openLesson(current + 1);
+  }
+
+  async function openLesson(index: number) {
     if (!preview && lessons[index]?.locked) {
       setLearnerMessage(lessons[index].lockReason || "This lesson is locked.");
       return;
+    }
+    if (lowBandwidth && !lessons[index]?.detailLoaded) {
+      const available = await loadLessonDetail(lessons[index].id);
+      if (!available) return;
     }
     setCurrent(index);
     setAnswers([]);
@@ -338,7 +388,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
     setQuizFeedback([]);
     setMasteryImpact(null);
     setResourceMessage("");
-    setLearnerMessage("");
+    setLearnerMessage(lowBandwidth ? "Text-first lesson ready. Media is still paused." : "");
   }
 
   async function saveLearnerState(
@@ -426,11 +476,15 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       });
     }
     if (current < updatedLessons.length - 1 && !updatedLessons[current + 1].locked) {
+      if (lowBandwidth && !updatedLessons[current + 1].detailLoaded) {
+        const available = await loadLessonDetail(updatedLessons[current + 1].id);
+        if (!available) return;
+      }
       setCurrent(current + 1);
       setAnswers([]);
       setQuizResult("");
       setQuizFeedback([]);
-      setLearnerMessage("");
+      setLearnerMessage(lowBandwidth ? "Text-first lesson ready. Media is still paused." : "");
     }
   }
 
@@ -597,10 +651,10 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
     });
   }
 
-  return <main className={`learn-page${focusMode ? " focus-mode" : ""}`} style={schoolStyle}>
+  return <main className={`learn-page${focusMode ? " focus-mode" : ""}${lowBandwidth ? " low-bandwidth" : ""}`} style={schoolStyle}>
     <header>
       <Link className="learner-school-brand" href={school ? `/schools/${school.slug}` : "/"}>
-        {school?.logoUrl ? <>
+        {school?.logoUrl && !lowBandwidth ? <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={school.logoUrl} alt="" />
         </> : <i>{(school?.name || "NorthStarLabs").slice(0, 2).toUpperCase()}</i>}
@@ -609,6 +663,12 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       {preview
         ? <div className="preview-mode-label">Creator preview · progress is disabled</div>
         : <div><span>{progress}% complete</span><i><b style={{ width: `${progress}%` }} /></i></div>}
+      {!preview && <button
+        className={`bandwidth-toggle ${lowBandwidth ? "active" : ""}`}
+        aria-pressed={lowBandwidth}
+        title="Reduce course data use on this device"
+        onClick={toggleLowBandwidth}
+      ><span>{lowBandwidth ? "Data saver on" : "Data saver off"}</span><small>{lowBandwidth ? "Text first" : "Standard media"}</small></button>}
       {preview
         ? <Link href={`/dashboard/courses/${id}`}>Exit preview</Link>
         : <div className="learner-course-links">
@@ -622,6 +682,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
           <Link href="/learn">My learning</Link>
         </div>}
     </header>
+    {!preview && lowBandwidth && <div className="bandwidth-notice" role="status"><b>Low-bandwidth mode is on.</b><span>Only the open lesson&apos;s text and activities are transferred. Images, audio, and video wait for your permission.</span><button onClick={toggleLowBandwidth}>Use standard mode</button></div>}
     {showOrientation && <section className="first-lesson-welcome" aria-labelledby="first-lesson-title">
       <div>
         <p className="sys-kicker">YOU ARE ENROLLED</p>
@@ -645,7 +706,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
         <h2>Your curriculum</h2>
         <label className="course-search">
           <span>Search this course</span>
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a lesson or topic" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={lowBandwidth ? "Find a lesson by title" : "Find a lesson or topic"} />
         </label>
         <div className="learner-saved-summary">
           <span>★ {lessons.filter((item) => item.bookmarked).length} saved</span>
@@ -656,7 +717,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
             ? lessons.filter((item) => item.sectionId === section.id)
             : lessons).filter((item) =>
               !normalizedSearch ||
-              `${item.title} ${item.content} ${item.transcript}`.toLowerCase().includes(normalizedSearch)
+              `${item.title}${lowBandwidth ? "" : ` ${item.content} ${item.transcript}`}`.toLowerCase().includes(normalizedSearch)
             );
           if (!sectionLessons.length) return null;
           return <div className="learner-section" key={section.id}>
@@ -668,7 +729,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
                 className={`${index === current ? "active" : item.completed ? "done" : ""}${item.locked && !preview ? " locked" : ""}`}
                 disabled={item.locked && !preview}
                 title={item.lockReason || undefined}
-                onClick={() => openLesson(index)}
+                onClick={() => void openLesson(index)}
               >
                 <span>{item.locked && !preview ? "⌁" : item.completed && !preview ? "✓" : index + 1}</span>
                 <span className="lesson-nav-title">
@@ -687,17 +748,18 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
           <p className="sys-kicker">LESSON LOCKED</p>
           <h1>{lesson.title}</h1>
           <p>{lesson.lockReason}</p>
-          <button onClick={() => openLesson(Math.max(0, current - 1))}>Return to the previous lesson</button>
+          <button onClick={() => void openLesson(Math.max(0, current - 1))}>Return to the previous lesson</button>
         </div> : <>
         {lesson.primaryAsset
           ? <MediaViewer
-              key={`${lesson.id}:${lesson.introAsset?.key || "no-intro"}:${lesson.primaryAsset.key}`}
+              key={`${lesson.id}:${lesson.introAsset?.key || "no-intro"}:${lesson.primaryAsset.key}:${lowBandwidth ? "low" : "standard"}`}
               asset={lesson.primaryAsset}
               introAsset={lesson.introAsset}
               transcript={lesson.transcript}
               lessonId={lesson.id}
               accessToken={token}
               onWatch={recordWatch}
+              lowBandwidth={lowBandwidth}
             />
           : <div className="lesson-banner">{(school?.name || "NorthStarLabs").toUpperCase()} · {lesson.lessonType.toUpperCase()} LESSON</div>}
         <p className="sys-kicker">LESSON {current + 1} OF {lessons.length}{lesson.durationMinutes ? ` · ${lesson.durationMinutes} MIN` : ""}</p>
@@ -863,7 +925,7 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
         </section>}
 
         {!lesson.quiz && <div className="lesson-actions">
-          <button disabled={current === 0} onClick={() => openLesson(current - 1)}>← Previous</button>
+          <button disabled={current === 0} onClick={() => void openLesson(current - 1)}>← Previous</button>
           {preview
             ? <span className="preview-completion-note">Completion is disabled in preview.</span>
             : <button className="sys-primary" disabled={!watchRequirementMet} onClick={completeLesson}>
