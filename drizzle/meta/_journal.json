@@ -253,6 +253,13 @@
       "when": 1784620503449,
       "tag": "0035_legal_komodo",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1784621601687,
+      "tag": "0036_tidy_barracuda",
+      "breakpoints": true
     }
   ]
 }

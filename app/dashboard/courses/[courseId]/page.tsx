@@ -75,6 +75,15 @@ type Course = {
   description: string;
   status: string;
   priceCents: number;
+  truthOutcome: string;
+  truthAudience: string;
+  truthNotFor: string;
+  truthPrerequisites: string;
+  truthEvidence: string;
+  truthSourceStandard: string;
+  truthLevel: string;
+  truthDelivery: string;
+  truthReviewedAt: number | null;
   enforceLessonOrder: number | boolean;
   availableFrom: number | null;
   certificateTitle: string;
@@ -111,6 +120,10 @@ function dateTimeInputValue(timestamp: number | null) {
   const date = new Date(timestamp);
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
+}
+
+function dateInputValue(timestamp: number | null) {
+  return timestamp ? new Date(timestamp).toISOString().slice(0, 10) : "";
 }
 
 function supportedRecorderType(candidates: string[]) {
@@ -657,6 +670,15 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
         description: course.description,
         status,
         priceCents: course.priceCents,
+        truthOutcome: course.truthOutcome,
+        truthAudience: course.truthAudience,
+        truthNotFor: course.truthNotFor,
+        truthPrerequisites: course.truthPrerequisites,
+        truthEvidence: course.truthEvidence,
+        truthSourceStandard: course.truthSourceStandard,
+        truthLevel: course.truthLevel,
+        truthDelivery: course.truthDelivery,
+        truthReviewedAt: course.truthReviewedAt,
         enforceLessonOrder: Boolean(course.enforceLessonOrder),
         availableFrom: course.availableFrom,
         certificateTitle: course.certificateTitle,
@@ -1230,6 +1252,53 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
           <label>Course title<input value={course.title} onChange={(event) => setCourse({ ...course, title: event.target.value })} /></label>
           <label>Course description<textarea value={course.description} onChange={(event) => setCourse({ ...course, description: event.target.value })} placeholder="Explain the result learners can expect and who the course is for." /></label>
           <label>Price in South African rand<input type="number" min="0" step="1" value={course.priceCents / 100} onChange={(event) => setCourse({ ...course, priceCents: Math.max(0, Math.round(Number(event.target.value || 0) * 100)) })} /></label>
+          <section className="course-truth-editor">
+            <header>
+              <div>
+                <p className="sys-kicker">COURSE TRUTH CARD</p>
+                <h2>Remove doubt before learners join.</h2>
+                <p>These facts appear publicly as “Before you commit”. Be specific, honest and useful.</p>
+              </div>
+              <div className={course.lessons.some((lesson) => Boolean(lesson.isPreview)) ? "truth-preview-status ready" : "truth-preview-status"}>
+                <b>{course.lessons.filter((lesson) => Boolean(lesson.isPreview)).length}</b>
+                <span>public preview {course.lessons.filter((lesson) => Boolean(lesson.isPreview)).length === 1 ? "lesson" : "lessons"}</span>
+                <small>Mark a lesson “Free preview” in its lesson settings.</small>
+              </div>
+            </header>
+            <div className="course-truth-grid">
+              <label className="truth-wide">The promise
+                <textarea maxLength={1000} value={course.truthOutcome} onChange={(event) => setCourse({ ...course, truthOutcome: event.target.value })} placeholder="After this course, learners will be able to…" />
+                <small>Describe a result a learner can recognise or demonstrate.</small>
+              </label>
+              <label>Who this is for
+                <textarea maxLength={1000} value={course.truthAudience} onChange={(event) => setCourse({ ...course, truthAudience: event.target.value })} placeholder={"Working professionals\nIndependent learners\nTeam leaders"} />
+                <small>Use one audience per line.</small>
+              </label>
+              <label>Who this is not for
+                <textarea maxLength={1000} value={course.truthNotFor} onChange={(event) => setCourse({ ...course, truthNotFor: event.target.value })} placeholder="For example: people looking for investment advice or a shortcut." />
+              </label>
+              <label>Prerequisites
+                <textarea maxLength={1000} value={course.truthPrerequisites} onChange={(event) => setCourse({ ...course, truthPrerequisites: event.target.value })} placeholder="State the knowledge, tools or experience learners need—or say none." />
+              </label>
+              <label>Evidence learners produce
+                <textarea maxLength={1000} value={course.truthEvidence} onChange={(event) => setCourse({ ...course, truthEvidence: event.target.value })} placeholder="A completed plan, assessment, portfolio piece or practical output." />
+              </label>
+              <label className="truth-wide">Source and review standard
+                <textarea maxLength={1000} value={course.truthSourceStandard} onChange={(event) => setCourse({ ...course, truthSourceStandard: event.target.value })} placeholder="Explain what sources, expertise or review process support this course." />
+              </label>
+              <label>Level
+                <input maxLength={80} value={course.truthLevel} onChange={(event) => setCourse({ ...course, truthLevel: event.target.value })} placeholder="Beginner to intermediate" />
+              </label>
+              <label>Delivery
+                <input maxLength={120} value={course.truthDelivery} onChange={(event) => setCourse({ ...course, truthDelivery: event.target.value })} placeholder="Self-paced · video, text and assessments" />
+              </label>
+              <label>Last human review
+                <input type="date" value={dateInputValue(course.truthReviewedAt)} onChange={(event) => setCourse({ ...course, truthReviewedAt: event.target.value ? new Date(`${event.target.value}T12:00:00`).getTime() : null })} />
+                <small>Shows learners when the course facts were last checked.</small>
+              </label>
+              <button type="button" className="truth-review-button" onClick={() => setCourse({ ...course, truthReviewedAt: Date.now() })}>Mark reviewed today</button>
+            </div>
+          </section>
           <section className="learning-controls-editor">
             <div>
               <p className="sys-kicker">LEARNER CONTROLS</p>
@@ -1271,6 +1340,10 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               <li className={course.description.trim().length >= 20 ? "done" : ""}>Useful course description</li>
               <li className={course.lessons.length ? "done" : ""}>At least one complete lesson</li>
               <li className={course.sections.length && course.sections.every((section) => section.title.trim()) ? "done" : ""}>Curriculum organised into named sections</li>
+              <li className={course.truthOutcome.trim().length >= 20 ? "done" : ""}>Specific learner outcome disclosed</li>
+              <li className={course.truthAudience.trim().length >= 3 ? "done" : ""}>Right-fit audience disclosed</li>
+              <li className={course.lessons.some((lesson) => Boolean(lesson.isPreview)) ? "done" : ""}>At least one lesson available as a public preview</li>
+              <li className={course.truthReviewedAt ? "done" : ""}>Course truth card human-reviewed</li>
             </ul>
             {!!publishingErrors.length && <div className="publishing-errors">{publishingErrors.map((error) => <p key={error}>{error}</p>)}</div>}
             <button className="quality-review-cta" onClick={() => setWorkspaceTab("review")}>

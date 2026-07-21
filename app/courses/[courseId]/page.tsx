@@ -16,6 +16,7 @@ type CourseSection = {
     durationMinutes: number;
     hasVideo: boolean;
     hasAssessment: boolean;
+    isPreview: boolean;
   }>;
 };
 
@@ -28,8 +29,26 @@ type CourseDetail = CatalogCourse & {
   playableVideoCount?: number;
   resourceCount?: number;
   durationMinutes?: number;
+  truthOutcome?: string;
+  truthAudience?: string;
+  truthNotFor?: string;
+  truthPrerequisites?: string;
+  truthEvidence?: string;
+  truthSourceStandard?: string;
+  truthLevel?: string;
+  truthDelivery?: string;
+  truthReviewedAt?: number | null;
+  updatedAt?: number;
+  previewCount?: number;
+  transcriptCount?: number;
+  captionedVideoCount?: number;
+  minimumPassingScore?: number;
   sections?: CourseSection[];
 };
+
+function splitTruth(value?: string) {
+  return (value || "").split(/\n|;/).map((item) => item.trim()).filter(Boolean);
+}
 
 function lessonLabel(lesson: CourseSection["lessons"][number]) {
   if (lesson.hasAssessment || lesson.type === "quiz") return "Assessment";
@@ -121,6 +140,18 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
   const durationHours = course.durationMinutes
     ? Math.max(1, Math.round(course.durationMinutes / 60))
     : null;
+  const previewCount = Number(course.previewCount || 0);
+  const transcriptCount = Number(course.transcriptCount || 0);
+  const captionedVideoCount = Number(course.captionedVideoCount || 0);
+  const audience = splitTruth(course.truthAudience).length
+    ? splitTruth(course.truthAudience)
+    : starter?.audience || ["Independent learners", "Working professionals", "Curious builders"];
+  const notFor = splitTruth(course.truthNotFor);
+  const truthOutcome = course.truthOutcome?.trim() || starter?.promise || course.description;
+  const reviewedAt = course.truthReviewedAt || course.updatedAt;
+  const reviewedLabel = reviewedAt
+    ? new Intl.DateTimeFormat("en-ZA", { month: "long", year: "numeric" }).format(new Date(reviewedAt))
+    : "Review date pending";
   const facultyInitials = (course.creator || "NorthstarLabs")
     .split(/\s+/)
     .slice(0, 2)
@@ -162,6 +193,9 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
           <button className="sys-primary" disabled={enrolling} onClick={enrol}>
             {enrolling ? "Joining course…" : course.priceCents ? "Continue to checkout" : "Enrol for free →"}
           </button>
+          {previewCount > 0 && <Link className="course-preview-action" href={`/courses/${id}/preview`}>
+            Preview a real lesson — no sign-up
+          </Link>}
           {message && <p className="form-message" role="status">{message}</p>}
           <ul>
             <li>{course.lessonCount} practical lessons</li>
@@ -175,10 +209,59 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
       </section>
 
       <section className="course-proof-bar">
-        <div><span>LEVEL</span><b>{starter?.level || "All levels"}</b></div>
-        <div><span>FORMAT</span><b>{starter?.format || "Self-paced"}</b></div>
+        <div><span>LEVEL</span><b>{course.truthLevel || starter?.level || "All levels"}</b></div>
+        <div><span>FORMAT</span><b>{course.truthDelivery || starter?.format || "Self-paced"}</b></div>
         <div><span>TIME</span><b>{durationHours ? `${durationHours} guided hours` : starter?.duration || `${course.lessonCount} lessons`}</b></div>
         <div><span>PRICE</span><b>{course.priceCents ? `R${(course.priceCents / 100).toFixed(0)}` : "Free"}</b></div>
+      </section>
+
+      <section className="course-truth">
+        <header className="course-truth-heading">
+          <div>
+            <p className="sys-kicker">COURSE TRUTH CARD</p>
+            <h2>Before you commit.</h2>
+          </div>
+          <p>No vague promises. See the fit, standard, evidence and access before you create an account.</p>
+        </header>
+        <div className="course-truth-grid">
+          <article className="truth-outcome">
+            <span>01</span><small>THE PROMISE</small>
+            <h3>{truthOutcome}</h3>
+          </article>
+          <article>
+            <span>02</span><small>RIGHT FIT</small>
+            <h3>Built for</h3>
+            <ul>{audience.map((item) => <li key={item}>{item}</li>)}</ul>
+            {!!notFor.length && <><h4>Not designed for</h4><ul>{notFor.map((item) => <li key={item}>{item}</li>)}</ul></>}
+          </article>
+          <article>
+            <span>03</span><small>BEFORE YOU START</small>
+            <h3>Prerequisites</h3>
+            <p>{course.truthPrerequisites || "No prior specialist knowledge is required. Bring curiosity and time to do the work."}</p>
+          </article>
+          <article>
+            <span>04</span><small>WHAT YOU CAN SHOW</small>
+            <h3>Evidence, not attendance</h3>
+            <p>{course.truthEvidence || `Completed lessons, saved progress and ${assessmentCount ? `${assessmentCount} assessed knowledge checks` : "practical course work"}.`}</p>
+          </article>
+          <article>
+            <span>05</span><small>LEARNING STANDARD</small>
+            <h3>{assessmentCount ? `${assessmentCount} assessed checks` : "Guided practice"}</h3>
+            <p>{assessmentCount && course.minimumPassingScore ? `The course assessment threshold starts at ${course.minimumPassingScore}%. ` : ""}{course.certificateTitle || "A verifiable completion certificate"} records successful completion.</p>
+          </article>
+          <article className="truth-transparency">
+            <span>06</span><small>ACCESS & TRANSPARENCY</small>
+            <h3>Inspect the learning before joining.</h3>
+            <dl>
+              <div><dt>Public preview</dt><dd>{previewCount ? `${previewCount} lesson${previewCount === 1 ? "" : "s"}` : "Not yet available"}</dd></div>
+              <div><dt>Transcripts</dt><dd>{course.lessonCount ? `${transcriptCount}/${course.lessonCount} lessons` : "None"}</dd></div>
+              <div><dt>Captioned videos</dt><dd>{videoCount ? `${captionedVideoCount}/${videoCount}` : "No video required"}</dd></div>
+              <div><dt>Last reviewed</dt><dd>{reviewedLabel}</dd></div>
+            </dl>
+            <p>{course.truthSourceStandard || "Academy-authored material. Review the faculty, curriculum and assessment standard shown on this page."}</p>
+            {previewCount > 0 && <Link href={`/courses/${id}/preview`}>Open the public lesson preview →</Link>}
+          </article>
+        </div>
       </section>
 
       <section className="course-details">
@@ -199,7 +282,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
           <p className="sys-kicker">THIS COURSE IS FOR</p>
           <h3>People ready to put ideas into practice.</h3>
           <ul>
-            {(starter?.audience || ["Independent learners", "Working professionals", "Curious builders"])
+            {audience
               .map((person) => <li key={person}>{person}</li>)}
           </ul>
           {course.facultyBio && <div className="course-faculty-note">
@@ -239,6 +322,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
                         <small>
                           {lessonLabel(lesson)}
                           {lesson.durationMinutes ? ` · ${lesson.durationMinutes} min` : ""}
+                          {lesson.isPreview && <b className="public-preview-badge">PUBLIC PREVIEW</b>}
                         </small>
                       </li>
                     ))}

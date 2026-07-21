@@ -47,6 +47,31 @@ test("prevents cross-school lesson edits and external sign-in redirects", async 
   assert.match(login, /value\.startsWith\("\/\/"\)/);
 });
 
+test("publishes honest Course Truth Cards and secure no-account lesson previews", async () => {
+  const [coursePage, previewPage, previewApi, streamApi, courseEditor, schema, migration] = await Promise.all([
+    readFile(new URL("../app/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/courses/[courseId]/preview/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/catalog/[courseId]/preview/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/media/stream/[token]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0036_tidy_barracuda.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(coursePage, /Before you commit/);
+  assert.match(coursePage, /Preview a real lesson — no sign-up/);
+  assert.match(previewPage, /TRY THE TEACHING · NO ACCOUNT REQUIRED/);
+  assert.match(previewPage, /Test what you understood/);
+  assert.match(previewApi, /c\.status='published'/);
+  assert.match(previewApi, /l\.is_preview=1/);
+  assert.match(streamApi, /g\.user_id='public-preview'/);
+  assert.match(streamApi, /l\.is_preview=1/);
+  assert.match(courseEditor, /COURSE TRUTH CARD/);
+  assert.match(courseEditor, /Mark reviewed today/);
+  assert.match(schema, /truthOutcome: text\("truth_outcome"\)/);
+  assert.match(migration, /personalised investment advice/);
+  assert.match(migration, /SET `is_preview`=1/);
+});
+
 test("isolates creator schools, memberships, courses, and communities", async () => {
   const [schema, migration, profile, welcome, community] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),

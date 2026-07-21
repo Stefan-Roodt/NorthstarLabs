@@ -41,13 +41,17 @@ async function serveMedia(
     `SELECT g.asset_key AS assetKey,g.filename,g.content_type AS contentType
      FROM media_playback_grants g
      JOIN courses c ON c.id=g.course_id
+     JOIN lessons l ON l.id=g.lesson_id AND l.course_id=g.course_id
      LEFT JOIN enrollments e ON e.course_id=g.course_id
        AND e.user_id=g.user_id AND e.status='active'
      LEFT JOIN school_members sm ON sm.school_id=c.school_id
        AND sm.user_id=g.user_id AND sm.status='active'
        AND sm.role IN ('owner','admin','instructor')
      WHERE g.token_hash=? AND g.expires_at>?
-       AND (e.id IS NOT NULL OR sm.id IS NOT NULL)
+       AND (
+         (g.user_id='public-preview' AND c.status='published' AND l.is_preview=1)
+         OR e.id IS NOT NULL OR sm.id IS NOT NULL
+       )
      LIMIT 1`,
   ).bind(tokenHash, Date.now()).first<PlaybackGrant>();
   if (!grant?.assetKey) return missingMedia();

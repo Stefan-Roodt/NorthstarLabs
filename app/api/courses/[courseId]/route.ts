@@ -42,6 +42,11 @@ export async function GET(
   const course = await env.DB.prepare(
     `SELECT id,school_id AS schoolId,title,description,status,
       price_cents AS priceCents,enforce_lesson_order AS enforceLessonOrder,
+      truth_outcome AS truthOutcome,truth_audience AS truthAudience,
+      truth_not_for AS truthNotFor,truth_prerequisites AS truthPrerequisites,
+      truth_evidence AS truthEvidence,truth_source_standard AS truthSourceStandard,
+      truth_level AS truthLevel,truth_delivery AS truthDelivery,
+      truth_reviewed_at AS truthReviewedAt,
       available_from AS availableFrom,certificate_title AS certificateTitle,
       certificate_accent AS certificateAccent,
       certificate_valid_days AS certificateValidDays,updated_at AS updatedAt
@@ -202,6 +207,15 @@ export async function PATCH(
     certificateTitle?: string;
     certificateAccent?: string;
     certificateValidDays?: number;
+    truthOutcome?: string;
+    truthAudience?: string;
+    truthNotFor?: string;
+    truthPrerequisites?: string;
+    truthEvidence?: string;
+    truthSourceStandard?: string;
+    truthLevel?: string;
+    truthDelivery?: string;
+    truthReviewedAt?: number | null;
   };
   const existing = await requireCourseStaffAccess(user.id, courseId);
   if (!existing) return Response.json({ error: "Course not found" }, { status: 404 });
@@ -219,6 +233,11 @@ export async function PATCH(
   const availableFrom = typeof body.availableFrom === "number" &&
     Number.isFinite(body.availableFrom) && body.availableFrom > 0
     ? Math.round(body.availableFrom)
+    : null;
+  const truthReviewedProvided = body.truthReviewedAt !== undefined;
+  const truthReviewedAt = typeof body.truthReviewedAt === "number" &&
+    Number.isFinite(body.truthReviewedAt) && body.truthReviewedAt > 0
+    ? Math.round(body.truthReviewedAt)
     : null;
 
   if (status === "published") {
@@ -286,6 +305,15 @@ export async function PATCH(
   await env.DB.prepare(
     `UPDATE courses SET title=COALESCE(?,title),description=COALESCE(?,description),
       status=?,price_cents=COALESCE(?,price_cents),
+      truth_outcome=COALESCE(?,truth_outcome),
+      truth_audience=COALESCE(?,truth_audience),
+      truth_not_for=COALESCE(?,truth_not_for),
+      truth_prerequisites=COALESCE(?,truth_prerequisites),
+      truth_evidence=COALESCE(?,truth_evidence),
+      truth_source_standard=COALESCE(?,truth_source_standard),
+      truth_level=COALESCE(?,truth_level),
+      truth_delivery=COALESCE(?,truth_delivery),
+      truth_reviewed_at=CASE WHEN ?=1 THEN ? ELSE truth_reviewed_at END,
       enforce_lesson_order=CASE WHEN ?=1 THEN ? ELSE enforce_lesson_order END,
       available_from=CASE WHEN ?=1 THEN ? ELSE available_from END,
       certificate_title=COALESCE(?,certificate_title),
@@ -297,6 +325,16 @@ export async function PATCH(
     body.description === undefined ? null : description || "",
     status,
     Number.isFinite(body.priceCents) ? body.priceCents : null,
+    body.truthOutcome === undefined ? null : body.truthOutcome.trim().slice(0, 1000),
+    body.truthAudience === undefined ? null : body.truthAudience.trim().slice(0, 1200),
+    body.truthNotFor === undefined ? null : body.truthNotFor.trim().slice(0, 1200),
+    body.truthPrerequisites === undefined ? null : body.truthPrerequisites.trim().slice(0, 1200),
+    body.truthEvidence === undefined ? null : body.truthEvidence.trim().slice(0, 1200),
+    body.truthSourceStandard === undefined ? null : body.truthSourceStandard.trim().slice(0, 1200),
+    body.truthLevel === undefined ? null : body.truthLevel.trim().slice(0, 120),
+    body.truthDelivery === undefined ? null : body.truthDelivery.trim().slice(0, 160),
+    truthReviewedProvided ? 1 : 0,
+    truthReviewedAt,
     body.enforceLessonOrder === undefined ? 0 : 1,
     body.enforceLessonOrder ? 1 : 0,
     availableFromProvided ? 1 : 0,

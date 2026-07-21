@@ -127,13 +127,15 @@ function MediaViewer({
 
   useEffect(() => {
     let cancelled = false;
-    setError("");
-    if (!activeAsset.key.startsWith("r2:")) {
-      setSource(activeAsset.key);
-      return;
-    }
-    setSource("");
     (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      setError("");
+      if (!activeAsset.key.startsWith("r2:")) {
+        setSource(activeAsset.key);
+        return;
+      }
+      setSource("");
       const response = await fetch("/api/media/playback", {
         method: "POST",
         headers: {
