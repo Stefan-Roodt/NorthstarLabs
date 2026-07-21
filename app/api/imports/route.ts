@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { writeAuditLog } from "../../../lib/audit-log";
 import {
+  runCourseLaunchAutopilot,
   sanitizeImportPlan,
   type CourseImportPlan,
   type CourseImportSummary,
@@ -125,6 +126,14 @@ async function previewImport(
   let normalized;
   try {
     normalized = sanitizeImportPlan(body.plan);
+    if (body.automationEnabled === true) {
+      const automated = runCourseLaunchAutopilot(normalized.plan);
+      const automatedPlan = sanitizeImportPlan(automated.plan);
+      normalized = {
+        ...automatedPlan,
+        warnings: [...normalized.warnings, ...automatedPlan.warnings],
+      };
+    }
   } catch (error) {
     return Response.json({
       error: error instanceof Error ? error.message : "The import could not be inspected.",
@@ -164,7 +173,7 @@ async function previewImport(
     action: "course_import.preview",
     targetType: "course_import_project",
     targetId: id,
-    detail: { provider, sourceType, ...normalized.summary },
+    detail: { provider, sourceType, automationEnabled: body.automationEnabled === true, ...normalized.summary },
   });
   const project = await projectForSchool(id, school.id);
   return Response.json({ project: publicProject(project!) }, { status: 201 });

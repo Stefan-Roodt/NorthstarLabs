@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  analyseLearnerCsv,
   applyMediaManifest,
   courseFromDocumentSequence,
   parseCourseCsv,
   parseCourseOutline,
   parseDelimitedText,
   parseLearnerCsv,
+  runCourseLaunchAutopilot,
   sanitizeImportPlan,
   summarizeImportPlan,
 } from "../lib/course-import.ts";
@@ -115,4 +117,52 @@ test("handles tab-delimited exports and embedded newlines", () => {
   const rows = parseDelimitedText("Course\tLesson\tContent\nDemo\tWelcome\t\"Line one\nLine two\"");
   assert.equal(rows.length, 1);
   assert.equal(rows[0].content, "Line one\nLine two");
+});
+
+test("learner data automation preserves multi-course assignments and reports bad rows", () => {
+  const { learners, report } = analyseLearnerCsv(`Email,Name,Course
+LEARNER@example.com,Alex,Bitcoin Foundations
+learner@example.com,Alex,Digital Assets
+learner@example.com,Alex,Digital Assets
+not-an-email,Nope,Bitcoin Foundations
+second@example.com,,`);
+  assert.equal(learners.length, 3);
+  assert.deepEqual(learners.map((learner) => learner.courseTitle), ["Bitcoin Foundations", "Digital Assets", ""]);
+  assert.equal(report.duplicates, 1);
+  assert.equal(report.invalidEmails, 1);
+  assert.equal(report.missingNames, 1);
+  assert.equal(report.missingCourse, 1);
+  assert.equal(report.warnings.length, 4);
+  const normalised = sanitizeImportPlan({ learners }).plan.learners;
+  assert.equal(normalised.filter((learner) => learner.email === "learner@example.com").length, 2);
+});
+
+test("course launch autopilot splits long supplied material and drafts grounded checks", () => {
+  const paragraphs = Array.from({ length: 24 }, (_, index) => (
+    `Evidence point ${index + 1} explains how a distributed ledger records transactions and why independent verification matters to participants in the network. ` +
+    `The supplied material connects this mechanism to practical custody decisions, operational risk, and the need to test claims against primary evidence.`
+  )).join("\n\n");
+  const course = courseFromDocumentSequence("Bitcoin Foundations", [{
+    clientId: "source-1",
+    filename: "01-network.md",
+    contentType: "text/markdown",
+    sizeBytes: paragraphs.length,
+    text: paragraphs,
+  }]);
+  const automated = runCourseLaunchAutopilot({
+    version: 1,
+    academyName: "Fixture Academy",
+    courses: [course],
+    learners: [{ email: "LEARNER@example.com", displayName: "Learner", courseTitle: "" }],
+    sourceFiles: ["01-network.md"],
+  });
+  const lessons = automated.plan.courses[0].sections[0].lessons;
+  assert.ok(automated.report.curriculum.lessonsSplit > 0);
+  assert.ok(lessons.filter((lesson) => lesson.lessonType !== "quiz").every((lesson) => lesson.durationMinutes <= 6));
+  assert.equal(lessons.at(-1).lessonType, "quiz");
+  assert.ok(lessons.at(-1).questions.length > 0);
+  assert.match(lessons.at(-1).questions[0].explanation, /The source lesson states/);
+  assert.equal(automated.plan.learners[0].email, "learner@example.com");
+  assert.equal(automated.plan.learners[0].courseTitle, "Bitcoin Foundations");
+  assert.equal(automated.report.learners.needCourseReview, 0);
 });

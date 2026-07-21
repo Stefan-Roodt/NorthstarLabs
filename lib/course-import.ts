@@ -64,6 +64,39 @@ export type CourseImportSummary = {
   learners: number;
 };
 
+export type LearnerDataReport = {
+  rows: number;
+  accepted: number;
+  duplicates: number;
+  invalidEmails: number;
+  missingNames: number;
+  missingCourse: number;
+  warnings: string[];
+};
+
+export type CourseLaunchAutopilotReport = {
+  score: number;
+  curriculum: {
+    modules: number;
+    lessons: number;
+    lessonsSplit: number;
+    shortLessons: number;
+  };
+  quizzes: {
+    moduleChecksCreated: number;
+    questionsCreated: number;
+    modulesCovered: number;
+    modulesTotal: number;
+  };
+  learners: {
+    records: number;
+    matchedToCourse: number;
+    needCourseReview: number;
+  };
+  completed: string[];
+  review: string[];
+};
+
 export type SequentialDocumentInput = CourseImportDocument & { text?: string };
 
 type CsvRow = Record<string, string>;
@@ -419,20 +452,51 @@ export function parseCourseSource(text: string, filename: string, fallbackTitle 
   return parseCourseOutline(text, fallbackTitle);
 }
 
-export function parseLearnerCsv(text: string) {
+export function analyseLearnerCsv(text: string) {
   const learners: CourseImportLearner[] = [];
   const seen = new Set<string>();
-  for (const row of parseDelimitedText(text)) {
+  const rows = parseDelimitedText(text);
+  const report: LearnerDataReport = {
+    rows: rows.length,
+    accepted: 0,
+    duplicates: 0,
+    invalidEmails: 0,
+    missingNames: 0,
+    missingCourse: 0,
+    warnings: [],
+  };
+  for (const row of rows) {
     const email = valueFrom(row, EMAIL_ALIASES).trim().toLowerCase();
-    if (!email || seen.has(email)) continue;
-    seen.add(email);
+    const courseTitle = valueFrom(row, COURSE_ALIASES);
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      report.invalidEmails += 1;
+      continue;
+    }
+    const identity = `${email}::${courseTitle.trim().toLowerCase()}`;
+    if (seen.has(identity)) {
+      report.duplicates += 1;
+      continue;
+    }
+    seen.add(identity);
+    const displayName = valueFrom(row, NAME_ALIASES);
+    if (!displayName) report.missingNames += 1;
+    if (!courseTitle) report.missingCourse += 1;
     learners.push({
       email,
-      displayName: valueFrom(row, NAME_ALIASES),
-      courseTitle: valueFrom(row, COURSE_ALIASES),
+      displayName,
+      courseTitle,
     });
   }
-  return learners;
+  report.accepted = learners.length;
+  if (report.invalidEmails) report.warnings.push(`${report.invalidEmails} learner row${report.invalidEmails === 1 ? " has" : "s have"} an invalid or missing email and will not be imported.`);
+  if (report.duplicates) report.warnings.push(`${report.duplicates} exact learner-course duplicate${report.duplicates === 1 ? " was" : "s were"} removed.`);
+  if (report.missingNames) report.warnings.push(`${report.missingNames} learner record${report.missingNames === 1 ? " has" : "s have"} no display name; the email address will be used until corrected.`);
+  if (report.missingCourse) report.warnings.push(`${report.missingCourse} learner record${report.missingCourse === 1 ? " needs" : "s need"} a course assignment review.`);
+  return { learners, report };
+}
+
+export function parseLearnerCsv(text: string) {
+  return analyseLearnerCsv(text).learners;
 }
 
 export function applyMediaManifest(courses: CourseImportCourse[], text: string) {
@@ -503,6 +567,190 @@ export function summarizeImportPlan(plan: CourseImportPlan): CourseImportSummary
   };
 }
 
+function wordCount(value: string) {
+  return value.trim() ? value.trim().split(/\s+/).length : 0;
+}
+
+function meaningfulLessonContent(value: string) {
+  const content = value.trim();
+  return content.length >= 90 && !content.startsWith("Open the attached source document for this module.");
+}
+
+function lessonDuration(value: string, fallback = 0) {
+  const words = wordCount(value);
+  if (!words) return fallback;
+  return Math.max(1, Math.min(6, Math.ceil(words / 135)));
+}
+
+function contentChunks(content: string, targetWords = 700) {
+  const paragraphs = content.replace(/\r/g, "").split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
+  if (wordCount(content) <= 810) return [content.trim()];
+  const units = paragraphs.length >= 2
+    ? paragraphs
+    : content.split(/(?<=[.!?])\s+/).map((part) => part.trim()).filter(Boolean);
+  if (units.length < 2) return [content.trim()];
+  const chunks: string[] = [];
+  let current: string[] = [];
+  let words = 0;
+  for (const paragraph of units) {
+    const paragraphWords = wordCount(paragraph);
+    if (current.length && words + paragraphWords > targetWords) {
+      chunks.push(current.join("\n\n"));
+      current = [];
+      words = 0;
+    }
+    current.push(paragraph);
+    words += paragraphWords;
+  }
+  if (current.length) chunks.push(current.join("\n\n"));
+  return chunks.length ? chunks : [content.trim()];
+}
+
+function chunkTitle(base: string, chunk: string, index: number, total: number) {
+  if (total === 1) return base;
+  const heading = chunk.match(/^#{1,6}\s+(.+)$/m)?.[1]?.trim();
+  return cleanTitle(heading, `${base} — Part ${index + 1}`);
+}
+
+function informativeSentences(content: string) {
+  return content
+    .replace(/^#{1,6}\s+.+$/gm, " ")
+    .replace(/\[[^\]]+\]\([^\)]+\)/g, (match) => match.replace(/\]\([^\)]+\)/, ""))
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.replace(/\s+/g, " ").trim())
+    .filter((sentence) => sentence.length >= 55 && sentence.length <= 260 && !/^https?:/i.test(sentence));
+}
+
+function rotateOptions(options: string[], offset: number) {
+  const shift = offset % options.length;
+  return [...options.slice(shift), ...options.slice(0, shift)];
+}
+
+function groundedQuestion(
+  lesson: CourseImportLesson,
+  correctStatement: string,
+  alternativeStatements: string[],
+  questionIndex: number,
+): CourseImportQuestion {
+  const fallbacks = [
+    "The lesson says the topic has no practical implications and needs no further attention.",
+    "The lesson is only an administrative notice and contains no learning content.",
+    "The lesson recommends ignoring evidence that could challenge its main idea.",
+  ];
+  const distractors = [...alternativeStatements, ...fallbacks]
+    .filter((statement) => statement !== correctStatement)
+    .filter((statement, index, values) => values.indexOf(statement) === index)
+    .slice(0, 3);
+  const baseOptions = [correctStatement, ...distractors];
+  const options = rotateOptions(baseOptions, questionIndex);
+  return {
+    prompt: `Which statement is directly supported by “${lesson.title}”?`,
+    options,
+    correctIndex: options.indexOf(correctStatement),
+    explanation: `The source lesson states: “${correctStatement}”`,
+    conceptLabel: lesson.title.slice(0, 100),
+  };
+}
+
+/**
+ * Deterministic, review-first automation. It restructures only supplied material,
+ * creates literal source-grounded checks, and never publishes or contacts learners.
+ */
+export function runCourseLaunchAutopilot(input: CourseImportPlan) {
+  const plan = structuredClone(input) as CourseImportPlan;
+  let lessonsSplit = 0;
+  let moduleChecksCreated = 0;
+  let questionsCreated = 0;
+
+  for (const course of plan.courses) {
+    for (const [sectionIndex, section] of course.sections.entries()) {
+      section.title = cleanTitle(section.title, `Module ${sectionIndex + 1}`);
+      const expanded: CourseImportLesson[] = [];
+      for (const lesson of section.lessons) {
+        if (lesson.questions.length || !meaningfulLessonContent(lesson.content)) {
+          expanded.push({ ...lesson, durationMinutes: lesson.durationMinutes || lessonDuration(lesson.content) });
+          continue;
+        }
+        const chunks = contentChunks(lesson.content);
+        if (chunks.length > 1) lessonsSplit += chunks.length - 1;
+        chunks.forEach((chunk, chunkIndex) => expanded.push({
+          ...lesson,
+          clientId: chunkIndex ? clientId("lesson", lesson.clientId, chunkIndex + 1) : lesson.clientId,
+          title: chunkTitle(lesson.title, chunk, chunkIndex, chunks.length),
+          lessonType: chunkIndex ? "text" : lesson.lessonType,
+          content: chunk,
+          durationMinutes: lessonDuration(chunk, lesson.durationMinutes),
+          document: chunkIndex ? null : lesson.document,
+        }));
+      }
+      section.lessons = expanded;
+
+      if (!section.lessons.some((lesson) => lesson.questions.length)) {
+        const teachable = section.lessons.filter((lesson) => meaningfulLessonContent(lesson.content));
+        const sentencePool = teachable.flatMap((lesson) => informativeSentences(lesson.content).slice(0, 2));
+        const questions = teachable.slice(0, 3).flatMap((lesson, index) => {
+          const statement = informativeSentences(lesson.content)[0];
+          return statement ? [groundedQuestion(lesson, statement, sentencePool.filter((item) => item !== statement), index)] : [];
+        });
+        if (questions.length) {
+          section.lessons.push({
+            ...emptyLesson(`${section.title} knowledge check`, sectionIndex, section.lessons.length),
+            lessonType: "quiz",
+            durationMinutes: Math.min(6, Math.max(2, questions.length)),
+            questions,
+          });
+          moduleChecksCreated += 1;
+          questionsCreated += questions.length;
+        }
+      }
+    }
+  }
+
+  const courseTitles = new Set(plan.courses.map((course) => course.title.trim().toLowerCase()));
+  const singleCourse = plan.courses.length === 1 ? plan.courses[0].title : "";
+  plan.learners = plan.learners.map((learner) => ({
+    ...learner,
+    email: learner.email.trim().toLowerCase(),
+    courseTitle: learner.courseTitle || singleCourse,
+  }));
+  const matchedToCourse = plan.learners.filter((learner) => courseTitles.has(learner.courseTitle.trim().toLowerCase())).length;
+  const modules = plan.courses.reduce((sum, course) => sum + course.sections.length, 0);
+  const lessons = plan.courses.flatMap((course) => course.sections.flatMap((section) => section.lessons));
+  const modulesCovered = plan.courses.reduce((sum, course) => sum + course.sections.filter((section) => section.lessons.some((lesson) => lesson.questions.length)).length, 0);
+  const contentLessons = lessons.filter((lesson) => !lesson.questions.length && meaningfulLessonContent(lesson.content));
+  const shortLessons = contentLessons.filter((lesson) => (lesson.durationMinutes || lessonDuration(lesson.content)) <= 6).length;
+  const emptyLessons = lessons.filter((lesson) => !lesson.questions.length && !meaningfulLessonContent(lesson.content) && !lesson.document && !lesson.mediaUrl).length;
+  const learnerReview = plan.learners.length - matchedToCourse;
+
+  const structureScore = plan.courses.length && modules && lessons.length ? 30 : 0;
+  const contentScore = contentLessons.length ? Math.max(0, Math.round(30 * (1 - emptyLessons / Math.max(1, lessons.length)))) : 0;
+  const quizScore = modules ? Math.round(25 * modulesCovered / modules) : 0;
+  const learnerScore = !plan.learners.length ? 15 : Math.round(15 * matchedToCourse / plan.learners.length);
+  const completed = [
+    `${modules} module${modules === 1 ? "" : "s"} ordered into a reviewable curriculum.`,
+    `${shortLessons} content lesson${shortLessons === 1 ? "" : "s"} shaped to approximately six minutes or less.`,
+    `${moduleChecksCreated} source-grounded module check${moduleChecksCreated === 1 ? "" : "s"} drafted (${questionsCreated} question${questionsCreated === 1 ? "" : "s"}).`,
+  ];
+  if (plan.learners.length) completed.push(`${matchedToCourse} of ${plan.learners.length} learner record${plan.learners.length === 1 ? "" : "s"} matched to a course.`);
+  const review: string[] = [];
+  if (emptyLessons) review.push(`${emptyLessons} lesson${emptyLessons === 1 ? " needs" : "s need"} teaching content, media, or an attached resource.`);
+  if (modulesCovered < modules) review.push(`${modules - modulesCovered} module${modules - modulesCovered === 1 ? " needs" : "s need"} a human-written or source-grounded assessment.`);
+  if (learnerReview) review.push(`${learnerReview} learner course assignment${learnerReview === 1 ? " does" : "s do"} not match an imported course title.`);
+  review.push("A subject expert must approve accuracy, rights, assessment quality, and learner experience before publishing.");
+
+  return {
+    plan,
+    report: {
+      score: Math.min(100, structureScore + contentScore + quizScore + learnerScore),
+      curriculum: { modules, lessons: lessons.length, lessonsSplit, shortLessons },
+      quizzes: { moduleChecksCreated, questionsCreated, modulesCovered, modulesTotal: modules },
+      learners: { records: plan.learners.length, matchedToCourse, needCourseReview: learnerReview },
+      completed,
+      review,
+    } satisfies CourseLaunchAutopilotReport,
+  };
+}
+
 export function sanitizeImportPlan(value: unknown) {
   const source = record(value);
   const warnings: string[] = [];
@@ -544,20 +792,22 @@ export function sanitizeImportPlan(value: unknown) {
   if (totalQuestions > 2_000) throw new Error("An import can contain at most 2,000 quiz questions.");
 
   const learners: CourseImportLearner[] = [];
-  const emails = new Set<string>();
+  const learnerAssignments = new Set<string>();
   for (const item of unknownArray(source.learners).slice(0, 500)) {
     const learner = record(item);
     const email = cleanText(learner.email, 254).toLowerCase();
-    if (!email || emails.has(email)) continue;
+    const courseTitle = cleanText(learner.courseTitle, 160);
+    const assignment = `${email}::${courseTitle.toLowerCase()}`;
+    if (!email || learnerAssignments.has(assignment)) continue;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       warnings.push(`Skipped invalid learner email: ${email}`);
       continue;
     }
-    emails.add(email);
+    learnerAssignments.add(assignment);
     learners.push({
       email,
       displayName: cleanText(learner.displayName, 120),
-      courseTitle: cleanText(learner.courseTitle, 160),
+      courseTitle,
     });
   }
   const plan: CourseImportPlan = {

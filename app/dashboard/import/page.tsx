@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
+  analyseLearnerCsv,
   applyMediaManifest,
   courseFromDocumentSequence,
   emptyImportPlan,
   parseCourseOutline,
   parseCourseSource,
-  parseLearnerCsv,
+  runCourseLaunchAutopilot,
   summarizeImportPlan,
+  type CourseLaunchAutopilotReport,
   type CourseImportPlan,
   type CourseImportSummary,
 } from "../../../lib/course-import";
@@ -78,6 +80,8 @@ export default function ImportStudioPage() {
   const [documents, setDocuments] = useState<File[]>([]);
   const [rightsConfirmed, setRightsConfirmed] = useState(false);
   const [sendInvitations, setSendInvitations] = useState(false);
+  const [autopilotEnabled, setAutopilotEnabled] = useState(true);
+  const [autopilotReport, setAutopilotReport] = useState<CourseLaunchAutopilotReport | null>(null);
   const [plan, setPlan] = useState<CourseImportPlan | null>(null);
   const [preview, setPreview] = useState<ImportProject | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -129,6 +133,7 @@ export default function ImportStudioPage() {
     setResult(null);
     setWarnings([]);
     setUploadProgress([]);
+    setAutopilotReport(null);
   }
 
   function chooseDocuments(event: ChangeEvent<HTMLInputElement>) {
@@ -157,7 +162,8 @@ export default function ImportStudioPage() {
     setWarnings([]);
     setResult(null);
     try {
-      const next = emptyImportPlan();
+      let next = emptyImportPlan();
+      const localWarnings: string[] = [];
       next.academyName = academy?.name || "";
       if (courseFile) {
         if (courseFile.size > 8 * 1024 * 1024) throw new Error("Course structure files must be smaller than 8 MB.");
@@ -181,10 +187,11 @@ export default function ImportStudioPage() {
       }
       if (learnerFile) {
         if (learnerFile.size > 3 * 1024 * 1024) throw new Error("Learner lists must be smaller than 3 MB.");
-        next.learners = parseLearnerCsv(await learnerFile.text());
+        const learnerData = analyseLearnerCsv(await learnerFile.text());
+        next.learners = learnerData.learners;
+        localWarnings.push(...learnerData.report.warnings);
         next.sourceFiles.push(learnerFile.name);
       }
-      const localWarnings: string[] = [];
       if (mediaFile) {
         if (!next.courses.length) throw new Error("Add course structure before applying a media manifest.");
         const mapped = applyMediaManifest(next.courses, await mediaFile.text());
@@ -195,6 +202,13 @@ export default function ImportStudioPage() {
       if (!next.courses.length && !next.learners.length) {
         throw new Error("Add a course export, an ordered document sequence, an outline, or a learner CSV first.");
       }
+      if (autopilotEnabled) {
+        const automated = runCourseLaunchAutopilot(next);
+        next = automated.plan;
+        setAutopilotReport(automated.report);
+      } else {
+        setAutopilotReport(null);
+      }
       const response = await authed("/api/imports", {
         method: "POST",
         body: JSON.stringify({
@@ -204,6 +218,7 @@ export default function ImportStudioPage() {
           sourceFilename: next.sourceFiles.join(", "),
           title: next.courses[0]?.title || `${academy?.name || "Academy"} learner import`,
           rightsConfirmed,
+          automationEnabled: autopilotEnabled,
           plan: next,
         }),
       });
@@ -268,6 +283,7 @@ export default function ImportStudioPage() {
     setBusy("import");
     setMessage("");
     setUploadProgress([]);
+    setAutopilotReport(null);
     try {
       const response = await authed("/api/imports", {
         method: "POST",
@@ -305,6 +321,7 @@ export default function ImportStudioPage() {
     setUploadProgress([]);
     setRightsConfirmed(false);
     setSendInvitations(false);
+    setAutopilotEnabled(true);
     setMessage("");
   }
 
@@ -367,6 +384,23 @@ export default function ImportStudioPage() {
         </article>
       </div>
 
+      <section className={`import-autopilot ${autopilotEnabled ? "active" : ""}`}>
+        <div>
+          <p className="sys-kicker">COURSE LAUNCH AUTOPILOT</p>
+          <h3>Let Northstar do the organising.</h3>
+          <p>Northstar can shape supplied material into short lessons, draft literal source-grounded module checks, normalise learner records, and flag course assignments that need attention.</p>
+        </div>
+        <label>
+          <input type="checkbox" checked={autopilotEnabled} onChange={(event) => { setAutopilotEnabled(event.target.checked); invalidatePreview(); }} />
+          <span><b>{autopilotEnabled ? "Autopilot on" : "Autopilot off"}</b><small>Nothing is published and nobody is contacted without your approval.</small></span>
+        </label>
+        <ul>
+          <li><span>01</span><b>Curriculum</b><small>Preserve the supplied order and split long material into lessons of about six minutes.</small></li>
+          <li><span>02</span><b>Knowledge checks</b><small>Draft questions whose correct answers come directly from the supplied lesson text.</small></li>
+          <li><span>03</span><b>Student data</b><small>Normalise email addresses, remove exact duplicates, and expose invalid or unmatched records.</small></li>
+        </ul>
+      </section>
+
       <label className="import-rights"><input type="checkbox" checked={rightsConfirmed} onChange={(event) => { setRightsConfirmed(event.target.checked); if (!event.target.checked) invalidatePreview(); }} /><span><b>I own, licensed, or have permission to migrate these materials and learner records.</b><small>Northstar does not turn access to a source into permission to copy it. Remove data you do not need before importing.</small></span></label>
       <button className="import-inspect-button" type="button" disabled={!rightsConfirmed || busy === "inspect"} onClick={() => void buildPlan()}>{busy === "inspect" ? "Inspecting structure…" : "Inspect before importing →"}</button>
 
@@ -377,6 +411,11 @@ export default function ImportStudioPage() {
         <div className="import-summary-grid">
           {(["courses", "sections", "lessons", "quizzes", "mediaLinks", "documents", "learners"] as const).map((key) => <div key={key}><strong>{summary[key]}</strong><span>{key === "mediaLinks" ? "media links" : key}</span></div>)}
         </div>
+        {autopilotReport && <section className="import-autopilot-report">
+          <div className="autopilot-score"><strong>{autopilotReport.score}</strong><span>/ 100</span><small>automation readiness</small></div>
+          <div><p className="sys-kicker">AUTOMATED, NOT AUTO-PUBLISHED</p><h3>Your launch draft has a head start.</h3><ul>{autopilotReport.completed.map((item) => <li key={item}>{item}</li>)}</ul></div>
+          <div><p className="sys-kicker">HUMAN REVIEW</p><h3>What still needs judgement.</h3><ul>{autopilotReport.review.map((item) => <li key={item}>{item}</li>)}</ul></div>
+        </section>}
         {warnings.length > 0 && <div className="import-warnings"><b>Review these mappings</b><ul>{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>}
         <div className="import-course-previews">
           {plan.courses.map((course) => <article key={course.clientId}>
