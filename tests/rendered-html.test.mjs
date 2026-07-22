@@ -414,6 +414,34 @@ test("opens Crypto Mastery with a narrated, interactive and downloadable orienta
   assert.match(uploads, /release-managed resource cannot be deleted/);
 });
 
+test("turns Crypto Mastery Module 1.1 into narrated, interactive and applied learning", async () => {
+  const [generator, migration, learner] = await Promise.all([
+    readFile(new URL("../scripts/generate-module-1-1-premium.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0058_crypto_mastery_module_1_1_premium.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
+  ]);
+  const videos = [
+    "module-1-1-three-jobs-of-money.mp4",
+    "module-1-1-digital-balances.mp4",
+    "module-1-1-digital-scarcity.mp4",
+  ];
+  for (const file of videos) {
+    const media = await import("node:fs/promises").then(({ stat }) =>
+      stat(new URL(`../public/media/faculty/${file}`, import.meta.url))
+    );
+    assert.ok(media.size > 1_000_000, `${file} must contain genuine narrated video data`);
+    assert.match(migration, new RegExp(file.replace(".", "\\.")));
+  }
+  const fieldLab = await import("node:fs/promises").then(({ stat }) =>
+    stat(new URL("../public/media/course-resources/module-1-1-money-and-digital-assets-field-lab.pdf", import.meta.url))
+  );
+  assert.ok(fieldLab.size > 5_000, "the Module 1.1 field lab must be a genuine PDF resource");
+  assert.match(generator, /Money and Digital Assets Field Lab/);
+  assert.match(migration, /required_watch_percent`=75/);
+  assert.match(migration, /static:\/media\/course-resources\/module-1-1-money-and-digital-assets-field-lab\.pdf/);
+  assert.match(learner, /Narrated video \+ interactive lab/);
+});
+
 test("guides new members into creating or learning with a low-friction join flow", async () => {
   const [home, login, welcome, course] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),

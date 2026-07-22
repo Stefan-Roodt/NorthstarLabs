@@ -167,8 +167,8 @@ if (!tables.some((table) => table.name === "invitations")) {
 const facultyMedia = database.prepare(
   "SELECT COUNT(*) AS count FROM media_assets WHERE key LIKE 'static:/media/faculty/%'",
 ).get();
-if (facultyMedia.count !== 4) {
-  throw new Error("The four playable programme introductions were not registered.");
+if (facultyMedia.count < 7) {
+  throw new Error("The playable programme introductions and Module 1.1 lessons were not registered.");
 }
 const facultyProfiles = database.prepare(
   "SELECT COUNT(*) AS count FROM tutors WHERE school_id='northstarlabs' AND service_type='faculty' AND status='published'",
@@ -184,6 +184,16 @@ const attachedFacultyMedia = database.prepare(
 ).get();
 if (attachedFacultyMedia.count !== 3) {
   throw new Error("The playable faculty videos were not attached to their lessons.");
+}
+const premiumModuleOne = database.prepare(
+  `SELECT COUNT(*) AS count FROM lessons
+   WHERE course_id='cognizen-crypto-mastery-foundations-production'
+     AND id IN ('cmf-module-1-1-lesson-01','cmf-module-1-1-lesson-02','cmf-module-1-1-lesson-03')
+     AND lesson_type='video' AND required_watch_percent=75
+     AND primary_asset_id IS NOT NULL AND transcript IS NOT NULL`,
+).get();
+if (premiumModuleOne.count !== 3) {
+  throw new Error("Crypto Mastery Module 1.1 was not upgraded to narrated premium lessons.");
 }
 for (const table of ["course_sections", "media_assets", "lesson_resources"]) {
   if (!tables.some((item) => item.name === table)) {

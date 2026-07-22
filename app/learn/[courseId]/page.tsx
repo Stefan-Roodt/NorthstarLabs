@@ -683,6 +683,8 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       : "Read the lesson and mark it complete";
   const lessonFormat = lesson.quiz
     ? "Knowledge check"
+    : lesson.experience && lesson.primaryAsset?.kind === "video"
+      ? "Narrated video + interactive lab"
     : lesson.experience
       ? "Interactive experience"
     : lesson.primaryAsset?.kind === "video"
