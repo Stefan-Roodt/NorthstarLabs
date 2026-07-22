@@ -215,6 +215,66 @@ const premiumModuleThree = database.prepare(
 if (premiumModuleThree.count !== 3) {
   throw new Error("Crypto Mastery Module 1.3 was not upgraded to narrated premium lessons.");
 }
+const premiumModuleFour = database.prepare(
+  `SELECT COUNT(*) AS count FROM lessons
+   WHERE course_id='cognizen-crypto-mastery-foundations-production'
+     AND id IN ('cmf-module-1-4-lesson-01','cmf-module-1-4-lesson-02','cmf-module-1-4-lesson-03')
+     AND lesson_type='video' AND required_watch_percent=75
+     AND primary_asset_id IS NOT NULL AND transcript IS NOT NULL`,
+).get();
+if (premiumModuleFour.count !== 3) {
+  throw new Error("Crypto Mastery Module 1.4 was not upgraded to narrated premium lessons.");
+}
+const premiumModuleFive = database.prepare(
+  `SELECT COUNT(*) AS count FROM lessons
+   WHERE course_id='cognizen-crypto-mastery-foundations-production'
+     AND id IN ('cmf-module-1-5-lesson-01','cmf-module-1-5-lesson-02','cmf-module-1-5-lesson-03')
+     AND lesson_type='video' AND required_watch_percent=75
+     AND primary_asset_id IS NOT NULL AND transcript IS NOT NULL`,
+).get();
+if (premiumModuleFive.count !== 3) {
+  throw new Error("Crypto Mastery Module 1.5 was not upgraded to narrated premium lessons.");
+}
+const premiumModuleSix = database.prepare(
+  `SELECT COUNT(*) AS count FROM lessons
+   WHERE course_id='cognizen-crypto-mastery-foundations-production'
+     AND id IN ('cmf-module-1-6-lesson-01','cmf-module-1-6-lesson-02','cmf-module-1-6-lesson-03')
+     AND lesson_type='video' AND required_watch_percent=75
+     AND primary_asset_id IS NOT NULL AND transcript IS NOT NULL`,
+).get();
+if (premiumModuleSix.count !== 3) {
+  throw new Error("Crypto Mastery Module 1.6 was not upgraded to narrated premium lessons.");
+}
+const premiumModuleSeven = database.prepare(
+  `SELECT COUNT(*) AS count FROM lessons
+   WHERE course_id='cognizen-crypto-mastery-foundations-production'
+     AND id IN ('cmf-module-1-7-lesson-01','cmf-module-1-7-lesson-02','cmf-module-1-7-lesson-03')
+     AND lesson_type='video' AND required_watch_percent=75
+     AND primary_asset_id IS NOT NULL AND transcript IS NOT NULL`,
+).get();
+if (premiumModuleSeven.count !== 3) {
+  throw new Error("Crypto Mastery Module 1.7 was not upgraded to narrated premium lessons.");
+}
+const premiumModuleEight = database.prepare(
+  `SELECT COUNT(*) AS count FROM lessons
+   WHERE course_id='cognizen-crypto-mastery-foundations-production'
+     AND id IN ('cmf-module-1-8-lesson-01','cmf-module-1-8-lesson-02','cmf-module-1-8-lesson-03')
+     AND lesson_type='video' AND required_watch_percent=75
+     AND primary_asset_id IS NOT NULL AND transcript IS NOT NULL`,
+).get();
+if (premiumModuleEight.count !== 3) {
+  throw new Error("Crypto Mastery Module 1.8 was not upgraded to narrated premium lessons.");
+}
+const premiumModuleNine = database.prepare(
+  `SELECT COUNT(*) AS count FROM lessons
+   WHERE course_id='cognizen-crypto-mastery-foundations-production'
+     AND id IN ('cmf-module-1-9-lesson-01','cmf-module-1-9-lesson-02','cmf-module-1-9-lesson-03')
+     AND lesson_type='video' AND required_watch_percent=75
+     AND primary_asset_id IS NOT NULL AND transcript IS NOT NULL`,
+).get();
+if (premiumModuleNine.count !== 3) {
+  throw new Error("Crypto Mastery Module 1.9 was not upgraded to narrated premium lessons.");
+}
 for (const table of ["course_sections", "media_assets", "lesson_resources"]) {
   if (!tables.some((item) => item.name === table)) {
     throw new Error(`The ${table} course-authoring table was not created.`);

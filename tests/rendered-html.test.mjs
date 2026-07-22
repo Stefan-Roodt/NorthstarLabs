@@ -243,6 +243,61 @@ test("turns Module 2.3 into a native interactive learning pilot", async () => {
   assert.match(learnerPage, /Open the source-backed reference notes/);
 });
 
+test("adds Module 2.4 market regime strategy pilot", async () => {
+  const migration = await readFile(
+    new URL("../drizzle/0067_crypto_mastery_module_2_4_pilot.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migration, /Module 2.4: Market Regimes and Strategy Selection/);
+  assert.match(migration, /cognizen-p2-module-04/);
+  assert.match(migration, /cognizen-p2m4-l01/);
+  assert.match(migration, /cognizen-p2m4-l02/);
+  assert.match(migration, /cognizen-p2m4-l03/);
+  assert.match(migration, /cognizen-p2m4-l04/);
+  assert.match(migration, /cognizen-p2m4-l05/);
+  assert.match(migration, /cognizen-p2m4-quiz/);
+  assert.match(migration, /\"kind\":\"classify\"/);
+  assert.match(migration, /\"kind\":\"branch\"/);
+  assert.match(migration, /\"kind\":\"meter\"/);
+  assert.match(migration, /Market Regime/);
+});
+
+test("adds Module 2.5 fundamental analysis pilot", async () => {
+  const migration = await readFile(
+    new URL("../drizzle/0068_crypto_mastery_module_2_5_pilot.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migration, /Module 2.5: Introduction to Fundamental Analysis/);
+  assert.match(migration, /cognizen-p2-module-05/);
+  assert.match(migration, /cognizen-p2m5-l01/);
+  assert.match(migration, /cognizen-p2m5-l02/);
+  assert.match(migration, /cognizen-p2m5-l03/);
+  assert.match(migration, /cognizen-p2m5-l04/);
+  assert.match(migration, /cognizen-p2m5-l05/);
+  assert.match(migration, /cognizen-p2m5-quiz/);
+  assert.match(migration, /"kind":"classify"/);
+  assert.match(migration, /"kind":"branch"/);
+  assert.match(migration, /"kind":"meter"/);
+});
+
+test("adds Module 2.6 project evaluation pilot", async () => {
+  const migration = await readFile(
+    new URL("../drizzle/0069_crypto_mastery_module_2_6_pilot.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migration, /Module 2.6: Evaluating Cryptocurrency Projects/);
+  assert.match(migration, /cognizen-p2-module-06/);
+  assert.match(migration, /cognizen-p2m6-l01/);
+  assert.match(migration, /cognizen-p2m6-l02/);
+  assert.match(migration, /cognizen-p2m6-l03/);
+  assert.match(migration, /cognizen-p2m6-l04/);
+  assert.match(migration, /cognizen-p2m6-l05/);
+  assert.match(migration, /cognizen-p2m6-quiz/);
+  assert.match(migration, /"kind":"classify"/);
+  assert.match(migration, /"kind":"branch"/);
+  assert.match(migration, /"kind":"meter"/);
+});
+
 test("productionises the opening Crypto Mastery arc instead of importing an online book", async () => {
   const [generator, migration] = await Promise.all([
     readFile(new URL("../scripts/generate-foundations-production-batch.mjs", import.meta.url), "utf8"),
@@ -299,6 +354,196 @@ test("turns Ethereum, keys and wallet security into interactive production learn
   assert.match(generator, /csrc\.nist\.gov\/glossary\/term\/wallet/);
   assert.match(migration, /Twelve production-quality modules/);
   assert.match(migration, /cmf-module-1-12-quiz-q08/);
+});
+
+test("upgrades Module 1.4 to narrated premium teaching with a practical design map", async () => {
+  const [generator, mediaScript, migration, lab, schema] = await Promise.all([
+    readFile(new URL("../scripts/generate-module-1-4-premium.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-4-media.ps1", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0061_crypto_mastery_module_1_4_premium.sql", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-4-cryptocurrency-map.py", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/validate-migrations.mjs", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /What is cryptocurrency without the buzzwords/);
+  assert.match(generator, /Centralisation and decentralisation are a spectrum/);
+  assert.match(generator, /Follow a cryptocurrency transaction/);
+  assert.match(mediaScript, /MODULE 1.4/);
+  assert.match(migration, /cmf-module-1-4-definition-video/);
+  assert.match(migration, /cmf-module-1-4-design-map/);
+  assert.match(migration, /UPDATE `lessons`/);
+  assert.match(lab, /module-1-4-what-is-cryptocurrency-design-map.pdf/);
+  assert.match(schema, /premiumModuleFour/);
+});
+
+test("upgrades Module 1.5 to narrated premium teaching with consensus and tamper-resistance clarity", async () => {
+  const [generator, mediaScript, migration, validator] = await Promise.all([
+    readFile(new URL("../scripts/generate-module-1-5-premium.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-5-media.ps1", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0062_crypto_mastery_module_1_5_premium.sql", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/validate-migrations.mjs", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /Bitcoin-style blockchains are not a mystery/);
+  assert.match(generator, /Consensus/);
+  assert.match(generator, /tamper resistance/);
+  assert.match(mediaScript, /MODULE 1.5/);
+  assert.match(mediaScript, /MODULE 1.5  \|  CHAIN ENGINE/);
+  assert.match(migration, /cmf-module-1-5-lesson-01/);
+  assert.match(migration, /cmf-module-1-5-lesson-02/);
+  assert.match(migration, /cmf-module-1-5-lesson-03/);
+  assert.match(migration, /cmf-module-1-5-chain-video/);
+  assert.match(migration, /cmf-module-1-5-consensus-video/);
+  assert.match(migration, /cmf-module-1-5-resistance-video/);
+  assert.match(migration, /required_watch_percent`=75/);
+  assert.match(migration, /'video'/);
+  assert.match(migration, /Neural-narrated visual lesson for Module 1.5 of Crypto Mastery/);
+  assert.match(validator, /premiumModuleFive/);
+  for (const file of [
+    "module-1-5-blockchain-chain.mp4",
+    "module-1-5-consensus-contract.mp4",
+    "module-1-5-tamper-resistance.mp4",
+  ]) {
+    const media = await import("node:fs/promises").then(({ stat }) =>
+      stat(new URL(`../public/media/faculty/${file}`, import.meta.url)),
+    );
+    assert.ok(media.size > 150_000, `${file} must contain a genuine narrated video`);
+  }
+});
+
+test("upgrades Module 1.6 to narrated premium teaching with control-surface judgement", async () => {
+  const [generator, mediaScript, migration, validator] = await Promise.all([
+    readFile(new URL("../scripts/generate-module-1-6-premium.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-6-media.ps1", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0063_crypto_mastery_module_1_6_premium.sql", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/validate-migrations.mjs", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /Decentralisation is a useful concept/);
+  assert.match(generator, /control surfaces/);
+  assert.match(generator, /controlled model may/);
+  assert.match(mediaScript, /module-1-6-validator-user-role/);
+  assert.match(mediaScript, /module-1-6-decentralisation-surfaces/);
+  assert.match(migration, /cmf-module-1-6-lesson-01/);
+  assert.match(migration, /cmf-module-1-6-lesson-02/);
+  assert.match(migration, /cmf-module-1-6-lesson-03/);
+  assert.match(migration, /cmf-module-1-6-surfaces-video/);
+  assert.match(migration, /cmf-module-1-6-roles-video/);
+  assert.match(migration, /cmf-module-1-6-purpose-video/);
+  assert.match(migration, /required_watch_percent`=75/);
+  assert.match(migration, /'video'/);
+  assert.match(migration, /Neural-narrated visual lesson for Module 1.6 of Crypto Mastery/);
+  assert.match(validator, /premiumModuleSix/);
+  for (const file of [
+    "module-1-6-decentralisation-surfaces.mp4",
+    "module-1-6-validator-user-role.mp4",
+    "module-1-6-decentralise-for-purpose.mp4",
+  ]) {
+    const media = await import("node:fs/promises").then(({ stat }) =>
+      stat(new URL(`../public/media/faculty/${file}`, import.meta.url)),
+    );
+    assert.ok(media.size > 150_000, `${file} must contain a genuine narrated video`);
+  }
+});
+
+test("upgrades Module 1.7 to narrated premium teaching with asset taxonomy clarity", async () => {
+  const [generator, mediaScript, migration, validator] = await Promise.all([
+    readFile(new URL("../scripts/generate-module-1-7-premium.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-7-media.ps1", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0064_crypto_mastery_module_1_7_premium.sql", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/validate-migrations.mjs", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /digital assets/);
+  assert.match(generator, /A network-native unit/);
+  assert.match(generator, /token-rights/);
+  assert.match(mediaScript, /module-1-7-asset-taxonomy/);
+  assert.match(mediaScript, /module-1-7-token-rights/);
+  assert.match(mediaScript, /module-1-7-stable-nft-rwa/);
+  assert.match(migration, /cmf-module-1-7-lesson-01/);
+  assert.match(migration, /cmf-module-1-7-lesson-02/);
+  assert.match(migration, /cmf-module-1-7-lesson-03/);
+  assert.match(migration, /cmf-module-1-7-definition-video/);
+  assert.match(migration, /cmf-module-1-7-rights-video/);
+  assert.match(migration, /cmf-module-1-7-dependency-video/);
+  assert.match(migration, /required_watch_percent`=75/);
+  assert.match(migration, /'video'/);
+  assert.match(migration, /Neural-narrated visual lesson for Module 1.7 of Crypto Mastery/);
+  assert.match(validator, /premiumModuleSeven/);
+  for (const file of [
+    "module-1-7-asset-taxonomy.mp4",
+    "module-1-7-token-rights.mp4",
+    "module-1-7-stable-nft-rwa.mp4",
+  ]) {
+    const media = await import("node:fs/promises").then(({ stat }) =>
+      stat(new URL(`../public/media/faculty/${file}`, import.meta.url)),
+    );
+    assert.ok(media.size > 150_000, `${file} must contain a genuine narrated video`);
+  }
+});
+
+test("upgrades Module 1.8 to narrated premium teaching with Bitcoin fundamentals", async () => {
+  const [generator, mediaScript, migration, validator] = await Promise.all([
+    readFile(new URL("../scripts/generate-module-1-8-premium.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-8-media.ps1", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0065_crypto_mastery_module_1_8_premium.sql", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/validate-migrations.mjs", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /Bitcoin ownership is control of spend conditions/);
+  assert.match(generator, /Proof of work/);
+  assert.match(generator, /Scarcity is a protocol property/);
+  assert.match(mediaScript, /module-1-8-ledger-ownership/);
+  assert.match(mediaScript, /module-1-8-proof-of-work/);
+  assert.match(mediaScript, /module-1-8-scarcity-claims/);
+  assert.match(migration, /cmf-module-1-8-lesson-01/);
+  assert.match(migration, /cmf-module-1-8-lesson-02/);
+  assert.match(migration, /cmf-module-1-8-lesson-03/);
+  assert.match(migration, /cmf-module-1-8-ledger-video/);
+  assert.match(migration, /cmf-module-1-8-mining-video/);
+  assert.match(migration, /cmf-module-1-8-scarcity-video/);
+  assert.match(migration, /required_watch_percent`=75/);
+  assert.match(migration, /Neural-narrated visual lesson for Module 1.8 of Crypto Mastery/);
+  assert.match(validator, /premiumModuleEight/);
+  for (const file of [
+    "module-1-8-ledger-ownership.mp4",
+    "module-1-8-proof-of-work.mp4",
+    "module-1-8-scarcity-claims.mp4",
+  ]) {
+    const media = await import("node:fs/promises").then(({ stat }) =>
+      stat(new URL(`../public/media/faculty/${file}`, import.meta.url)),
+    );
+    assert.ok(media.size > 150_000, `${file} must contain a genuine narrated video`);
+  }
+});
+
+test("upgrades Module 1.9 to narrated premium teaching with Ethereum fundamentals", async () => {
+  const [generator, mediaScript, migration, validator] = await Promise.all([
+    readFile(new URL("../scripts/generate-module-1-9-premium.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-9-media.ps1", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0066_crypto_mastery_module_1_9_premium.sql", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/validate-migrations.mjs", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /Ethereum is a programmable world computer/);
+  assert.match(generator, /smart contract is executable logic/i);
+  assert.match(generator, /Gas is not a tax/);
+  assert.match(mediaScript, /module-1-9-ethereum-vs-ether/);
+  assert.match(mediaScript, /module-1-9-smart-contracts-evm/);
+  assert.match(mediaScript, /module-1-9-gas-staking-layer2/);
+  assert.match(migration, /cmf-module-1-9-lesson-01/);
+  assert.match(migration, /cmf-module-1-9-lesson-02/);
+  assert.match(migration, /cmf-module-1-9-lesson-03/);
+  assert.match(migration, /cmf-module-1-9-network-video/);
+  assert.match(migration, /cmf-module-1-9-contract-video/);
+  assert.match(migration, /cmf-module-1-9-gas-video/);
+  assert.match(migration, /required_watch_percent`=75/);
+  assert.match(migration, /Neural-narrated visual lesson for Module 1.9 of Crypto Mastery/);
+  assert.match(validator, /premiumModuleNine/);
+  for (const file of [
+    "module-1-9-ethereum-vs-ether.mp4",
+    "module-1-9-smart-contracts-evm.mp4",
+    "module-1-9-gas-staking-layer2.mp4",
+  ]) {
+    const media = await import("node:fs/promises").then(({ stat }) =>
+      stat(new URL(`../public/media/faculty/${file}`, import.meta.url)),
+    );
+    assert.ok(media.size > 150_000, `${file} must contain a genuine narrated video`);
+  }
 });
 
 test("turns recovery, exchange use and transaction execution into practical production learning", async () => {

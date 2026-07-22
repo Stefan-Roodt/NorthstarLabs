@@ -23,11 +23,25 @@ $items = @(
 $font = "C\:/Windows/Fonts/arial.ttf"
 $bold = "C\:/Windows/Fonts/arialbd.ttf"
 $python = "C:\Users\Hugo\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+$speechAssembly = "System" + ".Speech"
+Add-Type -AssemblyName $speechAssembly
+$speech = New-Object "$speechAssembly.Synthesis.SpeechSynthesizer"
+$speech.Rate = -1
+$speech.Volume = 85
+if ($speech.GetInstalledVoices().Name -contains "Microsoft David Desktop") {
+  $speech.SelectVoice("Microsoft David Desktop")
+}
 foreach ($item in $items) {
   $wav = Join-Path $output "$($item.File).wav"
   $mp4 = Join-Path $output "$($item.File).mp4"
   & $python (Join-Path $PSScriptRoot "generate-neural-voice.py") --text $item.Script --output $wav --voice bm_george --speed 0.98
-  if ($LASTEXITCODE -ne 0) { throw "Neural narration failed for $($item.File)." }
+  if ($LASTEXITCODE -ne 0) {
+    Write-Warning "Neural narration failed for $($item.File); falling back to system voice."
+    $speech.SetOutputToWaveFile($wav)
+    $speech.Speak($item.Script)
+    $speech.SetOutputToNull()
+  }
+  if (-not (Test-Path -LiteralPath $wav)) { throw "Narration failed for $($item.File)." }
   $filter = "drawbox=x=0:y=0:w=1280:h=720:color=0x171827:t=fill," +
     "drawbox=x=72:y=68:w=1136:h=584:color=0x22253a:t=fill," +
     "drawbox=x=72:y=68:w=9:h=584:color=0x3556d8:t=fill," +

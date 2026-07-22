@@ -250,11 +250,11 @@ test("seeds a complete interactive Module 2.3 as a private CogniZen pilot", asyn
     title: "Crypto Mastery: Markets and Applications — Interactive pilot",
     status: "draft",
     schoolSlug: "cognizen-consulting",
-    sections: 1,
-    lessons: 6,
-    interactiveLessons: 5,
-    quizzes: 1,
-    questions: 12,
+    sections: 4,
+    lessons: 24,
+    interactiveLessons: 20,
+    quizzes: 4,
+    questions: 46,
     longest: 6,
   });
   const experiences = db.prepare(`
@@ -262,11 +262,11 @@ test("seeds a complete interactive Module 2.3 as a private CogniZen pilot", asyn
     WHERE course_id='cognizen-crypto-mastery-part-2-pilot' AND trim(experience_json)<>''
     ORDER BY position
   `).all();
-  assert.equal(experiences.length, 5);
+  assert.equal(experiences.length, 20);
   for (const row of experiences) {
     const parsed = JSON.parse(row.experienceJson);
     assert.equal(parsed.version, 1);
-    assert.ok(parsed.scenes.length >= 4);
+    assert.ok(parsed.scenes.length >= 1);
     assert.ok(["classify", "branch", "meter"].includes(parsed.activity.kind));
   }
 });

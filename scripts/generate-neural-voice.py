@@ -8,9 +8,13 @@ if not RUNTIME.exists():
     raise SystemExit("Kokoro is not installed. Install the local runtime before generating narration.")
 sys.path.insert(0, str(RUNTIME))
 
-import numpy as np  # noqa: E402
-import soundfile as sf  # noqa: E402
-from kokoro import KPipeline  # noqa: E402
+try:
+    import numpy as np  # noqa: E402
+    import soundfile as sf  # noqa: E402
+    from kokoro import KPipeline  # noqa: E402
+except Exception as exc:
+    print(f"WARNING: Neural narration unavailable ({type(exc).__name__}: {exc}). Falling back to system audio.", file=sys.stderr)
+    raise SystemExit(1)
 
 parser = argparse.ArgumentParser(description="Generate NorthstarLabs neural narration locally with Kokoro.")
 parser.add_argument("--text", required=True)
