@@ -375,6 +375,25 @@ test("turns security, fraud, investment risk and responsible participation into 
   assert.match(migration, /cmf-module-1-28-quiz-q08/);
 });
 
+test("completes foundations with regulation, a safety plan and an evidence-led capstone", async () => {
+  const [generator, migration] = await Promise.all([
+    readFile(new URL("../scripts/generate-foundations-production-batch-8.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0056_crypto_mastery_foundations_production_batch_8.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /Classify the asset, activity and provider/);
+  assert.match(generator, /Build a defensible crypto tax record/);
+  assert.match(generator, /Build the asset and custody inventory/);
+  assert.match(generator, /Plan succession, privacy and review/);
+  assert.match(generator, /Complete the capstone decision/);
+  assert.match(generator, /Create the next-stage learning plan/);
+  assert.match(generator, /fsca\.co\.za\/New-Financial-Service-Provider/);
+  assert.match(generator, /fatf-gafi\.org\/en\/topics\/virtual-assets/);
+  assert.match(generator, /oecd\.org\/en\/publications\/international-standards/);
+  assert.match(generator, /sars\.gov\.za\/individuals\/crypto-assets-tax/);
+  assert.match(migration, /Complete 31-module Crypto Mastery/);
+  assert.match(migration, /cmf-module-1-31-quiz-q08/);
+});
+
 test("guides new members into creating or learning with a low-friction join flow", async () => {
   const [home, login, welcome, course] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
