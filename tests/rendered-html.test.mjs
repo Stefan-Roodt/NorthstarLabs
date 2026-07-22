@@ -283,6 +283,24 @@ test("extends Crypto Mastery through blockchain, decentralisation, asset taxonom
   assert.match(migration, /cmf-module-1-8-quiz-q08/);
 });
 
+test("turns Ethereum, keys and wallet security into interactive production learning", async () => {
+  const [generator, migration] = await Promise.all([
+    readFile(new URL("../scripts/generate-foundations-production-batch-3.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0051_crypto_mastery_foundations_production_batch_3.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /Separate Ethereum, ether and tokens/);
+  assert.match(generator, /Trace a smart-contract transaction/);
+  assert.match(generator, /From private key to verifiable authority/);
+  assert.match(generator, /Choose custody and wallet type by purpose/);
+  assert.match(generator, /Map hot and cold attack surfaces/);
+  assert.match(generator, /Use offline signing without signing blind/);
+  assert.match(generator, /ethereum\.org\/security/);
+  assert.match(generator, /developer\.bitcoin\.org\/devguide\/wallets/);
+  assert.match(generator, /csrc\.nist\.gov\/glossary\/term\/wallet/);
+  assert.match(migration, /Twelve production-quality modules/);
+  assert.match(migration, /cmf-module-1-12-quiz-q08/);
+});
+
 test("guides new members into creating or learning with a low-friction join flow", async () => {
   const [home, login, welcome, course] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),

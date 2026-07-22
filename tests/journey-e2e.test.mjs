@@ -271,7 +271,7 @@ test("seeds a complete interactive Module 2.3 as a private CogniZen pilot", asyn
   }
 });
 
-test("seeds eight production-quality Crypto Mastery foundation modules as a private draft", async () => {
+test("seeds twelve production-quality Crypto Mastery foundation modules as a private draft", async () => {
   const db = await migratedDatabase();
   const course = db.prepare(`
     SELECT c.title,c.status,s.slug AS schoolSlug,
@@ -289,11 +289,11 @@ test("seeds eight production-quality Crypto Mastery foundation modules as a priv
     title: "Crypto Mastery: Foundations — Production draft",
     status: "draft",
     schoolSlug: "cognizen-consulting",
-    sections: 8,
-    lessons: 32,
-    interactiveLessons: 24,
-    quizzes: 8,
-    questions: 64,
+    sections: 12,
+    lessons: 48,
+    interactiveLessons: 36,
+    quizzes: 12,
+    questions: 96,
     longest: 6,
   });
   const activities = db.prepare(`
@@ -301,7 +301,7 @@ test("seeds eight production-quality Crypto Mastery foundation modules as a priv
     WHERE course_id='cognizen-crypto-mastery-foundations-production'
       AND trim(experience_json)<>''
   `).all().map((row) => JSON.parse(row.experienceJson).activity.kind);
-  assert.equal(activities.length, 24);
+  assert.equal(activities.length, 36);
   assert.ok(activities.includes("classify"));
   assert.ok(activities.includes("branch"));
   assert.ok(activities.includes("meter"));
