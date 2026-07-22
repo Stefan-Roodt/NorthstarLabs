@@ -573,6 +573,8 @@ test("streams protected lesson media with short-lived grants and byte ranges", a
   assert.match(learnApi, /"r2:protected"/);
   assert.match(learnApi, /key: learnerMediaKey\(lesson\.primaryKey\)/);
   assert.match(learner, /\/api\/media\/playback/);
+  assert.match(learner, /function isProtectedMediaKey/);
+  assert.match(learner, /key\.startsWith\("static:"\)/);
   assert.match(learner, /controlsList="nodownload"/);
   assert.doesNotMatch(learner, /\/api\/uploads\?key=\$\{encodeURIComponent\(asset\.key\)\}/);
 });

@@ -111,6 +111,10 @@ function captionVtt(transcript: string, durationSeconds: number) {
   return `WEBVTT\n\n${cues.map((text, index) => `${index + 1}\n${vttTime(index * cueDuration)} --> ${vttTime(Math.min(usableDuration, (index + 1) * cueDuration - 0.08))}\n${text}\n`).join("\n")}`;
 }
 
+function isProtectedMediaKey(key: string) {
+  return key.startsWith("r2:") || key.startsWith("static:");
+}
+
 function MediaViewer({
   asset,
   introAsset,
@@ -133,7 +137,7 @@ function MediaViewer({
   const [mediaRequested, setMediaRequested] = useState(!lowBandwidth);
   const [source, setSource] = useState(() => {
     const openingAsset = lowBandwidth ? asset : introAsset || asset;
-    return !lowBandwidth && !openingAsset.key.startsWith("r2:") ? openingAsset.key : "";
+    return !lowBandwidth && !isProtectedMediaKey(openingAsset.key) ? openingAsset.key : "";
   });
   const [error, setError] = useState("");
   const [renewal, setRenewal] = useState(0);
@@ -147,7 +151,7 @@ function MediaViewer({
       await Promise.resolve();
       if (cancelled) return;
       setError("");
-      if (!activeAsset.key.startsWith("r2:")) {
+      if (!isProtectedMediaKey(activeAsset.key)) {
         setSource(activeAsset.key);
         return;
       }
@@ -177,7 +181,7 @@ function MediaViewer({
   }, [captionUrl]);
 
   function playbackFailed() {
-    if (activeAsset.key.startsWith("r2:") && renewal < 1) {
+    if (isProtectedMediaKey(activeAsset.key) && renewal < 1) {
       setSource("");
       setRenewal(renewal + 1);
       return;
