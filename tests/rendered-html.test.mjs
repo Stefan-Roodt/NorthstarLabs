@@ -243,6 +243,27 @@ test("turns Module 2.3 into a native interactive learning pilot", async () => {
   assert.match(learnerPage, /Open the source-backed reference notes/);
 });
 
+test("productionises the opening Crypto Mastery arc instead of importing an online book", async () => {
+  const [generator, migration] = await Promise.all([
+    readFile(new URL("../scripts/generate-foundations-production-batch.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0049_crypto_mastery_foundations_production.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /The three jobs of money/);
+  assert.match(generator, /Your bank balance is digital/);
+  assert.match(generator, /The digital cash problem Bitcoin addressed/);
+  assert.match(generator, /Centralisation and decentralisation are a spectrum/);
+  assert.match(generator, /resbank\.co\.za/);
+  assert.match(generator, /bankofengland\.co\.uk/);
+  assert.match(generator, /bitcoin\.org\/bitcoin\.pdf/);
+  assert.match(generator, /NIST\.IR\.8202/);
+  assert.match(generator, /kind: "classify"/);
+  assert.match(generator, /kind: "branch"/);
+  assert.match(generator, /kind: "meter"/);
+  assert.match(migration, /Crypto Mastery: Foundations — Production draft/);
+  assert.match(migration, /The remaining source modules will be added only as they pass the same standard/);
+  assert.match(migration, /cmf-module-1-4-quiz-q08/);
+});
+
 test("guides new members into creating or learning with a low-friction join flow", async () => {
   const [home, login, welcome, course] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),

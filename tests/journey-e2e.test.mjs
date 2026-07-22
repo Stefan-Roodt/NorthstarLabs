@@ -271,6 +271,49 @@ test("seeds a complete interactive Module 2.3 as a private CogniZen pilot", asyn
   }
 });
 
+test("seeds four production-quality Crypto Mastery foundation modules as a private draft", async () => {
+  const db = await migratedDatabase();
+  const course = db.prepare(`
+    SELECT c.title,c.status,s.slug AS schoolSlug,
+      (SELECT COUNT(*) FROM course_sections WHERE course_id=c.id) AS sections,
+      (SELECT COUNT(*) FROM lessons WHERE course_id=c.id) AS lessons,
+      (SELECT COUNT(*) FROM lessons WHERE course_id=c.id AND trim(experience_json)<>'') AS interactiveLessons,
+      (SELECT COUNT(*) FROM quizzes q JOIN lessons l ON l.id=q.lesson_id WHERE l.course_id=c.id) AS quizzes,
+      (SELECT COUNT(*) FROM quiz_questions qq JOIN quizzes q ON q.id=qq.quiz_id
+        JOIN lessons l ON l.id=q.lesson_id WHERE l.course_id=c.id) AS questions,
+      (SELECT MAX(duration_minutes) FROM lessons WHERE course_id=c.id) AS longest
+    FROM courses c JOIN schools s ON s.id=c.school_id
+    WHERE c.id='cognizen-crypto-mastery-foundations-production'
+  `).get();
+  assert.deepEqual({ ...course }, {
+    title: "Crypto Mastery: Foundations — Production draft",
+    status: "draft",
+    schoolSlug: "cognizen-consulting",
+    sections: 4,
+    lessons: 16,
+    interactiveLessons: 12,
+    quizzes: 4,
+    questions: 32,
+    longest: 6,
+  });
+  const activities = db.prepare(`
+    SELECT experience_json AS experienceJson FROM lessons
+    WHERE course_id='cognizen-crypto-mastery-foundations-production'
+      AND trim(experience_json)<>''
+  `).all().map((row) => JSON.parse(row.experienceJson).activity.kind);
+  assert.equal(activities.length, 12);
+  assert.ok(activities.includes("classify"));
+  assert.ok(activities.includes("branch"));
+  assert.ok(activities.includes("meter"));
+  const incompleteQuestions = db.prepare(`
+    SELECT COUNT(*) AS count FROM quiz_questions qq
+    JOIN quizzes q ON q.id=qq.quiz_id JOIN lessons l ON l.id=q.lesson_id
+    WHERE l.course_id='cognizen-crypto-mastery-foundations-production'
+      AND (trim(qq.explanation)='' OR trim(qq.concept_label)='')
+  `).get();
+  assert.equal(incompleteQuestions.count, 0);
+});
+
 test("completes an isolated creator-to-learner production journey", async () => {
   const db = await migratedDatabase();
   const now = Date.UTC(2026, 6, 19);
