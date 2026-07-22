@@ -301,6 +301,24 @@ test("turns Ethereum, keys and wallet security into interactive production learn
   assert.match(migration, /cmf-module-1-12-quiz-q08/);
 });
 
+test("turns recovery, exchange use and transaction execution into practical production learning", async () => {
+  const [generator, migration] = await Promise.all([
+    readFile(new URL("../scripts/generate-foundations-production-batch-4.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0052_crypto_mastery_foundations_production_batch_4.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /Run a recovery rehearsal before value depends on it/);
+  assert.match(generator, /Trace money through an exchange/);
+  assert.match(generator, /Audit the exchange before funding it/);
+  assert.match(generator, /Trace a wallet-to-wallet swap/);
+  assert.match(generator, /Separate price impact, slippage and fees/);
+  assert.match(generator, /Calculate the true transaction cost/);
+  assert.match(generator, /github\.com\/bitcoin\/bips/);
+  assert.match(generator, /fsca\.co\.za/);
+  assert.match(generator, /iosco\.org/);
+  assert.match(migration, /Sixteen production-quality modules/);
+  assert.match(migration, /cmf-module-1-16-quiz-q08/);
+});
+
 test("guides new members into creating or learning with a low-friction join flow", async () => {
   const [home, login, welcome, course] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
