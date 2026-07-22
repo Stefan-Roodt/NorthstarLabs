@@ -474,6 +474,37 @@ test("uses one local neural voice and upgrades Crypto Mastery Module 1.2", async
   assert.match(migration, /module-1-2-evolution-of-money-field-lab\.pdf/);
 });
 
+test("upgrades Crypto Mastery Module 1.3 into a source-disciplined Bitcoin origins lab", async () => {
+  const [mediaScript, generator, migration, workbookScript] = await Promise.all([
+    readFile(new URL("../scripts/generate-module-1-3-media.ps1", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-3-premium.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0060_crypto_mastery_module_1_3_premium.sql", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-3-evidence-lab.py", import.meta.url), "utf8"),
+  ]);
+  assert.match(mediaScript, /generate-neural-voice\.py/);
+  assert.match(mediaScript, /bm_george/);
+  assert.match(mediaScript, /A DESIGN DOCUMENT\. NOT A PRICE PROPHECY/);
+  assert.match(generator, /Origins of Bitcoin Evidence Lab/);
+  assert.match(generator, /required_watch_percent/);
+  assert.match(workbookScript, /THE CLAIM AUDIT/);
+  for (const file of [
+    "module-1-3-digital-cash-problem.mp4",
+    "module-1-3-technical-ancestry.mp4",
+    "module-1-3-white-paper-claims.mp4",
+  ]) {
+    const media = await import("node:fs/promises").then(({ stat }) =>
+      stat(new URL(`../public/media/faculty/${file}`, import.meta.url))
+    );
+    assert.ok(media.size > 1_000_000, `${file} must contain genuine neural narration and video`);
+    assert.match(migration, new RegExp(file.replace(".", "\\.")));
+  }
+  const workbook = await import("node:fs/promises").then(({ stat }) =>
+    stat(new URL("../public/media/course-resources/module-1-3-origins-of-bitcoin-evidence-lab.pdf", import.meta.url))
+  );
+  assert.ok(workbook.size > 5_000, "the Module 1.3 evidence lab must be a genuine PDF resource");
+  assert.match(migration, /module-1-3-origins-of-bitcoin-evidence-lab\.pdf/);
+});
+
 test("guides new members into creating or learning with a low-friction join flow", async () => {
   const [home, login, welcome, course] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
