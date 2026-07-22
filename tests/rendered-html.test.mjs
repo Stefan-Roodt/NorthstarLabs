@@ -319,6 +319,24 @@ test("turns recovery, exchange use and transaction execution into practical prod
   assert.match(migration, /cmf-module-1-16-quiz-q08/);
 });
 
+test("turns transfers, confirmations, fees and stablecoins into practical production learning", async () => {
+  const [generator, migration] = await Promise.all([
+    readFile(new URL("../scripts/generate-foundations-production-batch-5.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0053_crypto_mastery_foundations_production_batch_5.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /Run a transfer pre-flight check/);
+  assert.match(generator, /Follow the transaction lifecycle/);
+  assert.match(generator, /Treat confirmations as confidence, not legitimacy/);
+  assert.match(generator, /Separate network, platform and execution costs/);
+  assert.match(generator, /Read an Ethereum gas quote/);
+  assert.match(generator, /Stress-test the peg and redemption loop/);
+  assert.match(generator, /ethereum\.org\/developers\/docs\/transactions/);
+  assert.match(generator, /developer\.bitcoin\.org\/devguide\/transactions/);
+  assert.match(generator, /bis\.org\/fsi\/publ\/insights57/);
+  assert.match(migration, /Twenty production-quality modules/);
+  assert.match(migration, /cmf-module-1-20-quiz-q08/);
+});
+
 test("guides new members into creating or learning with a low-friction join flow", async () => {
   const [home, login, welcome, course] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
