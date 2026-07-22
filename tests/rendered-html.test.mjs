@@ -442,6 +442,38 @@ test("turns Crypto Mastery Module 1.1 into narrated, interactive and applied lea
   assert.match(learner, /Narrated video \+ interactive lab/);
 });
 
+test("uses one local neural voice and upgrades Crypto Mastery Module 1.2", async () => {
+  const [voice, welcomeMedia, moduleOneMedia, moduleTwoMedia, generator, migration] = await Promise.all([
+    readFile(new URL("../scripts/generate-neural-voice.py", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-crypto-mastery-welcome-media.ps1", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-1-media.ps1", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-2-media.ps1", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-2-premium.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0059_crypto_mastery_module_1_2_premium.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(voice, /from kokoro import KPipeline/);
+  assert.match(voice, /default="bm_george"/);
+  for (const script of [welcomeMedia, moduleOneMedia, moduleTwoMedia]) {
+    assert.match(script, /generate-neural-voice\.py/);
+    assert.match(script, /bm_george/);
+    assert.doesNotMatch(script, /System\.Speech/);
+  }
+  for (const file of [
+    "module-1-2-obligations-to-coins.mp4",
+    "module-1-2-claims-ledgers-fiat.mp4",
+    "module-1-2-why-money-changes.mp4",
+  ]) {
+    const media = await import("node:fs/promises").then(({ stat }) =>
+      stat(new URL(`../public/media/faculty/${file}`, import.meta.url))
+    );
+    assert.ok(media.size > 1_000_000, `${file} must contain genuine neural narration and video`);
+    assert.match(migration, new RegExp(file.replace(".", "\\.")));
+  }
+  assert.match(generator, /Evolution of Money Field Lab/);
+  assert.match(migration, /required_watch_percent`=75/);
+  assert.match(migration, /module-1-2-evolution-of-money-field-lab\.pdf/);
+});
+
 test("guides new members into creating or learning with a low-friction join flow", async () => {
   const [home, login, welcome, course] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),

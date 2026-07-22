@@ -20,14 +20,14 @@ $items = @(
   }
 )
 
-Add-Type -AssemblyName System.Speech
 $font = "C\:/Windows/Fonts/arial.ttf"
 $bold = "C\:/Windows/Fonts/arialbd.ttf"
+$python = "C:\Users\Hugo\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
 foreach ($item in $items) {
   $wav = Join-Path $output "$($item.File).wav"
   $mp4 = Join-Path $output "$($item.File).mp4"
-  $voice = New-Object System.Speech.Synthesis.SpeechSynthesizer
-  $voice.Rate = -1; $voice.Volume = 100; $voice.SetOutputToWaveFile($wav); $voice.Speak($item.Script); $voice.Dispose()
+  & $python (Join-Path $PSScriptRoot "generate-neural-voice.py") --text $item.Script --output $wav --voice bm_george --speed 0.98
+  if ($LASTEXITCODE -ne 0) { throw "Neural narration failed for $($item.File)." }
   $filter = "drawbox=x=0:y=0:w=1280:h=720:color=0x171827:t=fill," +
     "drawbox=x=72:y=68:w=1136:h=584:color=0x22253a:t=fill," +
     "drawbox=x=72:y=68:w=9:h=584:color=0x3556d8:t=fill," +

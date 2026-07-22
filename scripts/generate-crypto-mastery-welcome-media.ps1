@@ -23,40 +23,36 @@ Welcome. Move deliberately, question confidently and finish with proof of progre
 
 $wav = Join-Path $output "crypto-mastery-welcome.wav"
 $mp4 = Join-Path $output "crypto-mastery-welcome.mp4"
-Add-Type -AssemblyName System.Speech
-$voice = New-Object System.Speech.Synthesis.SpeechSynthesizer
-$voice.Rate = -1
-$voice.Volume = 100
-$voice.SetOutputToWaveFile($wav)
-$voice.Speak($script)
-$voice.Dispose()
+$python = "C:\Users\Hugo\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+& $python (Join-Path $PSScriptRoot "generate-neural-voice.py") --text $script --output $wav --voice bm_george --speed 0.98
+if ($LASTEXITCODE -ne 0) { throw "Neural narration failed." }
 
 $font = "C\:/Windows/Fonts/arial.ttf"
 $bold = "C\:/Windows/Fonts/arialbd.ttf"
 $filter = "drawbox=x=0:y=0:w=1280:h=720:color=0x171827:t=fill," +
-  "drawbox=x=0:y=0:w='1280*min(t/105,1)':h=7:color=0xd9ff65:t=fill," +
+  "drawbox=x=0:y=0:w='1280*min(t/125,1)':h=7:color=0xd9ff65:t=fill," +
   "drawbox=x=75:y=70:w=1130:h=580:color=0x22253a:t=fill," +
   "drawbox=x=75:y=70:w=9:h=580:color=0x3556d8:t=fill," +
   "drawtext=fontfile='$bold':text='COGNIZEN CONSULTING':fontcolor=0xd9ff65:fontsize=23:x=112:y=110," +
-  "drawtext=fontfile='$bold':text='Welcome to':fontcolor=white:fontsize=66:x=112:y=205:enable='between(t,0,20)'," +
-  "drawtext=fontfile='$bold':text='Crypto Mastery':fontcolor=white:fontsize=66:x=112:y=282:enable='between(t,0,20)'," +
-  "drawtext=fontfile='$font':text='Reason clearly. Act safely. Prove progress.':fontcolor=0xc9ccda:fontsize=31:x=112:y=390:enable='between(t,0,20)'," +
-  "drawtext=fontfile='$bold':text='LEARN':fontcolor=white:fontsize=62:x=112:y=230:enable='between(t,20,43)'," +
-  "drawtext=fontfile='$bold':text='DO':fontcolor=0xffbd8a:fontsize=62:x=430:y=230:enable='between(t,20,43)'," +
-  "drawtext=fontfile='$bold':text='PROVE':fontcolor=0xd9ff65:fontsize=62:x=650:y=230:enable='between(t,20,43)'," +
-  "drawtext=fontfile='$font':text='Short explanation  |  real decision  |  evidence kept':fontcolor=0xc9ccda:fontsize=29:x=112:y=350:enable='between(t,20,43)'," +
-  "drawtext=fontfile='$bold':text='NO HYPE. NO REQUIRED PURCHASE.':fontcolor=white:fontsize=44:x=112:y=225:enable='between(t,43,70)'," +
-  "drawtext=fontfile='$bold':text='NO SHARED SECRETS.':fontcolor=0xffbd8a:fontsize=44:x=112:y=292:enable='between(t,43,70)'," +
-  "drawtext=fontfile='$font':text='Education, not financial advice':fontcolor=0xc9ccda:fontsize=29:x=112:y=395:enable='between(t,43,70)'," +
-  "drawtext=fontfile='$bold':text='31 MODULES':fontcolor=white:fontsize=58:x=112:y=210:enable='between(t,70,96)'," +
-  "drawtext=fontfile='$bold':text='ONE DECISION FRAMEWORK':fontcolor=0xd9ff65:fontsize=50:x=112:y=286:enable='between(t,70,96)'," +
-  "drawtext=fontfile='$font':text='Money  |  networks  |  custody  |  markets  |  safety':fontcolor=0xc9ccda:fontsize=27:x=112:y=388:enable='between(t,70,96)'," +
+  "drawtext=fontfile='$bold':text='Welcome to':fontcolor=white:fontsize=66:x=112:y=205:enable='lt(t,20)'," +
+  "drawtext=fontfile='$bold':text='Crypto Mastery':fontcolor=white:fontsize=66:x=112:y=282:enable='lt(t,20)'," +
+  "drawtext=fontfile='$font':text='Reason clearly. Act safely. Prove progress.':fontcolor=0xc9ccda:fontsize=31:x=112:y=390:enable='lt(t,20)'," +
+  "drawtext=fontfile='$bold':text='LEARN':fontcolor=white:fontsize=62:x=112:y=230:enable='between(t,20,42.999)'," +
+  "drawtext=fontfile='$bold':text='DO':fontcolor=0xffbd8a:fontsize=62:x=430:y=230:enable='between(t,20,42.999)'," +
+  "drawtext=fontfile='$bold':text='PROVE':fontcolor=0xd9ff65:fontsize=62:x=650:y=230:enable='between(t,20,42.999)'," +
+  "drawtext=fontfile='$font':text='Short explanation  |  real decision  |  evidence kept':fontcolor=0xc9ccda:fontsize=29:x=112:y=350:enable='between(t,20,42.999)'," +
+  "drawtext=fontfile='$bold':text='NO HYPE. NO REQUIRED PURCHASE.':fontcolor=white:fontsize=44:x=112:y=225:enable='between(t,43,69.999)'," +
+  "drawtext=fontfile='$bold':text='NO SHARED SECRETS.':fontcolor=0xffbd8a:fontsize=44:x=112:y=292:enable='between(t,43,69.999)'," +
+  "drawtext=fontfile='$font':text='Education, not financial advice':fontcolor=0xc9ccda:fontsize=29:x=112:y=395:enable='between(t,43,69.999)'," +
+  "drawtext=fontfile='$bold':text='31 MODULES':fontcolor=white:fontsize=58:x=112:y=210:enable='between(t,70,95.999)'," +
+  "drawtext=fontfile='$bold':text='ONE DECISION FRAMEWORK':fontcolor=0xd9ff65:fontsize=50:x=112:y=286:enable='between(t,70,95.999)'," +
+  "drawtext=fontfile='$font':text='Money  |  networks  |  custody  |  markets  |  safety':fontcolor=0xc9ccda:fontsize=27:x=112:y=388:enable='between(t,70,95.999)'," +
   "drawtext=fontfile='$bold':text='MOVE DELIBERATELY':fontcolor=white:fontsize=58:x=112:y=220:enable='gte(t,96)'," +
   "drawtext=fontfile='$bold':text='QUESTION CONFIDENTLY':fontcolor=0xffbd8a:fontsize=51:x=112:y=292:enable='gte(t,96)'," +
   "drawtext=fontfile='$bold':text='FINISH WITH PROOF':fontcolor=0xd9ff65:fontsize=51:x=112:y=360:enable='gte(t,96)'," +
   "drawtext=fontfile='$bold':text='NORTHSTARLABS':fontcolor=white:fontsize=23:x=112:y=585"
 
-& $ffmpeg -y -f lavfi -i "color=c=0x171827:s=1280x720:r=30" -i $wav `
+& $ffmpeg -loglevel error -nostats -y -f lavfi -i "color=c=0x171827:s=1280x720:r=30" -i $wav `
   -vf $filter -c:v libx264 -preset medium -crf 22 -pix_fmt yuv420p `
   -c:a aac -b:a 144k -shortest -movflags +faststart $mp4
 if ($LASTEXITCODE -ne 0) { throw "Video generation failed." }
