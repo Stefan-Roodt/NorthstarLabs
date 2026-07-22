@@ -531,9 +531,16 @@ export function courseFromDocumentSequence(courseTitle: string, documents: Seque
     title,
     description: "Imported from a sequence of source documents. Each document is preserved as the next module in the course.",
     sections: documents.map((document, index) => {
-      const name = document.filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || `Document ${index + 1}`;
-      const moduleTitle = `Module ${index + 1}: ${name}`;
-      const lesson = emptyLesson(name, index, 0);
+      const internalModuleHeading = document.text?.match(/^#{1,6}\s+(Module\s+\d+\s*\.\s*\d+\s*[-:]?\s*.+)$/im)?.[1];
+      const name = cleanTitle(
+        internalModuleHeading || document.filename.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "),
+        `Document ${index + 1}`,
+      );
+      const moduleTitle = /^module\s+\d+(?:\.\d+)?\b/i.test(name)
+        ? name.replace(/^module\s+(\d+(?:\.\d+)?)\s*[-:]?\s*/i, "Module $1: ")
+        : `Module ${index + 1}: ${name}`;
+      const lessonTitle = name.replace(/^module\s+\d+\s*\.\s*\d+\s*[-:]?\s*/i, "").trim() || name;
+      const lesson = emptyLesson(lessonTitle, index, 0);
       lesson.lessonType = "resource";
       lesson.content = document.text?.trim()
         ? document.text.trim().slice(0, 100_000)
@@ -815,7 +822,7 @@ export function sanitizeImportPlan(value: unknown) {
     academyName: cleanText(source.academyName, 120),
     courses,
     learners,
-    sourceFiles: unknownArray(source.sourceFiles).map((file) => cleanText(file, 180)).filter(Boolean).slice(0, 30),
+    sourceFiles: unknownArray(source.sourceFiles).map((file) => cleanText(file, 180)).filter(Boolean).slice(0, 120),
   };
   if (!courses.length && !learners.length) throw new Error("Add course material, a document sequence, or a learner list first.");
   return { plan, warnings, summary: summarizeImportPlan(plan) };

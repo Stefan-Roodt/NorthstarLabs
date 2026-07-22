@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../../lib/server-auth";
+import { parseLessonExperience } from "../../../../lib/lesson-experience";
 
 function learnerMediaKey(key: unknown) {
   return typeof key === "string" && key.startsWith("r2:") ? "r2:protected" : key;
@@ -10,6 +11,7 @@ function publicLessonFields(lesson: Record<string, unknown>) {
   for (const key of [
     "videoKey", "primaryKey", "primaryFilename", "primaryContentType", "primaryKind",
     "primaryAltText", "introKey", "introFilename", "introContentType", "introKind", "introAltText",
+    "experienceJson",
   ]) delete safe[key];
   return safe;
 }
@@ -65,6 +67,7 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
       l.duration_minutes AS durationMinutes,
       l.is_preview AS isPreview,l.available_after_days AS availableAfterDays,
       l.required_watch_percent AS requiredWatchPercent,l.transcript,l.position,
+      l.experience_json AS experienceJson,
       COALESCE(lp.completed,0) AS completed,
       COALESCE(lp.watched_percent,0) AS watchedPercent,
       COALESCE(lp.notes,'') AS notes,COALESCE(lp.bookmarked,0) AS bookmarked,
@@ -204,6 +207,7 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
       ...publicLessonFields(lesson as Record<string, unknown>),
       content: includeDetail ? lesson.content : "",
       transcript: includeDetail ? lesson.transcript : "",
+      experience: includeDetail ? parseLessonExperience(lesson.experienceJson) : null,
       detailLoaded: includeDetail,
       availableAt,
       locked,

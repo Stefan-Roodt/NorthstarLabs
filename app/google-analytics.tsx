@@ -37,11 +37,11 @@ function sendPageView(measurementId: string) {
 export function GoogleAnalytics() {
   const pathname = usePathname();
   const [measurementId, setMeasurementId] = useState("");
-  const [consent, setConsent] = useState<Consent>(null);
-
-  useEffect(() => {
-    setConsent(localStorage.getItem("northstar_analytics_consent") as Consent);
-  }, []);
+  const [consent, setConsent] = useState<Consent>(() =>
+    typeof window === "undefined"
+      ? null
+      : localStorage.getItem("northstar_analytics_consent") as Consent,
+  );
 
   useEffect(() => {
     fetch(`/api/analytics-config?path=${encodeURIComponent(pathname || "/")}`)

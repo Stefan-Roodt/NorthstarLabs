@@ -140,7 +140,7 @@ async function previewImport(
     }, { status: 400 });
   }
   const planJson = JSON.stringify(normalized.plan);
-  if (new TextEncoder().encode(planJson).byteLength > 2_000_000) {
+  if (new TextEncoder().encode(planJson).byteLength > 4_000_000) {
     return Response.json({ error: "This import is too large. Split it into smaller course groups." }, { status: 413 });
   }
   const provider = PROVIDERS.has(String(body.provider || "")) ? String(body.provider) : "other";
@@ -452,7 +452,7 @@ async function attachDocument(
 }
 
 export async function POST(request: Request) {
-  if (oversizedJsonRequest(request, 2_200_000)) {
+  if (oversizedJsonRequest(request, 4_200_000)) {
     return Response.json({ error: "This import is too large. Split it into smaller groups." }, { status: 413 });
   }
   const user = await requireApiUser(request);

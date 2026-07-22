@@ -44,6 +44,28 @@ test("treats selected documents as sequential modules in the supplied order", ()
   assert.match(course.sections[2].lessons[0].content, /Review the evidence/);
 });
 
+test("preserves supplied module numbers instead of silently renumbering gaps", () => {
+  const course = courseFromDocumentSequence("Foundations", [
+    { clientId: "doc-14", filename: "Module 1.14 Centralised exchanges.docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", sizeBytes: 1200 },
+    { clientId: "doc-16", filename: "Module 1.16 Buying and selling.docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", sizeBytes: 1200 },
+  ]);
+  assert.deepEqual(course.sections.map((section) => section.title), [
+    "Module 1.14: Centralised exchanges",
+    "Module 1.16: Buying and selling",
+  ]);
+});
+
+test("uses a Word document's internal module heading when the filename is wrong", () => {
+  const course = courseFromDocumentSequence("Markets", [{
+    clientId: "doc-conflict",
+    filename: "Module 2.2 Market Cycles.docx",
+    contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    sizeBytes: 1200,
+    text: "## Module 2.3: Market Cycles and Investor Psychology\n\n### Introduction\n\nMarkets move through cycles.",
+  }]);
+  assert.equal(course.sections[0].title, "Module 2.3: Market Cycles and Investor Psychology");
+});
+
 test("parses outlines, learner lists and media manifests without silently inventing data", () => {
   const [course] = parseCourseOutline(`# Bitcoin Intelligence
 An evidence-led course.

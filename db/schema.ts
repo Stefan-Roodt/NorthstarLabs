@@ -159,9 +159,10 @@ export const lessons = sqliteTable("lessons", {
   durationMinutes: integer("duration_minutes").notNull().default(0),
   isPreview: integer("is_preview", { mode: "boolean" }).notNull().default(false),
   availableAfterDays: integer("available_after_days").notNull().default(0),
-  requiredWatchPercent: integer("required_watch_percent").notNull().default(0),
-  transcript: text("transcript").notNull().default(""),
-  position: integer("position").notNull().default(0), updatedAt: integer("updated_at").notNull().default(0),
+    requiredWatchPercent: integer("required_watch_percent").notNull().default(0),
+    transcript: text("transcript").notNull().default(""),
+    experienceJson: text("experience_json").notNull().default(""),
+    position: integer("position").notNull().default(0), updatedAt: integer("updated_at").notNull().default(0),
 }, (table) => [
   index("lessons_course_position_idx").on(table.courseId, table.sectionId, table.position),
 ]);
@@ -321,6 +322,7 @@ export const communityMembers = sqliteTable("community_members", {
 export const memberships = sqliteTable("memberships", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), stripeSubscriptionId: text("stripe_subscription_id"),
   payfastToken: text("payfast_token"), payfastPaymentId: text("payfast_payment_id"), provider: text("provider").notNull().default("payfast"),
+  providerSubscriptionId: text("provider_subscription_id"), providerCustomerId: text("provider_customer_id"),
   plan: text("plan").notNull(), status: text("status").notNull(), currentPeriodEnd: integer("current_period_end"), createdAt: integer("created_at").notNull(),
 }, (table) => [
   index("memberships_user_status_idx").on(table.userId, table.status),
@@ -336,6 +338,11 @@ export const paymentOrders = sqliteTable("payment_orders", {
   currency: text("currency").notNull().default("ZAR"),
   billingInterval: text("billing_interval").notNull().default("one_time"),
   status: text("status").notNull().default("pending"),
+  provider: text("provider").notNull().default("payfast"),
+  providerPaymentId: text("provider_payment_id"),
+  providerSubscriptionId: text("provider_subscription_id"),
+  providerCustomerId: text("provider_customer_id"),
+  providerPlanId: text("provider_plan_id"),
   payfastPaymentId: text("payfast_payment_id"),
   payfastToken: text("payfast_token"),
   paymentStatus: text("payment_status"),
@@ -348,17 +355,46 @@ export const paymentOrders = sqliteTable("payment_orders", {
   index("payment_orders_status_updated_idx").on(table.status, table.updatedAt),
   index("payment_orders_target_idx").on(table.purpose, table.targetId),
   uniqueIndex("payment_orders_payfast_payment_unique").on(table.payfastPaymentId),
+  uniqueIndex("payment_orders_provider_payment_unique").on(table.provider, table.providerPaymentId),
+  index("payment_orders_provider_subscription_idx").on(table.provider, table.providerSubscriptionId),
 ]);
 export const paymentEvents = sqliteTable("payment_events", {
   id: text("id").primaryKey(),
   orderId: text("order_id").notNull(),
+  provider: text("provider").notNull().default("payfast"),
+  providerEventId: text("provider_event_id"),
+  providerPaymentId: text("provider_payment_id"),
   payfastPaymentId: text("payfast_payment_id").notNull(),
   paymentStatus: text("payment_status").notNull(),
   amountCents: integer("amount_cents").notNull(),
   createdAt: integer("created_at").notNull(),
 }, (table) => [
   uniqueIndex("payment_events_payfast_payment_unique").on(table.payfastPaymentId),
+  uniqueIndex("payment_events_provider_event_unique").on(table.provider, table.providerEventId),
   index("payment_events_order_created_idx").on(table.orderId, table.createdAt),
+]);
+export const paymentProviderPlans = sqliteTable("payment_provider_plans", {
+  id: text("id").primaryKey(),
+  provider: text("provider").notNull(),
+  purpose: text("purpose").notNull(),
+  targetKey: text("target_key").notNull(),
+  providerPlanId: text("provider_plan_id").notNull(),
+  name: text("name").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  currency: text("currency").notNull().default("ZAR"),
+  interval: text("interval").notNull(),
+  status: text("status").notNull().default("active"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("payment_provider_plans_target_unique").on(
+    table.provider,
+    table.purpose,
+    table.targetKey,
+    table.amountCents,
+    table.currency,
+    table.interval,
+  ),
 ]);
 export const products = sqliteTable("products", {
   id: text("id").primaryKey(),

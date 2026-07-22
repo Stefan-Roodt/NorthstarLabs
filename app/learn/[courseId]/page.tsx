@@ -8,9 +8,11 @@ import { driver } from "driver.js";
 import { domAnimation, LazyMotion, m, useReducedMotion } from "motion/react";
 import { LessonContent } from "../../../lib/lesson-content";
 import { getLessonGuide } from "../../../lib/lesson-guide";
+import type { LessonExperience } from "../../../lib/lesson-experience";
 import { useLowBandwidthMode } from "../../../lib/low-bandwidth";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 import { ContextualLessonHelp } from "./lesson-help";
+import { InteractiveLessonExperience } from "./lesson-experience";
 
 type Quiz = {
   id: string;
@@ -56,6 +58,7 @@ type Lesson = {
   notes: string;
   bookmarked: number;
   transcript: string;
+  experience?: LessonExperience | null;
   availableAt: number | null;
   locked: boolean;
   lockReason: string | null;
@@ -676,6 +679,8 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
       : "Read the lesson and mark it complete";
   const lessonFormat = lesson.quiz
     ? "Knowledge check"
+    : lesson.experience
+      ? "Interactive experience"
     : lesson.primaryAsset?.kind === "video"
       ? "Video + guided notes"
       : "Guided lesson";
@@ -910,8 +915,14 @@ export default function Learn({ params }: { params: Promise<{ courseId: string }
           <div><b>{watchRequirementMet ? "Video requirement complete" : `Watch ${lesson.requiredWatchPercent}% to complete`}</b><span>{lesson.watchedPercent}% watched</span></div>
           <i><b style={{ width: `${Math.min(100, lesson.watchedPercent)}%` }} /></i>
         </div>}
+        {lesson.experience && <InteractiveLessonExperience experience={lesson.experience} />}
         {lesson.content
-          ? <LessonContent content={lesson.content} omitLessonIntro />
+          ? lesson.experience
+            ? <details className="lesson-reference-notes">
+                <summary>Open the source-backed reference notes</summary>
+                <LessonContent content={lesson.content} omitLessonIntro />
+              </details>
+            : <LessonContent content={lesson.content} omitLessonIntro />
           : <p className="lesson-empty-copy">Your creator is still adding the written guidance for this lesson.</p>}
 
         {!preview && <ContextualLessonHelp

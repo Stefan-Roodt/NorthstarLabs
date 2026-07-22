@@ -232,6 +232,45 @@ test("places a complete Bitcoin review draft in the CogniZen creator workspace",
   });
 });
 
+test("seeds a complete interactive Module 2.3 as a private CogniZen pilot", async () => {
+  const db = await migratedDatabase();
+  const pilot = db.prepare(`
+    SELECT c.title,c.status,s.slug AS schoolSlug,
+      (SELECT COUNT(*) FROM course_sections WHERE course_id=c.id) AS sections,
+      (SELECT COUNT(*) FROM lessons WHERE course_id=c.id) AS lessons,
+      (SELECT COUNT(*) FROM lessons WHERE course_id=c.id AND trim(experience_json)<>'') AS interactiveLessons,
+      (SELECT COUNT(*) FROM quizzes q JOIN lessons l ON l.id=q.lesson_id WHERE l.course_id=c.id) AS quizzes,
+      (SELECT COUNT(*) FROM quiz_questions qq JOIN quizzes q ON q.id=qq.quiz_id
+        JOIN lessons l ON l.id=q.lesson_id WHERE l.course_id=c.id) AS questions,
+      (SELECT MAX(duration_minutes) FROM lessons WHERE course_id=c.id) AS longest
+    FROM courses c JOIN schools s ON s.id=c.school_id
+    WHERE c.id='cognizen-crypto-mastery-part-2-pilot'
+  `).get();
+  assert.deepEqual({ ...pilot }, {
+    title: "Crypto Mastery: Markets and Applications — Interactive pilot",
+    status: "draft",
+    schoolSlug: "cognizen-consulting",
+    sections: 1,
+    lessons: 6,
+    interactiveLessons: 5,
+    quizzes: 1,
+    questions: 12,
+    longest: 6,
+  });
+  const experiences = db.prepare(`
+    SELECT experience_json AS experienceJson FROM lessons
+    WHERE course_id='cognizen-crypto-mastery-part-2-pilot' AND trim(experience_json)<>''
+    ORDER BY position
+  `).all();
+  assert.equal(experiences.length, 5);
+  for (const row of experiences) {
+    const parsed = JSON.parse(row.experienceJson);
+    assert.equal(parsed.version, 1);
+    assert.ok(parsed.scenes.length >= 4);
+    assert.ok(["classify", "branch", "meter"].includes(parsed.activity.kind));
+  }
+});
+
 test("completes an isolated creator-to-learner production journey", async () => {
   const db = await migratedDatabase();
   const now = Date.UTC(2026, 6, 19);

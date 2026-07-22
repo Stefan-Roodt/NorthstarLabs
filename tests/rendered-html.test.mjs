@@ -6,7 +6,7 @@ test("defines NorthstarLabs production metadata", async () => {
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   assert.match(layout, /NorthstarLabs — Learn\. Ask\. Progress\./);
   assert.match(layout, /metadataBase/);
-  assert.match(layout, /og-value\.png/);
+  assert.match(layout, /og-decision\.png/);
   assert.match(layout, /summary_large_image/);
   assert.doesNotMatch(layout, /codex-preview|Starter Project/);
 });
@@ -128,9 +128,9 @@ test("ships a real signature catalogue without placeholder proof", async () => {
   ]);
   assert.doesNotMatch(home, /href="#"/);
   assert.doesNotMatch(home, /32k\+|\$1\.4B|96M|4\.8\/5|Avery Lin|21% less/);
-  assert.match(home, /THE PRODUCT, IN PLAIN ENGLISH/);
-  assert.match(home, /One place to find what to learn, who can help, and what to do next/);
-  assert.match(home, /Frequently asked questions/i);
+  assert.match(home, /REAL PEOPLE/);
+  assert.match(home, /Find your coach/);
+  assert.match(home, /Take a course/);
   assert.match(catalog, /NORTHSTARLABS ORIGINALS/);
   assert.match(courseData, /AI Command Studio/);
   assert.match(courseData, /Bitcoin Intelligence/);
@@ -219,6 +219,30 @@ test("copies the complete Bitcoin programme into CogniZen as a review draft", as
   assert.match(feedback, /Bitcoin''s future is conditional/);
 });
 
+test("turns Module 2.3 into a native interactive learning pilot", async () => {
+  const [migration, experience, learnerPage] = await Promise.all([
+    readFile(new URL("../drizzle/0048_interactive_module_2_3.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/[courseId]/lesson-experience.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(migration, /Market Sentiment, Narratives and Evidence/);
+  assert.match(migration, /ALTER TABLE `lessons` ADD `experience_json`/);
+  assert.match(migration, /cognizen-crypto-mastery-part-2-pilot/);
+  assert.match(migration, /'draft',0,1/);
+  assert.match(migration, /Attention is not conviction/);
+  assert.match(migration, /Build an evidence ladder/);
+  assert.match(migration, /Investigate a market story/);
+  assert.match(migration, /Make a confidence-rated decision/);
+  assert.match(migration, /cognizen-p2m3-q12/);
+  assert.match(experience, /Play guided story/);
+  assert.match(experience, /SIGNAL SORT/);
+  assert.match(experience, /DECISION POINT/);
+  assert.match(experience, /CONFIDENCE LAB/);
+  assert.match(experience, /speechSynthesis/);
+  assert.match(learnerPage, /InteractiveLessonExperience/);
+  assert.match(learnerPage, /Open the source-backed reference notes/);
+});
+
 test("guides new members into creating or learning with a low-friction join flow", async () => {
   const [home, login, welcome, course] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
@@ -226,8 +250,8 @@ test("guides new members into creating or learning with a low-friction join flow
     readFile(new URL("../app/welcome/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
   ]);
-  assert.match(home, /Three clear steps\. No blank dashboard/);
-  assert.match(home, /Build my academy free/);
+  assert.match(home, /Coach or teach/);
+  assert.match(home, /No credit card required/);
   assert.match(login, /No card or sales call/);
   assert.match(login, /emailRedirectTo: new URL\(destination/);
   assert.match(login, /START FREE IN ABOUT 60 SECONDS/);
@@ -288,7 +312,7 @@ test("ships a free inspect-first academy and course migration studio", async () 
     readFile(new URL("../app/legal/privacy/page.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(page, /Move in without starting over/);
-  assert.match(page, /Selected order becomes module order/);
+  assert.match(page, /natural filename order/);
   assert.match(page, /Nothing was published/);
   assert.match(page, /Create private drafts/);
   assert.match(api, /status='importing'/);
@@ -299,7 +323,7 @@ test("ships a free inspect-first academy and course migration studio", async () 
   assert.match(parser, /Module \$\{index \+ 1\}/);
   assert.match(schema, /export const courseImportProjects/);
   assert.match(migration, /CREATE TABLE `course_import_projects`/);
-  assert.match(home, /Your existing work should be a head start/);
+  assert.match(home, /Build an academy/);
   assert.match(backup, /"course_import_projects"/);
   assert.match(terms, /Course and learner migration/);
   assert.match(privacy, /normalised course structure/);
@@ -814,7 +838,7 @@ test("ships a free coach marketplace with optional verified exposure", async () 
   assert.match(marketplace, /Every coach can be listed free/);
   assert.match(marketplace, /VERIFIED PROFESSIONAL/);
   assert.match(marketplace, /List my coaching free/);
-  assert.match(home, /Create my coach profile/);
+  assert.match(home, /Coach or teach/);
 });
 
 test("ships independent coach verification and completed-session learner proof", async () => {
@@ -913,13 +937,13 @@ test("makes NorthstarLabs clear, memorable, discoverable, and responsive to unme
     readFile(new URL("../app/find/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/courses/page.tsx", import.meta.url), "utf8"),
   ]);
-  assert.match(home, /LEARN/);
-  assert.match(home, /GET UNSTUCK/);
-  assert.match(home, /TEACH/);
-  assert.match(home, /Explore academies/);
-  assert.match(home, /Learn\. Ask\. Progress\./);
-  assert.match(home, /If we do not have what you need/);
-  assert.match(home, /LearningRequestForm/);
+  assert.match(home, /LEARN AT YOUR PACE/);
+  assert.match(home, /ONE-TO-ONE HELP/);
+  assert.match(home, /SHARE YOUR EXPERTISE/);
+  assert.match(home, /Whatever you want to learn/);
+  assert.match(home, /Courses for the path\. Human help for the roadblocks\./);
+  assert.match(home, /Can&apos;t find it\?/);
+  assert.match(home, /href="\/demand"/);
   assert.match(requestForm, /Ask Northstar to help/);
   assert.match(requestApi, /INSERT INTO learning_requests/);
   assert.match(requestApi, /learning_request_received/);
@@ -962,8 +986,8 @@ test("publishes high-intent solution guides with crawlable internal routes", asy
     readFile(new URL("../public/llms.txt", import.meta.url), "utf8"),
     readFile(new URL("../app/search-landing.css", import.meta.url), "utf8"),
   ]);
-  assert.match(home, /POPULAR NORTHSTAR ROUTES/);
-  assert.match(home, /\/solutions\/\$\{page\.slug\}/);
+  assert.match(home, /href="\/solutions"/);
+  assert.match(home, /All solutions/);
   assert.match(hub, /CollectionPage/);
   assert.match(hub, /ItemList/);
   assert.match(guide, /FAQPage/);
@@ -1370,7 +1394,7 @@ test("makes narration and branded cinematic intros usable without an external pr
 });
 
 test("gives learners a private, shareable proof-of-learning portfolio", async () => {
-  const [schema, migration, privateApi, publicApi, studio, publicPage, publicLayout, learnerHome, certificate, accountData, backup, deletion, styles, home] = await Promise.all([
+  const [schema, migration, privateApi, publicApi, studio, publicPage, publicLayout, learnerHome, certificate, accountData, backup, deletion, styles] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0037_gigantic_tombstone.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/api/portfolio/route.ts", import.meta.url), "utf8"),
@@ -1384,7 +1408,6 @@ test("gives learners a private, shareable proof-of-learning portfolio", async ()
     readFile(new URL("../lib/platform-backup.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/course-deletion.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/system.css", import.meta.url), "utf8"),
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(schema, /export const learningPortfolios/);
   assert.match(schema, /export const portfolioSourceVisibility/);
@@ -1418,12 +1441,12 @@ test("gives learners a private, shareable proof-of-learning portfolio", async ()
   assert.match(deletion, /DELETE FROM portfolio_source_visibility/);
   assert.match(styles, /\.portfolio-studio/);
   assert.match(styles, /\.public-portfolio/);
-  assert.match(home, /A certificate says finished\. Your portfolio shows capable/);
-  assert.match(home, /Build my free proof portfolio/);
+  assert.match(learnerHome, /Build my proof portfolio/);
+  assert.match(learnerHome, /href="\/portfolio"/);
 });
 
 test("turns assessment mistakes into a private, spaced personal mastery loop", async () => {
-  const [schema, migration, submission, masteryApi, masteryPage, masteryLayout, learnerHome, courseEditor, accountData, backup, deletion, privacy, styles, home] = await Promise.all([
+  const [schema, migration, submission, masteryApi, masteryPage, masteryLayout, learnerHome, courseEditor, accountData, backup, deletion, privacy, styles] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0038_adorable_komodo.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/api/quizzes/[lessonId]/route.ts", import.meta.url), "utf8"),
@@ -1437,7 +1460,6 @@ test("turns assessment mistakes into a private, spaced personal mastery loop", a
     readFile(new URL("../lib/course-deletion.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/legal/privacy/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/system.css", import.meta.url), "utf8"),
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   ]);
   const { nextMasteryState, normaliseConceptLabel } = await import("../lib/mastery.ts");
   const missed = nextMasteryState(null, false, 1_000);
@@ -1478,8 +1500,8 @@ test("turns assessment mistakes into a private, spaced personal mastery loop", a
   assert.match(privacy, /private concept-mastery and practice records/);
   assert.match(styles, /\.mastery-page/);
   assert.match(styles, /\.quiz-mastery-callout/);
-  assert.match(home, /A wrong answer should improve tomorrow/);
-  assert.match(home, /Start learning with mastery/);
+  assert.match(learnerHome, /href="\/mastery"/);
+  assert.match(learnerHome, /Start focused review|See my concept map/);
 });
 
 test("turns public learning demand into a moderated, honest product roadmap", async () => {

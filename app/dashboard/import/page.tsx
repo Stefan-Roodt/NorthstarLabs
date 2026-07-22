@@ -15,6 +15,13 @@ import {
   type CourseImportPlan,
   type CourseImportSummary,
 } from "../../../lib/course-import";
+import {
+  MAX_DOCUMENT_SEQUENCE_FILES,
+  numberingConflicts,
+  prepareDocumentSelection,
+  sequenceIssues,
+  type PreparedDocument,
+} from "../../../lib/document-ingestion";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 
 type Provider = "teachable" | "thinkific" | "podia" | "documents" | "other";
@@ -45,11 +52,6 @@ const providerOptions: Array<{ id: Provider; label: string; detail: string }> = 
   { id: "other", label: "CSV, JSON or outline", detail: "Use a structured export or paste a curriculum outline." },
 ];
 
-function readableDocument(file: File) {
-  const extension = file.name.split(".").at(-1)?.toLowerCase();
-  return file.type.startsWith("text/") || ["md", "markdown", "html", "htm"].includes(extension || "");
-}
-
 function documentClientId(file: File) {
   return `document-${file.name}-${file.size}-${file.lastModified}`
     .toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 120);
@@ -77,7 +79,8 @@ export default function ImportStudioPage() {
   const [courseFile, setCourseFile] = useState<File | null>(null);
   const [learnerFile, setLearnerFile] = useState<File | null>(null);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [documents, setDocuments] = useState<File[]>([]);
+  const [documents, setDocuments] = useState<PreparedDocument[]>([]);
+  const [excludedDocumentCopies, setExcludedDocumentCopies] = useState<string[]>([]);
   const [rightsConfirmed, setRightsConfirmed] = useState(false);
   const [sendInvitations, setSendInvitations] = useState(false);
   const [autopilotEnabled, setAutopilotEnabled] = useState(true);
@@ -126,6 +129,11 @@ export default function ImportStudioPage() {
   }, [load]);
 
   const summary = useMemo(() => plan ? summarizeImportPlan(plan) : null, [plan]);
+  const documentSequenceIssues = useMemo(
+    () => sequenceIssues(documents.map(({ file, text }) => ({ name: file.name, text }))),
+    [documents],
+  );
+  const documentNumberingConflicts = useMemo(() => numberingConflicts(documents), [documents]);
 
   function invalidatePreview() {
     setPreview(null);
@@ -136,13 +144,24 @@ export default function ImportStudioPage() {
     setAutopilotReport(null);
   }
 
-  function chooseDocuments(event: ChangeEvent<HTMLInputElement>) {
-    const selected = Array.from(event.target.files || []).slice(0, 20);
-    setDocuments(selected);
-    if (!courseTitle && selected.length) {
-      setCourseTitle(selected[0].name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "));
-    }
+  async function chooseDocuments(event: ChangeEvent<HTMLInputElement>) {
+    const selected = Array.from(event.target.files || []);
     invalidatePreview();
+    setBusy("documents");
+    setMessage(selected.length ? "Reading the document sequence locallyâ€¦" : "");
+    try {
+      const prepared = await prepareDocumentSelection(selected);
+      setDocuments(prepared.documents);
+      setExcludedDocumentCopies(prepared.excludedExactContentCopies);
+      setMessage(`${prepared.documents.length} unique document${prepared.documents.length === 1 ? "" : "s"} read and placed in natural module order.`);
+    } catch (error) {
+      setDocuments([]);
+      setExcludedDocumentCopies([]);
+      setMessage(error instanceof Error ? error.message : "The documents could not be read.");
+    } finally {
+      setBusy("");
+      event.target.value = "";
+    }
   }
 
   function moveDocument(index: number, direction: -1 | 1) {
@@ -175,15 +194,24 @@ export default function ImportStudioPage() {
         next.sourceFiles.push("Pasted curriculum outline");
       }
       if (documents.length) {
-        const documentInputs = await Promise.all(documents.map(async (file) => ({
+        const documentInputs = documents.map(({ file, text }) => ({
           clientId: documentClientId(file),
           filename: file.name,
           contentType: file.type || "application/octet-stream",
           sizeBytes: file.size,
-          text: readableDocument(file) && file.size <= 2 * 1024 * 1024 ? await file.text() : "",
-        })));
+          text,
+        }));
         next.courses.push(courseFromDocumentSequence(courseTitle || "Imported document course", documentInputs));
-        next.sourceFiles.push(...documents.map((file) => file.name));
+        next.sourceFiles.push(...documents.map((document) => document.file.name));
+        for (const issue of documentSequenceIssues) {
+          localWarnings.push(`${issue.label} appears to be missing Module ${issue.missing.join(", ")}. The remaining files have not been renumbered.`);
+        }
+        for (const conflict of documentNumberingConflicts) {
+          localWarnings.push(`${conflict.filename} says ${conflict.filenameNumber} in its filename but ${conflict.internalNumber} inside the document. The internal heading is used for the draft and requires confirmation.`);
+        }
+        if (excludedDocumentCopies.length) {
+          localWarnings.push(`${excludedDocumentCopies.length} exact content cop${excludedDocumentCopies.length === 1 ? "y was" : "ies were"} excluded: ${excludedDocumentCopies.join(", ")}.`);
+        }
       }
       if (learnerFile) {
         if (learnerFile.size > 3 * 1024 * 1024) throw new Error("Learner lists must be smaller than 3 MB.");
@@ -237,7 +265,7 @@ export default function ImportStudioPage() {
   }
 
   async function uploadSequentialDocuments(importResult: ImportResult, projectId: string) {
-    const byClientId = new Map(documents.map((file) => [
+    const byClientId = new Map(documents.map(({ file }) => [
       documentClientId(file),
       file,
     ] as const));
@@ -312,6 +340,7 @@ export default function ImportStudioPage() {
     setLearnerFile(null);
     setMediaFile(null);
     setDocuments([]);
+    setExcludedDocumentCopies([]);
     setOutline("");
     setCourseTitle("");
     setPlan(null);
@@ -365,12 +394,16 @@ export default function ImportStudioPage() {
         </article>
 
         <article className="import-input-card documents">
-          <p className="sys-kicker">DOCUMENT SEQUENCE</p><h3>Selected order becomes module order</h3>
-          <p>Document 1 becomes Module 1, document 2 becomes Module 2, and so on. Add up to 20 PDF, Word, PowerPoint or text files per migration; each is uploaded as a protected lesson resource.</p>
+          <p className="sys-kicker">DOCUMENT SEQUENCE</p><h3>A folder of files becomes a real course</h3>
+          <p>Upload one ZIP of Word files, or select individual documents. Northstar reads DOCX content, uses natural filename order, and keeps every original as a protected source file.</p>
           <label>Course title<input value={courseTitle} onChange={(event) => { setCourseTitle(event.target.value); invalidatePreview(); }} placeholder="e.g. Digital Assets Foundations" /></label>
-          <label className="import-file-label"><input multiple type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.html" onChange={chooseDocuments} /><span>{documents.length ? `${documents.length} documents selected` : "Choose ordered documents"}</span><b>Browse</b></label>
+          <label className="import-file-label"><input multiple type="file" accept=".zip,.pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.html" onChange={(event) => void chooseDocuments(event)} disabled={busy === "documents"} /><span>{busy === "documents" ? "Reading documents..." : documents.length ? `${documents.length} documents ready` : "Choose documents or one ZIP"}</span><b>{busy === "documents" ? "Wait" : "Browse"}</b></label>
+          <small className="import-file-help">Up to {MAX_DOCUMENT_SEQUENCE_FILES} documents. Word text stays on this device until you inspect and approve the private draft.</small>
+          {documentSequenceIssues.length > 0 && <div className="import-sequence-alert"><b>Sequence gap found</b>{documentSequenceIssues.map((issue) => <span key={issue.label}>{issue.label}: missing {issue.missing.join(", ")}. Nothing has been silently renumbered.</span>)}</div>}
+          {documentNumberingConflicts.length > 0 && <div className="import-sequence-alert"><b>Filename and document disagree</b>{documentNumberingConflicts.map((conflict) => <span key={conflict.filename}>{conflict.filename}: filename {conflict.filenameNumber}, internal heading {conflict.internalNumber}. The internal heading will be used and flagged for review.</span>)}</div>}
+          {excludedDocumentCopies.length > 0 && <div className="import-sequence-alert"><b>Exact copies removed</b><span>{excludedDocumentCopies.join(", ")}</span></div>}
           {documents.length > 0 && <ol className="document-sequence">
-            {documents.map((file, index) => <li key={`${file.name}-${file.lastModified}-${index}`}><span>{index + 1}</span><div><b>{file.name}</b><small>{(file.size / 1024).toFixed(0)} KB · becomes Module {index + 1}</small></div><button type="button" disabled={index === 0} onClick={() => moveDocument(index, -1)} aria-label={`Move ${file.name} up`}>↑</button><button type="button" disabled={index === documents.length - 1} onClick={() => moveDocument(index, 1)} aria-label={`Move ${file.name} down`}>↓</button><button type="button" onClick={() => { setDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index)); invalidatePreview(); }} aria-label={`Remove ${file.name}`}>×</button></li>)}
+            {documents.map(({ file, text }, index) => <li key={`${file.name}-${file.lastModified}-${index}`}><span>{index + 1}</span><div><b>{file.name}</b><small>{(file.size / 1024).toFixed(0)} KB · {text ? `${text.trim().split(/\s+/).length.toLocaleString()} words extracted` : "protected attachment"}</small></div><button type="button" disabled={index === 0} onClick={() => moveDocument(index, -1)} aria-label={`Move ${file.name} up`}>↑</button><button type="button" disabled={index === documents.length - 1} onClick={() => moveDocument(index, 1)} aria-label={`Move ${file.name} down`}>↓</button><button type="button" onClick={() => { setDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index)); invalidatePreview(); }} aria-label={`Remove ${file.name}`}>×</button></li>)}
           </ol>}
         </article>
 

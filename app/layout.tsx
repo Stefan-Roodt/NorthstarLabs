@@ -54,13 +54,13 @@ export const metadata: Metadata = {
     siteName: "NorthstarLabs",
     title: "NorthstarLabs — Learn. Ask. Progress.",
     description: "Courses that remember weak concepts, human coaching for roadblocks, and a learner-owned portfolio that makes real progress visible.",
-    images: [{ url: "/og-value.png", width: 1200, height: 630, alt: "NorthstarLabs connected learning platform" }],
+    images: [{ url: "/og-decision.png", width: 1200, height: 630, alt: "NorthstarLabs — choose what you came to do" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "NorthstarLabs — Learn. Ask. Progress.",
     description: "Courses for the path. Human coaching for the roadblocks.",
-    images: ["/og-value.png"],
+    images: ["/og-decision.png"],
   },
 };
 
