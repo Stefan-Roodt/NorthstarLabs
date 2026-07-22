@@ -210,7 +210,9 @@ export async function GET(request: Request) {
     return Response.json(rows.results);
   }
 
-  const key = rawKey.startsWith("r2:") ? rawKey : `r2:${rawKey}`;
+  const key = rawKey.startsWith("r2:") || rawKey.startsWith("static:")
+    ? rawKey
+    : `r2:${rawKey}`;
   const asset = await env.DB.prepare(
     `SELECT id,school_id AS schoolId,key,filename,content_type AS contentType
      FROM media_assets WHERE key=?`,
@@ -222,7 +224,6 @@ export async function GET(request: Request) {
     contentType: string;
   }>();
 
-  const objectKey = key.replace(/^r2:/, "");
   let filename = "course-file";
   if (asset) {
     filename = asset.filename;
@@ -259,9 +260,29 @@ export async function GET(request: Request) {
          AND role IN ('owner','admin','instructor')`,
     ).bind(legacyLesson.schoolId, user.id).first();
     if (!staff && !enrollment) return Response.json({ error: "Not enrolled." }, { status: 403 });
-    filename = objectKey.split("/").at(-1) || filename;
+    filename = key.replace(/^(r2|static):/, "").split("/").at(-1) || filename;
   }
 
+  if (key.startsWith("static:")) {
+    const path = key.replace(/^static:/, "");
+    if (!path.startsWith("/media/course-resources/") || path.includes("..")) {
+      return Response.json({ error: "Media not found." }, { status: 404 });
+    }
+    const upstream = await env.ASSETS.fetch(new Request(new URL(path, request.url)));
+    if (!upstream.ok) return Response.json({ error: "Media not found." }, { status: 404 });
+    const headers = new Headers(upstream.headers);
+    headers.set("cache-control", "private, max-age=3600");
+    headers.set(
+      "content-disposition",
+      `${url.searchParams.get("download") === "1" ? "attachment" : "inline"}; filename="${filename.replace(/["\r\n]/g, "_")}"`,
+    );
+    headers.set("cross-origin-resource-policy", "same-origin");
+    headers.set("referrer-policy", "no-referrer");
+    headers.set("x-content-type-options", "nosniff");
+    return new Response(upstream.body, { status: upstream.status, headers });
+  }
+
+  const objectKey = key.replace(/^r2:/, "");
   const object = await env.UPLOADS.get(objectKey);
   if (!object) return Response.json({ error: "Media not found." }, { status: 404 });
   const headers = new Headers();
@@ -299,6 +320,12 @@ export async function DELETE(request: Request) {
     "SELECT id,key FROM media_assets WHERE id=? AND school_id=?",
   ).bind(assetId, course.schoolId).first<{ id: string; key: string }>();
   if (!asset) return Response.json({ error: "Media not found." }, { status: 404 });
+  if (asset.key.startsWith("static:")) {
+    return Response.json(
+      { error: "This release-managed resource cannot be deleted from the media library." },
+      { status: 409 },
+    );
+  }
   const used = await env.DB.prepare(
     `SELECT
       EXISTS(SELECT 1 FROM lessons WHERE primary_asset_id=?) AS isPrimary,

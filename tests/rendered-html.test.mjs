@@ -394,6 +394,26 @@ test("completes foundations with regulation, a safety plan and an evidence-led c
   assert.match(migration, /cmf-module-1-31-quiz-q08/);
 });
 
+test("opens Crypto Mastery with a narrated, interactive and downloadable orientation", async () => {
+  const [generator, migration, uploads] = await Promise.all([
+    readFile(new URL("../scripts/generate-crypto-mastery-welcome.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0057_crypto_mastery_welcome.sql", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/uploads/route.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /Welcome to Crypto Mastery/);
+  assert.match(generator, /Learn-Do-Prove/);
+  assert.match(generator, /Choose your purpose and your boundaries/);
+  assert.match(generator, /Build your Learn-Do-Prove system/);
+  assert.match(generator, /Crypto Mastery Field Guide/);
+  assert.match(generator, /Exercises never require you to buy an asset/);
+  assert.match(migration, /Start here: Welcome to Crypto Mastery/);
+  assert.match(migration, /static:\/media\/faculty\/crypto-mastery-welcome\.mp4/);
+  assert.match(migration, /static:\/media\/course-resources\/crypto-mastery-field-guide\.pdf/);
+  assert.match(migration, /cmf-start-here-quiz-q06/);
+  assert.match(uploads, /\/media\/course-resources\//);
+  assert.match(uploads, /release-managed resource cannot be deleted/);
+});
+
 test("guides new members into creating or learning with a low-friction join flow", async () => {
   const [home, login, welcome, course] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),

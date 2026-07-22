@@ -167,8 +167,8 @@ if (!tables.some((table) => table.name === "invitations")) {
 const facultyMedia = database.prepare(
   "SELECT COUNT(*) AS count FROM media_assets WHERE key LIKE 'static:/media/faculty/%'",
 ).get();
-if (facultyMedia.count !== 3) {
-  throw new Error("The three playable faculty introductions were not registered.");
+if (facultyMedia.count !== 4) {
+  throw new Error("The four playable programme introductions were not registered.");
 }
 const facultyProfiles = database.prepare(
   "SELECT COUNT(*) AS count FROM tutors WHERE school_id='northstarlabs' AND service_type='faculty' AND status='published'",
