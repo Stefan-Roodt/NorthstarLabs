@@ -337,6 +337,25 @@ test("turns transfers, confirmations, fees and stablecoins into practical produc
   assert.match(migration, /cmf-module-1-20-quiz-q08/);
 });
 
+test("turns valuation, tokenomics, volatility and terminology into practical production learning", async () => {
+  const [generator, migration] = await Promise.all([
+    readFile(new URL("../scripts/generate-foundations-production-batch-6.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0054_crypto_mastery_foundations_production_batch_6.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /Calculate value beyond the token price/);
+  assert.match(generator, /Audit circulating supply, FDV and unlocks/);
+  assert.match(generator, /Separate utility from value capture/);
+  assert.match(generator, /Trace leverage and liquidation cascades/);
+  assert.match(generator, /Translate wallet, network and transaction language/);
+  assert.match(generator, /Detect jargon, social pressure and scam language/);
+  assert.match(generator, /coingecko\.com\/hc\/en-us\/articles\/32294647667865/);
+  assert.match(generator, /ethereum\.org\/roadmap\/merge\/issuance/);
+  assert.match(generator, /iosco\.org\/library\/pubdocs/);
+  assert.match(generator, /csrc\.nist\.gov\/glossary\/term\/wallet/);
+  assert.match(migration, /Twenty-four production-quality modules/);
+  assert.match(migration, /cmf-module-1-24-quiz-q08/);
+});
+
 test("guides new members into creating or learning with a low-friction join flow", async () => {
   const [home, login, welcome, course] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
