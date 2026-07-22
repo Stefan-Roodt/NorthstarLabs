@@ -264,6 +264,25 @@ test("productionises the opening Crypto Mastery arc instead of importing an onli
   assert.match(migration, /cmf-module-1-4-quiz-q08/);
 });
 
+test("extends Crypto Mastery through blockchain, decentralisation, asset taxonomy and Bitcoin fundamentals", async () => {
+  const [generator, migration] = await Promise.all([
+    readFile(new URL("../scripts/generate-foundations-production-batch-2.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0050_crypto_mastery_foundations_production_batch_2.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /Build a blockchain from first principles/);
+  assert.match(generator, /Consensus is agreement under rules/);
+  assert.match(generator, /Map decentralisation across five control surfaces/);
+  assert.match(generator, /Coin, token or represented claim/);
+  assert.match(generator, /Bitcoin's ledger: keys, UTXOs and rules/);
+  assert.match(generator, /Protocol scarcity versus investment narrative/);
+  assert.match(generator, /nist\.gov\/blockchain/);
+  assert.match(generator, /developer\.bitcoin\.org/);
+  assert.match(generator, /ethereum\.org\/developers\/docs/);
+  assert.match(generator, /bis\.org\/fsi/);
+  assert.match(migration, /Eight production-quality modules/);
+  assert.match(migration, /cmf-module-1-8-quiz-q08/);
+});
+
 test("guides new members into creating or learning with a low-friction join flow", async () => {
   const [home, login, welcome, course] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
