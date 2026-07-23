@@ -21,6 +21,7 @@ type LessonRow = {
   content: string;
   videoKey: string | null;
   primaryAssetId: string | null;
+  primaryFilename: string | null;
   primaryKind: string | null;
   primaryAltText: string | null;
   durationMinutes: number;
@@ -72,7 +73,7 @@ async function loadCourseReadiness(course: CourseRow) {
       `SELECT l.id,l.section_id AS sectionId,l.title,l.lesson_type AS lessonType,
         l.content,l.video_key AS videoKey,l.primary_asset_id AS primaryAssetId,
         l.duration_minutes AS durationMinutes,l.transcript,
-        ma.kind AS primaryKind,ma.alt_text AS primaryAltText
+        ma.filename AS primaryFilename,ma.kind AS primaryKind,ma.alt_text AS primaryAltText
        FROM lessons l
        LEFT JOIN media_assets ma ON ma.id=l.primary_asset_id
        WHERE l.course_id=?
@@ -159,7 +160,12 @@ async function loadCourseReadiness(course: CourseRow) {
       videoKey: lesson.videoKey,
       primaryAssetId: lesson.primaryAssetId,
       primaryAsset: lesson.primaryAssetId
-        ? { kind: lesson.primaryKind || "", altText: lesson.primaryAltText || "" }
+        ? {
+            id: lesson.primaryAssetId,
+            filename: lesson.primaryFilename || "",
+            kind: lesson.primaryKind || "",
+            altText: lesson.primaryAltText || "",
+          }
         : null,
       durationMinutes: lesson.durationMinutes,
       transcript: lesson.transcript || "",

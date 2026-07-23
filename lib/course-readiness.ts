@@ -1,4 +1,5 @@
 import { getLessonGuide } from "./lesson-guide.ts";
+import { deriveLessonExperience } from "./lesson-experience.ts";
 
 type ReadinessQuestion = {
   prompt: string;
@@ -59,6 +60,14 @@ export type CourseReadinessIssue = {
 
 export type CourseReadiness = ReturnType<typeof getCourseReadiness>;
 
+export type CourseReadinessCoverageSignal = {
+  ready: number;
+  total: number;
+  percent: number;
+  label: string;
+  detail: string;
+};
+
 export type CourseReadinessPayload = {
   title: string;
   description: string;
@@ -99,6 +108,36 @@ function hasPlayableMediaReference(lesson: ReadinessLesson) {
   const key = lesson.videoKey?.trim() || "";
   return hasUsablePrimaryAsset(lesson) ||
     /^(r2:|static:|https:\/\/)/i.test(key);
+}
+
+function coverageSignal(
+  ready: number,
+  total: number,
+  label: string,
+  detail: string,
+): CourseReadinessCoverageSignal {
+  return {
+    ready,
+    total,
+    percent: total ? Math.round((ready / total) * 100) : 0,
+    label,
+    detail,
+  };
+}
+
+function hasNarratedTeaching(lesson: ReadinessLesson) {
+  const mediaKind = lesson.primaryAsset?.kind || lesson.lessonType;
+  return ["video", "audio"].includes(mediaKind) &&
+    hasPlayableMediaReference(lesson) &&
+    !isPlaceholderMedia(lesson) &&
+    wordCount(lesson.transcript) >= 40;
+}
+
+function hasGuidedPractice(lesson: ReadinessLesson) {
+  return Boolean(deriveLessonExperience({
+    lessonTitle: lesson.title,
+    content: lesson.content,
+  }));
 }
 
 export function getCourseReadiness(course: ReadinessCourse) {
@@ -348,6 +387,73 @@ export function getCourseReadiness(course: ReadinessCourse) {
     });
   }
 
+  const instructionalLessons = course.lessons.filter((lesson) => lesson.lessonType !== "quiz");
+  const narratedLessons = instructionalLessons.filter(hasNarratedTeaching);
+  const guidedPracticeLessons = instructionalLessons.filter(hasGuidedPractice);
+  const assessedSections = course.sections.filter((section) =>
+    course.lessons.some((lesson) => lesson.sectionId === section.id && Boolean(lesson.quiz))
+  );
+  const recordedMediaLessons = instructionalLessons.filter((lesson) => {
+    const mediaKind = lesson.primaryAsset?.kind || lesson.lessonType;
+    return ["video", "audio"].includes(mediaKind) && hasPlayableMediaReference(lesson);
+  });
+  const accessibleRecordedMediaLessons = recordedMediaLessons.filter((lesson) =>
+    wordCount(lesson.transcript) >= 40
+  );
+  const productionCoverage = {
+    narratedTeaching: coverageSignal(
+      narratedLessons.length,
+      instructionalLessons.length,
+      "Narrated teaching",
+      "Instructional lessons with playable, lesson-specific audio or video and a reviewed transcript.",
+    ),
+    guidedPractice: coverageSignal(
+      guidedPracticeLessons.length,
+      instructionalLessons.length,
+      "Guided practice",
+      "Instructional lessons that turn source material into a visual explanation and private application activity.",
+    ),
+    assessedSections: coverageSignal(
+      assessedSections.length,
+      course.sections.length,
+      "Assessed modules",
+      "Named course sections with a scored knowledge check.",
+    ),
+    accessibleMedia: coverageSignal(
+      accessibleRecordedMediaLessons.length,
+      recordedMediaLessons.length,
+      "Accessible media",
+      "Recorded lessons with a reviewed transcript for captions, revision and low-bandwidth study.",
+    ),
+  };
+
+  if (instructionalLessons.length > 0) {
+    check(
+      narratedLessons.length === instructionalLessons.length,
+      Math.max(8, instructionalLessons.length * 2),
+      {
+        id: "course-narrated-teaching",
+        level: "improvement",
+        title: "Complete the narrated teaching layer",
+        detail: `${narratedLessons.length} of ${instructionalLessons.length} instructional lessons currently have lesson-specific recorded teaching and a reviewed transcript. This course cannot honestly claim a fully narrated standard yet.`,
+        action: "Review media coverage",
+        tab: "media",
+      },
+    );
+    check(
+      guidedPracticeLessons.length === instructionalLessons.length,
+      Math.max(8, instructionalLessons.length),
+      {
+        id: "course-guided-practice",
+        level: "improvement",
+        title: "Turn every lesson into active learning",
+        detail: `${guidedPracticeLessons.length} of ${instructionalLessons.length} instructional lessons currently produce a grounded visual explanation and practical rehearsal. Strengthen the remaining source material before calling the course premium.`,
+        action: "Review lesson quality",
+        tab: "lesson",
+      },
+    );
+  }
+
   const score = possible ? Math.round((earned / possible) * 100) : 0;
   const blockers = issues.filter((issue) => issue.level === "blocker");
   const improvements = issues.filter((issue) => issue.level === "improvement");
@@ -370,6 +476,7 @@ export function getCourseReadiness(course: ReadinessCourse) {
     blockers,
     improvements,
     lessonIssueCounts,
+    productionCoverage,
     earnedPoints: earned,
     totalPoints: possible,
   };

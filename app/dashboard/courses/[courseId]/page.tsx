@@ -1177,7 +1177,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
           className={`builder-tool quality-review-button${readiness && readiness.blockers.length ? " has-blockers" : ""}`}
           onClick={() => setWorkspaceTab("review")}
         >
-          Quality {readiness?.score || 0}%
+          Production {readiness?.score || 0}%
         </button>
         <button className="builder-tool" onClick={() => setWorkspaceTab("settings")}>Course settings</button>
         <Link className="builder-preview" href={`/learn/${course.id}?preview=1`}>Learner preview</Link>
@@ -1196,7 +1196,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       <ol>
         <li className={course.lessons.length ? "done" : "current"}><span>1</span><div><b>Add the first lesson</b><small>Name the useful thing a learner should understand or do next.</small></div><em>{course.lessons.length ? "Started" : "Do this now"}</em></li>
         <li className={firstLessonShaped ? "done" : course.lessons.length ? "current" : ""}><span>2</span><div><b>Make it teach</b><small>Add concise explanation, an example, media and a meaningful check.</small></div><em>{firstLessonShaped ? "Taking shape" : "Next"}</em></li>
-        <li className={firstLessonShaped ? "current" : ""}><span>3</span><div><b>Preview, improve, publish</b><small>Use Quality Review and Learner Preview before anyone sees it.</small></div><em>Never automatic</em></li>
+        <li className={firstLessonShaped ? "current" : ""}><span>3</span><div><b>Preview, improve, publish</b><small>Use Production Review and Learner Preview before anyone sees it.</small></div><em>Never automatic</em></li>
       </ol>
       <div>
         {!course.lessons.length
@@ -1334,7 +1334,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
         {workspaceTab === "review" && readiness && <div className="course-quality-review">
           <div className="editor-heading quality-review-heading">
             <div>
-              <p className="sys-kicker">COURSE QUALITY REVIEW</p>
+              <p className="sys-kicker">PRODUCTION READINESS REVIEW</p>
               <h1>See the course a learner will experience.</h1>
               <p>Fix what weakens trust, learning, accessibility, or completion before you invite people in.</p>
             </div>
@@ -1352,8 +1352,8 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                 ? `${readiness.blockers.length} publishing blocker${readiness.blockers.length === 1 ? "" : "s"} must be fixed.`
                 : readiness.improvements.length
                   ? `${readiness.improvements.length} improvement${readiness.improvements.length === 1 ? "" : "s"} would make the learner experience stronger.`
-                  : "Every quality signal in this review is covered."}</p>
-              <div className="quality-progress" aria-label={`Course quality ${readiness.score}%`}>
+                  : "Automated production checks are covered. Human subject review and a full learner preview still matter."}</p>
+              <div className="quality-progress" aria-label={`Course production readiness ${readiness.score}%`}>
                 <i style={{ width: `${readiness.score}%` }} />
               </div>
             </div>
@@ -1362,6 +1362,20 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               <div><dt>Blockers</dt><dd>{readiness.blockers.length}</dd></div>
               <div><dt>Improvements</dt><dd>{readiness.improvements.length}</dd></div>
             </dl>
+          </section>
+
+          <section className="production-coverage-grid" aria-label="Course production coverage">
+            {Object.values(readiness.productionCoverage).map((signal) => <article key={signal.label}>
+              <div>
+                <span>{signal.label}</span>
+                <strong>{signal.percent}%</strong>
+              </div>
+              <div className="production-coverage-meter" aria-label={`${signal.label}: ${signal.ready} of ${signal.total}`}>
+                <i style={{ width: `${signal.percent}%` }} />
+              </div>
+              <p>{signal.ready} of {signal.total} covered</p>
+              <small>{signal.detail}</small>
+            </article>)}
           </section>
 
           {readiness.blockers.length > 0 && <section className="quality-issue-section blockers">
@@ -1402,13 +1416,13 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
 
           {!readiness.issues.length && <section className="quality-complete">
             <span>READY</span>
-            <div><p className="sys-kicker">QUALITY REVIEW COMPLETE</p><h2>The course is ready for a real learner.</h2><p>Preview the full journey once, then publish with confidence.</p></div>
+            <div><p className="sys-kicker">AUTOMATED CHECKS COMPLETE</p><h2>Production checks have passed.</h2><p>Run a human subject review and preview the full learner journey before publishing.</p></div>
             <Link className="sys-primary" href={`/learn/${course.id}?preview=1`}>Run final preview</Link>
           </section>}
 
           <footer className="quality-review-note">
-            <b>This score is guidance, not accreditation.</b>
-            <span>It checks completeness, clarity, accessibility, assessment feedback, and learner navigation. Human subject-matter review still matters.</span>
+            <b>This automated score is guidance, not accreditation or subject approval.</b>
+            <span>It checks completeness, clarity, narrated teaching, guided practice, accessibility, assessment feedback, and learner navigation. Human subject-matter review still matters.</span>
           </footer>
         </div>}
 
