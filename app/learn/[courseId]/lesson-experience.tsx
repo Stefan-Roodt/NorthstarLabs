@@ -9,7 +9,13 @@ import type {
 } from "../../../lib/lesson-experience";
 import { preferredSpeechVoice } from "../../../lib/speech-voices";
 
-function NarratedStory({ experience }: { experience: LessonExperience }) {
+function NarratedStory({
+  experience,
+  allowBrowserNarration,
+}: {
+  experience: LessonExperience;
+  allowBrowserNarration: boolean;
+}) {
   const [sceneIndex, setSceneIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [narration, setNarration] = useState(false);
@@ -17,12 +23,12 @@ function NarratedStory({ experience }: { experience: LessonExperience }) {
   const scene = experience.scenes[sceneIndex];
 
   useEffect(() => {
-    if (!("speechSynthesis" in window)) return;
+    if (!allowBrowserNarration || !("speechSynthesis" in window)) return;
     const loadVoices = () => setVoices(window.speechSynthesis.getVoices());
     loadVoices();
     window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
     return () => window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
-  }, []);
+  }, [allowBrowserNarration]);
 
   useEffect(() => {
     if (!playing) return;
@@ -34,7 +40,7 @@ function NarratedStory({ experience }: { experience: LessonExperience }) {
   }, [experience.scenes.length, playing, sceneIndex]);
 
   useEffect(() => {
-    if (!narration || !playing || !("speechSynthesis" in window)) return;
+    if (!allowBrowserNarration || !narration || !playing || !("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(`${scene.title}. ${scene.body}`);
     const saved = window.localStorage.getItem("northstar:narration-voice") || "";
@@ -43,7 +49,7 @@ function NarratedStory({ experience }: { experience: LessonExperience }) {
     utterance.rate = 0.98;
     window.speechSynthesis.speak(utterance);
     return () => window.speechSynthesis.cancel();
-  }, [narration, playing, scene, voices]);
+  }, [allowBrowserNarration, narration, playing, scene, voices]);
 
   useEffect(() => () => {
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
@@ -64,12 +70,12 @@ function NarratedStory({ experience }: { experience: LessonExperience }) {
       <button type="button" onClick={() => setPlaying((current) => !current)}>
         {playing ? "Pause story" : sceneIndex === experience.scenes.length - 1 ? "Replay story" : "Play guided story"}
       </button>
-      <button
+      {allowBrowserNarration && <button
         type="button"
         className={narration ? "active" : ""}
         aria-pressed={narration}
         onClick={() => setNarration((current) => !current)}
-      >{narration ? "Narration on" : "Add narration"}</button>
+      >{narration ? "Read-aloud on" : "Accessibility read-aloud"}</button>}
       <div aria-label={`Scene ${sceneIndex + 1} of ${experience.scenes.length}`}>
         {experience.scenes.map((item, index) => <button
           type="button"
@@ -150,10 +156,16 @@ function ConfidenceLab({ activity }: { activity: MeterActivity }) {
   </div>;
 }
 
-export function InteractiveLessonExperience({ experience }: { experience: LessonExperience }) {
+export function InteractiveLessonExperience({
+  experience,
+  allowBrowserNarration = true,
+}: {
+  experience: LessonExperience;
+  allowBrowserNarration?: boolean;
+}) {
   return <section className="lesson-experience">
     <header><p>{experience.eyebrow}</p><h2>{experience.title}</h2><span>{experience.intro}</span></header>
-    <NarratedStory experience={experience} />
+    <NarratedStory experience={experience} allowBrowserNarration={allowBrowserNarration} />
     {experience.activity.kind === "classify" && <ClassificationLab activity={experience.activity} />}
     {experience.activity.kind === "branch" && <BranchLab activity={experience.activity} />}
     {experience.activity.kind === "meter" && <ConfidenceLab activity={experience.activity} />}

@@ -142,7 +142,7 @@ function LessonTranscriptNarrator({
         onClick={() => setPlaying((current) => !current)}
         aria-pressed={playing}
       >
-        {playing ? `Pause narration` : `Narrate ${lessonTitle}`}
+        {playing ? "Pause read-aloud" : `Read ${lessonTitle} aloud`}
       </button>
       <label>
         <span>Voice</span>
@@ -253,7 +253,7 @@ export default function PublicLessonPreview({ params }: { params: Promise<{ cour
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={currentMedia.url} alt={currentMedia.altText || currentMedia.filename} />
           </>}
-          {currentMedia && !["audio", "image"].includes(currentMedia.kind) && <video key={currentMedia.url} controls playsInline preload="metadata" autoPlay={mediaIndex === 0} onEnded={() => setMediaIndex((index) => Math.min(media.length - 1, index + 1))}>
+          {currentMedia && !["audio", "image"].includes(currentMedia.kind) && <video key={currentMedia.url} controls playsInline preload="metadata" onEnded={() => setMediaIndex((index) => Math.min(media.length - 1, index + 1))}>
             <source src={currentMedia.url} type={currentMedia.contentType} />
             {track && <track default kind="captions" srcLang="en" label="English" src={track} />}
           </video>}
@@ -264,18 +264,23 @@ export default function PublicLessonPreview({ params }: { params: Promise<{ cour
 
         <section className="public-preview-lesson">
           <p className="sys-kicker">THE ACTUAL LESSON</p>
-          {preview.lesson.experience && <InteractiveLessonExperience experience={preview.lesson.experience} />}
+          {preview.lesson.experience && <InteractiveLessonExperience
+            experience={preview.lesson.experience}
+            allowBrowserNarration={!media.some((asset) => ["video", "audio"].includes(asset.kind))}
+          />}
           {preview.lesson.experience
             ? <details className="lesson-reference-notes">
                 <summary>Open the source-backed reference notes</summary>
                 <LessonContent content={preview.lesson.content} lessonTitle={preview.lesson.title} slideDeckMode />
               </details>
             : <LessonContent content={preview.lesson.content} lessonTitle={preview.lesson.title} slideDeckMode />}
-          <LessonTranscriptNarrator
-            transcript={preview.lesson.transcript}
-            lessonContent={preview.lesson.content}
-            lessonTitle={preview.lesson.title}
-          />
+          {!media.some((asset) => ["video", "audio"].includes(asset.kind)) && (
+            <LessonTranscriptNarrator
+              transcript={preview.lesson.transcript}
+              lessonContent={preview.lesson.content}
+              lessonTitle={preview.lesson.title}
+            />
+          )}
         </section>
 
         {preview.lesson.questions.length > 0 && <section className="public-preview-quiz">
