@@ -32,6 +32,7 @@ export default function Dashboard() {
   const [academyName, setAcademyName] = useState("");
   const [academyBusy, setAcademyBusy] = useState(false);
   const [showAcademyForm, setShowAcademyForm] = useState(false);
+  const [creatorWelcome, setCreatorWelcome] = useState(false);
   const supabase = getSupabaseBrowser();
 
   useEffect(() => {
@@ -66,7 +67,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const area = new URLSearchParams(window.location.search).get("area")?.toLowerCase();
+      const params = new URLSearchParams(window.location.search);
+      const area = params.get("area")?.toLowerCase();
+      setCreatorWelcome(params.get("welcome") === "creator");
       const destination = ["overview", "courses", "learners", "community", "products", "live", "analytics"]
         .find((item) => item === area);
       if (destination) setTab(destination[0].toUpperCase() + destination.slice(1));
@@ -144,10 +147,9 @@ export default function Dashboard() {
       body: JSON.stringify({ title }),
     });
     if (response.ok) {
-      const course = await response.json();
-      setCourses(current => [course, ...current]);
-      setTitle("");
-      setNotice("Course created. Open it to add your curriculum.");
+      const course = await response.json() as Course;
+      location.href = `/dashboard/courses/${course.id}?created=1`;
+      return;
     } else setNotice("We couldn't create that course. Please try again.");
     setCreating(false);
   }
@@ -236,7 +238,18 @@ export default function Dashboard() {
       </div>
     </section>
   </>}
-  {tab==="Courses"&&<><div className="action-bar"><div><h2>Your courses</h2><p>Build, publish, and improve every learning experience.</p><Link href="/dashboard/import">Already have material? Import courses, documents and learners free →</Link></div><form onSubmit={createCourse}><input required value={title} onChange={event=>setTitle(event.target.value)} placeholder="New course title"/><button disabled={creating} className="sys-primary">{creating?"Creating…":"+ Create course"}</button></form></div>{notice&&<div className="notice">{notice}</div>}{courses.length===0?<div className="panel empty-courses"><h3>No courses yet</h3><p>Enter a course title above to create your first draft, or bring existing work across with Migration Studio.</p><Link className="sys-primary" href="/dashboard/import">Import existing material →</Link></div>:<div className="course-table"><div className="table-head"><span>Course</span><span>Students</span><span>Price</span><span>Status</span></div>{courses.map(course=><div className="table-row" key={course.id}><div><i>{course.title.slice(0,2).toUpperCase()}</i><a href={`/dashboard/courses/${course.id}`}><b>{course.title}</b><small className="edit-label">Edit curriculum →</small></a></div><span>{course.students}</span><span>{course.priceCents ? `$${(course.priceCents/100).toFixed(2)}` : "Free"}</span><span className={`status ${course.status}`}>{course.status}</span></div>)}</div>}</>}
+  {tab==="Courses"&&<>
+    {creatorWelcome&&courses.length===0&&<section className="creator-course-welcome">
+      <div><p className="sys-kicker">ACADEMY CREATED · PRIVATE BY DEFAULT</p><h2>{profile?.activeSchool?.name} is ready for its first course.</h2><p>Choose the quickest honest starting point. Nothing becomes public until you preview and publish it.</p></div>
+      <ol>
+        <li><span>1</span><b>Name the outcome</b><small>Create a blank private course and open its editor immediately.</small></li>
+        <li><span>2</span><b>Or bring existing work</b><small>Turn sequential documents into editable modules without retyping.</small></li>
+        <li><span>3</span><b>Preview before launch</b><small>Add teaching, media and checks, then experience it as a learner.</small></li>
+      </ol>
+      <div><button type="button" className="sys-primary" onClick={()=>document.getElementById("new-course-title")?.focus()}>Start with a blank course</button><Link href="/dashboard/import?welcome=1">Import my existing material</Link></div>
+    </section>}
+    <div className="action-bar"><div><h2>Your courses</h2><p>Build, publish, and improve every learning experience.</p><Link href="/dashboard/import">Already have material? Import courses, documents and learners free →</Link></div><form onSubmit={createCourse}><input id="new-course-title" required value={title} onChange={event=>setTitle(event.target.value)} placeholder="Name the result learners will achieve"/><button disabled={creating} className="sys-primary">{creating?"Creating…":"+ Create and open"}</button></form></div>{notice&&<div className="notice">{notice}</div>}{courses.length===0?<div className="panel empty-courses"><h3>No courses yet</h3><p>Name the learner outcome above and NorthstarLabs will create a private draft, then take you straight to its editor.</p><Link className="sys-primary" href="/dashboard/import">Import existing material →</Link></div>:<div className="course-table"><div className="table-head"><span>Course</span><span>Students</span><span>Price</span><span>Status</span></div>{courses.map(course=><div className="table-row" key={course.id}><div><i>{course.title.slice(0,2).toUpperCase()}</i><a href={`/dashboard/courses/${course.id}`}><b>{course.title}</b><small className="edit-label">Edit curriculum →</small></a></div><span>{course.students}</span><span>{course.priceCents ? `$${(course.priceCents/100).toFixed(2)}` : "Free"}</span><span className={`status ${course.status}`}>{course.status}</span></div>)}</div>}
+  </>}
   {tab==="Learners"&&<article className="panel empty-dashboard"><p className="sys-kicker">LEARNER ADMINISTRATION</p><h2>Support every learner</h2><p>Grant course or product access, monitor progress, pause enrolments, reset progress, and keep private support notes.</p><div className="dashboard-community-actions"><a className="sys-primary" href="/dashboard/learners">Manage learners →</a><a className="builder-preview" href="/dashboard/products">Grant products</a></div></article>}{tab==="Community"&&<article className="panel empty-dashboard"><p className="sys-kicker">COMMUNITY IS LIVE</p><h2>Bring your learners together</h2><p>Control membership access, appoint moderators, manage members, and keep conversations healthy.</p><div className="dashboard-community-actions"><a className="sys-primary" href="/dashboard/community">Manage members</a><a className="builder-preview" href={profile?.activeSchool ? `/schools/${profile.activeSchool.slug}/community` : "/community"}>Open community</a></div></article>}{tab==="Products"&&<article className="panel empty-dashboard"><p className="sys-kicker">BUNDLES & MEMBERSHIPS</p><h2>Package the full learning outcome</h2><p>Combine courses, community and live sessions, publish free or paid offers, and grant or revoke learner access from one product studio.</p><a className="sys-primary" href="/dashboard/products">Open product studio →</a></article>}{tab==="Live"&&<article className="panel empty-dashboard"><p className="sys-kicker">COHORTS & LIVE LEARNING</p><h2>Schedule learning together</h2><p>Create Zoom, Google Meet or Microsoft Teams sessions, register eligible learners, export calendar events and track attendance.</p><a className="sys-primary" href="/dashboard/live">Open live learning →</a></article>}{tab==="Plan"&&<SubscriptionPanel/>}{tab==="Analytics"&&<article className="panel empty-dashboard"><p className="sys-kicker">REPORTING & OPERATIONS</p><h2>Understand learning and keep delivery healthy</h2><p>Filter progress, assessments, certificates and engagement, export CSV reports, schedule summaries, and review email delivery.</p><div className="dashboard-community-actions"><a className="sys-primary" href="/dashboard/analytics">Open reporting →</a><a className="builder-preview" href="/dashboard/operations">Email & administration</a></div></article>}</section></main>;
 }
 

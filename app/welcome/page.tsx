@@ -53,7 +53,7 @@ export default function WelcomePage() {
           return;
         }
         if (profile.onboardingCompleted && focusedPath === "creator" && profile.hasCreatorSchool) {
-          location.replace("/dashboard?welcome=creator");
+          location.replace("/dashboard?welcome=creator&area=courses");
           return;
         }
       if (profile.onboardingCompleted && focusedPath === "coach" && profile.onboardingPath === "coach" && profile.hasCreatorSchool) {
@@ -130,7 +130,7 @@ export default function WelcomePage() {
       setBusy("");
       return;
     }
-    location.replace(role === "coach" ? "/dashboard/tutors?setup=1" : role === "creator" ? "/dashboard?welcome=creator" : "/courses?welcome=1");
+    location.replace(role === "coach" ? "/dashboard/tutors?setup=1" : role === "creator" ? "/dashboard?welcome=creator&area=courses" : "/courses?welcome=1");
   }
 
   async function signOut() {

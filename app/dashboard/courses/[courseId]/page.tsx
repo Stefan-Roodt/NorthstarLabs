@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCourseReadiness, type CourseReadinessIssue } from "../../../../lib/course-readiness";
 import { LessonContent } from "../../../../lib/lesson-content";
@@ -238,6 +239,8 @@ function drawCinematicFrame(
 }
 
 export default function CourseBuilder({ params }: { params: Promise<{ courseId: string }> }) {
+  const searchParams = useSearchParams();
+  const openedFromCreation = searchParams.get("created") === "1";
   const [courseId, setCourseId] = useState("");
   const [course, setCourse] = useState<Course | null>(null);
   const [selectedId, setSelectedId] = useState("");
@@ -253,6 +256,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   const [studioBusy, setStudioBusy] = useState(false);
   const [mediaProduction, setMediaProduction] = useState<"" | "recording" | "processing" | "cinematic">("");
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [launchGuideDismissed, setLaunchGuideDismissed] = useState(false);
   const revision = useRef(0);
   const contentEditor = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -299,9 +303,9 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       const loaded = await response.json() as Course;
       setCourse(loaded);
       setSelectedId(loaded.lessons[0]?.id || "");
-      setMessage("All changes saved");
+      setMessage(openedFromCreation ? "Private course created - start with the first useful lesson" : "All changes saved");
     })();
-  }, [courseId, supabase, token]);
+  }, [courseId, openedFromCreation, supabase, token]);
 
   useEffect(() => () => {
     if (recordingTimer.current) window.clearInterval(recordingTimer.current);
@@ -497,6 +501,15 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     setWorkspaceTab("lesson");
     setDirty(null);
     setMessage("New lesson started - add a title or material to save it");
+    window.setTimeout(() => {
+      const titleInput = document.querySelector<HTMLInputElement>(".lesson-meta-grid input");
+      titleInput?.focus();
+      titleInput?.select();
+      document.querySelector<HTMLElement>(".lesson-editor")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
   }
 
   async function deleteLesson(lesson: Lesson) {
@@ -1084,6 +1097,14 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   const filteredMedia = course.media.filter((asset) =>
     mediaFilter === "all" || asset.kind === mediaFilter
   );
+  const firstLesson = course.lessons[0] || null;
+  const firstLessonShaped = Boolean(
+    firstLesson &&
+    firstLesson.title.trim() &&
+    firstLesson.title.trim().toLowerCase() !== "untitled lesson" &&
+    (firstLesson.content.trim() || firstLesson.primaryAssetId || firstLesson.videoKey?.trim())
+  );
+  const showLaunchGuide = !launchGuideDismissed && (openedFromCreation || course.lessons.length === 0);
 
   return <main className="builder-page builder-page-expanded">
     <header className="builder-top">
@@ -1113,6 +1134,25 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
         <button className="sys-primary" onClick={() => saveCourse(course.status)}>Save</button>
       </div>
     </header>
+
+    {showLaunchGuide && <section className="builder-launch-guide" aria-labelledby="builder-launch-title">
+      <header>
+        <div><p className="sys-kicker">PRIVATE COURSE DRAFT</p><h2 id="builder-launch-title">Build this course in three moves.</h2><p>Start with one useful lesson. Add the teaching and evidence that make it worth completing. Then preview the exact learner experience before publishing.</p></div>
+        <button type="button" aria-label="Hide course start guide" onClick={()=>setLaunchGuideDismissed(true)}>&times;</button>
+      </header>
+      <ol>
+        <li className={course.lessons.length ? "done" : "current"}><span>1</span><div><b>Add the first lesson</b><small>Name the useful thing a learner should understand or do next.</small></div><em>{course.lessons.length ? "Started" : "Do this now"}</em></li>
+        <li className={firstLessonShaped ? "done" : course.lessons.length ? "current" : ""}><span>2</span><div><b>Make it teach</b><small>Add concise explanation, an example, media and a meaningful check.</small></div><em>{firstLessonShaped ? "Taking shape" : "Next"}</em></li>
+        <li className={firstLessonShaped ? "current" : ""}><span>3</span><div><b>Preview, improve, publish</b><small>Use Quality Review and Learner Preview before anyone sees it.</small></div><em>Never automatic</em></li>
+      </ol>
+      <div>
+        {!course.lessons.length
+          ? <button className="sys-primary" type="button" disabled={!course.sections[0]} onClick={()=>course.sections[0]&&addLesson(course.sections[0].id,"text")}>Add my first lesson</button>
+          : <button className="sys-primary" type="button" onClick={()=>{setSelectedId(firstLesson!.id);setWorkspaceTab("lesson");document.querySelector<HTMLElement>(".lesson-editor")?.scrollIntoView({behavior:"smooth"});}}>Continue the first lesson</button>}
+        <button type="button" onClick={()=>setWorkspaceTab("review")}>See the quality standard</button>
+        <small>Nothing is public. NorthstarLabs saves the draft as you work.</small>
+      </div>
+    </section>}
 
     <div className="builder-layout">
       <aside className="curriculum curriculum-expanded">
