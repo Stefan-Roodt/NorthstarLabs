@@ -546,6 +546,90 @@ test("upgrades Module 1.9 to narrated premium teaching with Ethereum fundamental
   }
 });
 
+test("upgrades Modules 1.10 to 1.12 to narrated premium teaching", async () => {
+  const [generator, mediaScript, migration] = await Promise.all([
+    readFile(new URL("../scripts/generate-module-1-10-12-premium.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-10-12-media.ps1", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0070_crypto_mastery_module_1_10_12_premium.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /module-1-10-key-authority-video/);
+  assert.match(generator, /module-1-11-wallet-anatomy-video/);
+  assert.match(generator, /module-1-12-hot-cold-wallets-video/);
+  assert.match(mediaScript, /generate-neural-voice\.py/);
+  assert.match(mediaScript, /bm_george/);
+  assert.match(migration, /cmf-module-1-10-lesson-01/);
+  assert.match(migration, /cmf-module-1-11-lesson-01/);
+  assert.match(migration, /cmf-module-1-12-lesson-01/);
+  assert.match(migration, /required_watch_percent`=75/);
+  assert.match(migration, /Neural-narrated visual lesson for cmf-module-1-10-lesson-01/);
+  for (const file of [
+    "module-1-10-key-authority.mp4",
+    "module-1-11-wallet-anatomy.mp4",
+    "module-1-12-hot-cold-wallets.mp4",
+  ]) {
+    const media = await import("node:fs/promises").then(({ stat }) =>
+      stat(new URL(`../public/media/faculty/${file}`, import.meta.url)),
+    );
+    assert.ok(media.size > 1_000_000, `${file} must contain a genuine narrated video`);
+  }
+});
+
+test("upgrades Modules 1.13 to 1.15 to narrated premium teaching", async () => {
+  const [generator, mediaScript, migration] = await Promise.all([
+    readFile(new URL("../scripts/generate-module-1-13-15-premium.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-13-15-media.ps1", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0071_crypto_mastery_module_1_13_15_premium.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /module-1-13-recovery-chain-video/);
+  assert.match(generator, /module-1-14-exchange-ledger-video/);
+  assert.match(generator, /module-1-15-dex-risk-stack-video/);
+  assert.match(mediaScript, /generate-neural-voice\.py/);
+  assert.match(mediaScript, /bm_george/);
+  assert.match(migration, /cmf-module-1-13-lesson-01/);
+  assert.match(migration, /cmf-module-1-14-lesson-01/);
+  assert.match(migration, /cmf-module-1-15-lesson-01/);
+  assert.match(migration, /required_watch_percent`=75/);
+  assert.match(migration, /Neural-narrated visual lesson for cmf-module-1-13-lesson-01/);
+  for (const file of [
+    "module-1-13-recovery-chain.mp4",
+    "module-1-14-exchange-ledger.mp4",
+    "module-1-15-dex-risk-stack.mp4",
+  ]) {
+    const media = await import("node:fs/promises").then(({ stat }) =>
+      stat(new URL(`../public/media/faculty/${file}`, import.meta.url)),
+    );
+    assert.ok(media.size > 1_000_000, `${file} must contain a genuine narrated video`);
+  }
+});
+
+test("upgrades Modules 1.16 to 1.18 to narrated premium teaching", async () => {
+  const [generator, mediaScript, migration] = await Promise.all([
+    readFile(new URL("../scripts/generate-module-1-16-18-premium.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-16-18-media.ps1", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0072_crypto_mastery_module_1_16_18_premium.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /module-1-16-true-cost-video/);
+  assert.match(generator, /module-1-17-transfer-flow-video/);
+  assert.match(generator, /module-1-18-confirmations-video/);
+  assert.match(mediaScript, /generate-neural-voice\.py/);
+  assert.match(mediaScript, /bm_george/);
+  assert.match(migration, /cmf-module-1-16-lesson-01/);
+  assert.match(migration, /cmf-module-1-17-lesson-01/);
+  assert.match(migration, /cmf-module-1-18-lesson-01/);
+  assert.match(migration, /required_watch_percent`=75/);
+  assert.match(migration, /Neural-narrated visual lesson for cmf-module-1-16-lesson-01/);
+  for (const file of [
+    "module-1-16-true-cost.mp4",
+    "module-1-17-transfer-flow.mp4",
+    "module-1-18-confirmations.mp4",
+  ]) {
+    const media = await import("node:fs/promises").then(({ stat }) =>
+      stat(new URL(`../public/media/faculty/${file}`, import.meta.url)),
+    );
+    assert.ok(media.size > 1_000_000, `${file} must contain a genuine narrated video`);
+  }
+});
+
 test("turns recovery, exchange use and transaction execution into practical production learning", async () => {
   const [generator, migration] = await Promise.all([
     readFile(new URL("../scripts/generate-foundations-production-batch-4.mjs", import.meta.url), "utf8"),

@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+const learnerSignupHref = "/login?mode=signup&role=learner&next=%2Fwelcome%3Fpath%3Dlearner";
+const coachSignupHref = "/login?mode=signup&role=coach&next=%2Fwelcome%3Fpath%3Dcoach";
 const creatorSignupHref = "/login?mode=signup&role=creator&next=%2Fwelcome%3Fpath%3Dcreator";
 
 const paths = [
@@ -7,7 +9,8 @@ const paths = [
     number: "01",
     label: "ONE-TO-ONE HELP",
     title: "Find your coach",
-    description: "Tell us what you want to achieve. Compare relevant people by expertise, rate, availability, and verified-session reviews.",
+    description:
+      "Tell us what you want to achieve. Compare relevant people by expertise, rate, availability, and verified-session reviews.",
     href: "/tutors",
     action: "Find a coach",
     detail: "Any topic · no fee to search",
@@ -17,7 +20,8 @@ const paths = [
     number: "02",
     label: "LEARN AT YOUR PACE",
     title: "Take a course",
-    description: "Start with a structured path, keep your progress in one place, and bring in a coach whenever you need personal help.",
+    description:
+      "Start with a structured path, keep your progress in one place, and bring in a coach whenever you need personal help.",
     href: "/courses",
     action: "Browse courses",
     detail: "New subjects can grow continuously",
@@ -27,7 +31,8 @@ const paths = [
     number: "03",
     label: "SHARE YOUR EXPERTISE",
     title: "Coach or teach",
-    description: "Offer one-to-one sessions, publish courses, run live learning, and build a trusted practice around what you know.",
+    description:
+      "Offer one-to-one sessions, publish courses, run live learning, and build a trusted practice around what you know.",
     href: creatorSignupHref,
     action: "Start earning",
     detail: "No credit card required",
@@ -56,15 +61,15 @@ export default function Home() {
 
         <div className="decision-account">
           <Link href="/login?mode=login">Sign in</Link>
-          <Link href="/login?mode=signup&next=%2Fwelcome">Join free <span>→</span></Link>
+          <Link href={learnerSignupHref}>Join free as Student →</Link>
         </div>
 
         <details className="decision-menu">
           <summary>Menu</summary>
           <div>
             <Link href="/courses">Take a course</Link>
-            <Link href="/tutors">Find a coach</Link>
-            <Link href="/community">Join the community</Link>
+            <Link href={learnerSignupHref}>Join as Student</Link>
+            <Link href={coachSignupHref}>Join as Coach/Tutor</Link>
             <a href={creatorSignupHref}>Build an academy</a>
             <Link href="/about">What Northstar does</Link>
             <Link href="/pricing">Pricing</Link>
@@ -76,8 +81,13 @@ export default function Home() {
       <section className="decision-hero" aria-labelledby="home-title">
         <div className="decision-intro">
           <p className="decision-kicker">REAL PEOPLE · REAL PROGRESS</p>
-          <h1 id="home-title">Whatever you want to learn, <em>find someone who can help.</em></h1>
-          <p>NorthstarLabs brings one-to-one coaching, structured courses, and useful communities together across the subjects people care about. Start with your goal—not a maze of products.</p>
+          <h1 id="home-title">
+            Whatever you want to learn, <em>find someone who can help.</em>
+          </h1>
+          <p>
+            NorthstarLabs brings one-to-one coaching, structured courses, and useful communities together across the topics people
+            care about. Start with your goal—not a maze of products.
+          </p>
           <div className="decision-trust" aria-label="Why it is easy to start">
             <span><b>Any</b> useful topic</span>
             <span><b>Human</b> one-to-one support</span>
@@ -111,7 +121,10 @@ export default function Home() {
         <div className="decision-topic-list">
           {popularTopics.map((topic) => <Link href={`/tutors?q=${encodeURIComponent(topic)}`} key={topic}>{topic}<span>→</span></Link>)}
         </div>
-        <Link className="decision-topic-request" href="/demand"><span>Can&apos;t find it?</span><b>Request any topic and let Northstar look for the right coach →</b></Link>
+        <Link className="decision-topic-request" href="/demand">
+          <span>Can&apos;t find it?</span>
+          <b>Request any topic and let Northstar look for the right coach →</b>
+        </Link>
       </section>
 
       <section className="decision-dock" aria-label="Useful shortcuts">

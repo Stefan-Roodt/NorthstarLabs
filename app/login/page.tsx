@@ -21,21 +21,21 @@ const roleDetails: Record<OnboardingRole, {
   destination: string;
 }> = {
   learner: {
-    label: "Learn",
-    title: "Take a course",
-    description: "Go straight to the course catalogue. Choose a course only when you see one you want.",
+    label: "Student",
+    title: "Start learning",
+    description: "Go straight to the course marketplace and begin a practical learning path.",
     destination: "Choose your first course",
   },
   coach: {
-    label: "Coach",
+    label: "Coach or Tutor",
     title: "Offer coaching",
-    description: "Create a searchable profile, set your rate and publish your available times.",
+    description: "Create a searchable profile, choose your hourly rate, and publish your available times.",
     destination: "Set up your coach profile",
   },
   creator: {
-    label: "Teach",
+    label: "School owner",
     title: "Build an academy",
-    description: "Name your academy, enter its private workspace and start your first course draft.",
+    description: "Create your academy workspace, then publish your courses, learners, and coaching offer.",
     destination: "Name your academy",
   },
 };
