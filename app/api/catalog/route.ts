@@ -4,7 +4,14 @@ import { starterCourses, type CatalogCourse } from "../../../lib/starter-courses
 export async function GET() {
   const rows = await env.DB.prepare(
     `SELECT c.id,c.title,c.description,c.price_cents AS priceCents,
-      COUNT(l.id) AS lessonCount,p.display_name AS creator,
+      COUNT(l.id) AS lessonCount,
+      COALESCE(SUM(l.duration_minutes),0) AS durationMinutes,
+      (SELECT COUNT(*) FROM course_sections cs WHERE cs.course_id=c.id) AS sectionCount,
+      (SELECT COUNT(*) FROM quizzes q JOIN lessons ql ON ql.id=q.lesson_id
+        WHERE ql.course_id=c.id) AS assessmentCount,
+      (SELECT COUNT(*) FROM lessons vl JOIN media_assets ma ON ma.id=vl.primary_asset_id
+        WHERE vl.course_id=c.id AND ma.kind='video') AS playableVideoCount,
+      p.display_name AS creator,
       s.id AS schoolId,s.name AS schoolName,s.slug AS schoolSlug
      FROM courses c
      LEFT JOIN lessons l ON l.course_id=c.id

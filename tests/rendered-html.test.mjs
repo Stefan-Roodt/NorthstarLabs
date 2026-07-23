@@ -1862,6 +1862,29 @@ test("turns confirmed coaching requests into private calendar appointments", asy
   assert.match(tutoring, /authorization: `Bearer \$\{session\.access_token\}`/);
 });
 
+test("keeps learner catalogue facts and completion language trustworthy", async () => {
+  const [catalogue, catalogApi, courseData, learner, styles] = await Promise.all([
+    readFile(new URL("../app/courses/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/catalog/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/starter-courses.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/system.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(catalogApi, /SUM\(l\.duration_minutes\)/);
+  assert.match(catalogApi, /AS sectionCount/);
+  assert.match(catalogApi, /AS assessmentCount/);
+  assert.match(catalogue, /Choose a course that moves you forward/);
+  assert.match(catalogue, /View course syllabus/);
+  assert.match(catalogue, /catalog-card-proof/);
+  assert.doesNotMatch(catalogue, /Choose a module to take/);
+  assert.match(courseData, /durationMinutes: 210/);
+  assert.match(courseData, /4 guided hours \+ board briefing/);
+  assert.doesNotMatch(courseData, /14 hours \+ board briefing/);
+  assert.match(learner, /Watch target reached/);
+  assert.match(learner, /Finish the lesson below/);
+  assert.match(styles, /\.catalog-card-proof/);
+});
+
 test("replaces the starter shelf with three substantive signature programmes", async () => {
   const [catalogue, migration] = await Promise.all([
     readFile(new URL("../lib/starter-courses.ts", import.meta.url), "utf8"),

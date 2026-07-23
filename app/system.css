@@ -480,3 +480,7 @@
 .tutoring-actions{flex-wrap:wrap}
 .tutoring-actions .tutoring-calendar-action{background:#e2f4e5;border-color:#b9ddc1;color:#226d36}
 .tutoring-actions button:disabled{cursor:wait;opacity:.65}
+
+/* Course cards expose live structure facts so learners can compare real effort and assessment. */
+.catalog-card-proof{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 18px}
+.catalog-card-proof span{padding:7px 9px;border-radius:999px;background:#eef0ff;color:var(--blue);font-size:8px;font-weight:900}
