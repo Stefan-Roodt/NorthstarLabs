@@ -1846,6 +1846,22 @@ test("schedules opt-out live-session reminders and calendar alarms", async () =>
   assert.match(maintenance, /backfillLiveSessionReminders/);
 });
 
+test("turns confirmed coaching requests into private calendar appointments", async () => {
+  const [calendar, tutoring] = await Promise.all([
+    readFile(new URL("../app/api/tutor-inquiries/[inquiryId]/calendar/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/tutoring/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(calendar, /ti\.learner_id=\?/);
+  assert.match(calendar, /ti\.status IN \('booked','completed'\)/);
+  assert.match(calendar, /BEGIN:VCALENDAR/);
+  assert.match(calendar, /TRIGGER:-PT1H/);
+  assert.match(calendar, /TRIGGER:-PT15M/);
+  assert.match(calendar, /cache-control": "private, no-store"/);
+  assert.match(tutoring, /Add to calendar/);
+  assert.match(tutoring, /Calendar file ready/);
+  assert.match(tutoring, /authorization: `Bearer \$\{session\.access_token\}`/);
+});
+
 test("replaces the starter shelf with three substantive signature programmes", async () => {
   const [catalogue, migration] = await Promise.all([
     readFile(new URL("../lib/starter-courses.ts", import.meta.url), "utf8"),

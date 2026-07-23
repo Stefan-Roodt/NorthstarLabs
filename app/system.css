@@ -475,3 +475,8 @@
   .tutoring-journey{grid-template-columns:1fr;margin-bottom:38px}
   .tutoring-journey>div{min-height:84px}
 }
+
+/* A confirmed coaching request should become a real appointment, not a dead-end status card. */
+.tutoring-actions{flex-wrap:wrap}
+.tutoring-actions .tutoring-calendar-action{background:#e2f4e5;border-color:#b9ddc1;color:#226d36}
+.tutoring-actions button:disabled{cursor:wait;opacity:.65}
