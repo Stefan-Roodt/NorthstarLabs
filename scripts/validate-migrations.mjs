@@ -312,6 +312,46 @@ if (cryptoMasterySequence.some((section, index) =>
 )) {
   throw new Error("Crypto Mastery contains duplicate or reversed section positions.");
 }
+const cryptoMasteryLessonProfiles = database.prepare(
+  `SELECT lesson_type AS lessonType,COUNT(*) AS count
+   FROM lessons
+   WHERE course_id='cognizen-crypto-mastery-foundations-production'
+   GROUP BY lesson_type`,
+).all();
+const cryptoMasteryProfileCount = (lessonType) =>
+  cryptoMasteryLessonProfiles.find((item) => item.lessonType === lessonType)?.count || 0;
+if (
+  cryptoMasteryProfileCount("video") !== 39 ||
+  cryptoMasteryProfileCount("interactive") !== 57 ||
+  cryptoMasteryProfileCount("quiz") !== 32
+) {
+  throw new Error("Crypto Mastery does not preserve the intended dedicated-video, interactive and quiz lesson mix.");
+}
+const cryptoMasteryPlaceholderLessons = database.prepare(
+  `SELECT COUNT(*) AS count
+   FROM lessons
+   WHERE course_id='cognizen-crypto-mastery-foundations-production'
+     AND primary_asset_id IN (
+       'cmf-module-1-fallback-premium-track',
+       'cmf-module-remaining-parity-fallback-video',
+       'cmf-module-2-premium-track',
+       'cmf-module-3-premium-track'
+     )`,
+).get();
+if (cryptoMasteryPlaceholderLessons.count !== 0) {
+  throw new Error("Crypto Mastery still presents recycled parity media as lesson-specific teaching.");
+}
+const cryptoMasteryOutcomeGaps = database.prepare(
+  `SELECT COUNT(*) AS count
+   FROM lessons
+   WHERE course_id='cognizen-crypto-mastery-foundations-production'
+     AND LOWER(content) NOT LIKE '%## your outcome%'
+     AND LOWER(content) NOT LIKE '%## learning outcome%'
+     AND LOWER(content) NOT LIKE '%## outcome%'`,
+).get();
+if (cryptoMasteryOutcomeGaps.count !== 0) {
+  throw new Error("At least one Crypto Mastery lesson is missing a learner outcome.");
+}
 for (const table of ["course_sections", "media_assets", "lesson_resources"]) {
   if (!tables.some((item) => item.name === table)) {
     throw new Error(`The ${table} course-authoring table was not created.`);

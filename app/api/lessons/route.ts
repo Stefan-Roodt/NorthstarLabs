@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../lib/server-auth";
 import { requireCourseStaffAccess } from "../../../lib/school-access";
 
-const LESSON_TYPES = new Set(["text", "video", "audio", "resource", "quiz"]);
+const LESSON_TYPES = new Set(["text", "video", "audio", "interactive", "resource", "quiz"]);
 
 type LessonInput = {
   id?: string;

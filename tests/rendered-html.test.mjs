@@ -2041,10 +2041,33 @@ test("gives creators an honest, actionable learner-quality review", async () => 
   assert.match(readinessSource, /Add a learner outcome/);
   assert.match(readinessSource, /transcript improves accessibility/);
   assert.match(readinessSource, /quiz teaches as well as scores/);
+  assert.match(readinessSource, /Fallback and parity assets prove that playback works/);
   assert.match(styles, /\.quality-score-card/);
   assert.match(styles, /\.lesson-quality-signal/);
   assert.match(readinessSource, /Attach playable primary media before learners reach this lesson/);
   assert.match(readinessSource, /needs an assessment/);
+
+  const placeholderReview = getCourseReadiness({
+    title: "Practical Research",
+    description: "A practical programme for people who want to test claims, compare evidence, and make better decisions in real work.",
+    certificateTitle: "Certificate of completion",
+    sections: [{ id: "section-1", title: "Test the evidence" }],
+    lessons: [{
+      id: "lesson-placeholder",
+      sectionId: "section-1",
+      title: "Recognise a useful claim",
+      lessonType: "video",
+      content: "## Outcome\n\nRecognise whether a claim can be tested.\n\nRead the explanation and compare the examples.",
+      primaryAssetId: "course-fallback-video",
+      primaryAsset: { id: "course-fallback-video", filename: "fallback.mp4", kind: "video", altText: "" },
+      durationMinutes: 6,
+      transcript: "This transcript contains enough words to pass the accessibility check, but the asset is deliberately identified as fallback media and must not be treated as publishable teaching for a real lesson.",
+      resources: [],
+      quiz: null,
+    }],
+  });
+  assert.ok(placeholderReview.blockers.some((issue) => issue.id === "lesson-placeholder-placeholder-media"));
+  assert.ok(!placeholderReview.improvements.some((issue) => issue.id === "lesson-placeholder-outcome"));
 });
 
 test("makes narration and branded cinematic intros usable without an external provider", async () => {

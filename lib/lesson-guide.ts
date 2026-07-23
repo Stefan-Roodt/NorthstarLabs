@@ -9,7 +9,7 @@ function plainMarkdown(value: string) {
 export function getLessonGuide(content: string) {
   const lines = content.replace(/\r\n/g, "\n").split("\n");
   const outcomeIndex = lines.findIndex((line) =>
-    /^#{1,3}\s+(your\s+outcome|learning\s+outcomes?)\s*$/i.test(line.trim())
+    /^#{1,3}\s+(your\s+outcome|learning\s+outcomes?|outcomes?)\s*$/i.test(line.trim())
   );
   let outcome = "";
   if (outcomeIndex >= 0) {
@@ -24,7 +24,7 @@ export function getLessonGuide(content: string) {
     .map((line) => /^(#{2,3})\s+(.+)$/.exec(line.trim()))
     .filter((heading): heading is RegExpExecArray => Boolean(heading))
     .map((heading) => plainMarkdown(heading[2]))
-    .filter((heading) => !/^(your\s+outcome|learning\s+outcomes?)$/i.test(heading))
+    .filter((heading) => !/^(your\s+outcome|learning\s+outcomes?|outcomes?)$/i.test(heading))
     .slice(0, 5);
   return { outcome, outline };
 }

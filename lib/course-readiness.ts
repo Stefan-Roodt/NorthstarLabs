@@ -11,6 +11,8 @@ type ReadinessQuiz = {
 };
 
 type ReadinessAsset = {
+  id?: string | null;
+  filename?: string | null;
   kind: string;
   altText?: string;
 };
@@ -68,6 +70,17 @@ export type CourseReadinessPayload = {
 
 function wordCount(value: string) {
   return value.trim() ? value.trim().split(/\s+/).length : 0;
+}
+
+function isPlaceholderMedia(lesson: ReadinessLesson) {
+  const identifiers = [
+    lesson.primaryAssetId || "",
+    lesson.primaryAsset?.id || "",
+    lesson.primaryAsset?.filename || "",
+    lesson.videoKey || "",
+  ].join(" ").toLowerCase();
+  return /(^|[-_ /])(fallback|parity|placeholder)([-_ /.]|$)/.test(identifiers) ||
+    /\bcmf-module-[23]-premium-track\b/.test(identifiers);
 }
 
 export function getCourseReadiness(course: ReadinessCourse) {
@@ -214,6 +227,16 @@ export function getCourseReadiness(course: ReadinessCourse) {
         lessonTitle,
       });
       if (hasMedia) {
+        check(!isPlaceholderMedia(lesson), 3, {
+          id: `${lesson.id}-placeholder-media`,
+          level: "blocker",
+          title: `Replace the placeholder media in ${lessonTitle}`,
+          detail: "Fallback and parity assets prove that playback works, but they are not lesson-specific teaching.",
+          action: "Attach the real lesson media",
+          tab: "media",
+          lessonId: lesson.id,
+          lessonTitle,
+        });
         check(wordCount(lesson.transcript) >= 40, 1, {
           id: `${lesson.id}-transcript`,
           level: "improvement",
