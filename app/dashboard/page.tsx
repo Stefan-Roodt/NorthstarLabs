@@ -17,7 +17,7 @@ type Profile = {
   schools: Array<{ id: string; slug: string; name: string; memberRole: string }>;
 };
 type Course = {
-  id: string; title: string; students: number; status: string; priceCents: number;
+  id: string; schoolId: string; title: string; students: number; status: string; priceCents: number;
   lessonCount: number; mediaLessonCount: number; quizCount: number;
 };
 
@@ -42,7 +42,7 @@ export default function Dashboard() {
       const token = data.session?.access_token;
       if (!token) { location.href = "/login"; return; }
       const headers = { authorization: `Bearer ${token}` };
-      let profileResponse = await fetch("/api/profile", { headers });
+      let profileResponse = await fetch("/api/profile", { headers, cache: "no-store" });
       if (profileResponse.status === 401) { await supabase.auth.signOut(); location.href = "/login"; return; }
       let profileResult = profileResponse.ok ? await profileResponse.json() as Profile : null;
       if (!profileResult?.hasCreatorSchool) {
@@ -57,9 +57,18 @@ export default function Dashboard() {
         });
         if (profileResponse.ok) profileResult = await profileResponse.json() as Profile;
       }
-      const coursesResponse = await fetch("/api/courses", { headers });
+      const activeSchoolId = profileResult?.activeSchool?.id;
+      const coursesUrl = activeSchoolId
+        ? `/api/courses?schoolId=${encodeURIComponent(activeSchoolId)}`
+        : "/api/courses";
+      const coursesResponse = await fetch(coursesUrl, { headers, cache: "no-store" });
       if (profileResult) setProfile(profileResult);
-      if (coursesResponse.ok) setCourses(await coursesResponse.json());
+      if (coursesResponse.ok) {
+        const courseResult = await coursesResponse.json() as Course[];
+        setCourses(activeSchoolId
+          ? courseResult.filter((course) => course.schoolId === activeSchoolId)
+          : []);
+      }
       setLoading(false);
     }
     loadWorkspace();

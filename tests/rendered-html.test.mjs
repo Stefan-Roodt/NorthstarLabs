@@ -1950,8 +1950,9 @@ test("integrates a governed, source-grounded Creator Studio without auto-publish
 });
 
 test("supports separate academies, professional addresses, and field-level storefront guidance", async () => {
-  const [dashboard, academy, profile, schoolApi, access, worker, migration, boundaryMigration, storefront, styles] = await Promise.all([
+  const [dashboard, coursesApi, academy, profile, schoolApi, access, worker, migration, boundaryMigration, storefront, styles] = await Promise.all([
     readFile(new URL("../app/dashboard/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/courses/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/dashboard/academy/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/profile/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/schools/[slug]/route.ts", import.meta.url), "utf8"),
@@ -1965,6 +1966,11 @@ test("supports separate academies, professional addresses, and field-level store
   assert.match(dashboard, /Switch academy/);
   assert.match(dashboard, /Create a separate academy/);
   assert.match(dashboard, /Nothing from .* is moved/);
+  assert.match(dashboard, /\/api\/courses\?schoolId=/);
+  assert.match(dashboard, /course\.schoolId === activeSchoolId/);
+  assert.match(dashboard, /cache: "no-store"/);
+  assert.match(coursesApi, /c\.school_id AS schoolId/);
+  assert.match(coursesApi, /private, no-store, max-age=0/);
   assert.match(profile, /createSchoolName/);
   assert.match(access, /allowAdditional/);
   assert.match(academy, /YOUR COMPLETION GUIDE/);
