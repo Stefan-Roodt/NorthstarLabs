@@ -63,6 +63,8 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
   const [message, setMessage] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  const [enrolled, setEnrolled] = useState(false);
   const autoEnrolAttempted = useRef(false);
 
   useEffect(() => {
@@ -81,8 +83,43 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
       .finally(() => setLoaded(true));
   }, [id]);
 
+  useEffect(() => {
+    if (!id) return;
+    const supabase = getSupabaseBrowser();
+    if (!supabase) return;
+    let active = true;
+    async function loadEnrollment(accessToken: string) {
+      const response = await fetch("/api/enrollments", {
+        headers: { authorization: `Bearer ${accessToken}` },
+      });
+      if (!active || !response.ok) return;
+      const enrollments = await response.json() as Array<{ courseId: string }>;
+      setEnrolled(enrollments.some((item) => item.courseId === id));
+    }
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      setSignedIn(Boolean(data.session));
+      if (data.session) void loadEnrollment(data.session.access_token);
+      else setEnrolled(false);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+      setSignedIn(Boolean(session));
+      if (session) void loadEnrollment(session.access_token);
+      else setEnrolled(false);
+    });
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
+  }, [id]);
+
   const enrol = useCallback(async () => {
     if (enrolling) return;
+    if (enrolled) {
+      location.href = `/learn/${id}`;
+      return;
+    }
     setEnrolling(true);
     setMessage("Joining your course...");
     const supabase = getSupabaseBrowser();
@@ -124,7 +161,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
       setMessage(result.error || "We could not enrol you. Please try again.");
       setEnrolling(false);
     }
-  }, [course?.priceCents, enrolling, id]);
+  }, [course?.priceCents, enrolled, enrolling, id]);
 
   useEffect(() => {
     if (!loaded || !course || autoEnrolAttempted.current) return;
@@ -179,7 +216,9 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
         <Link className="system-brand" href={course.schoolSlug ? `/schools/${course.schoolSlug}` : "/"}>* {course.schoolName || "NORTHSTARLABS"}</Link>
         <nav>
           <a href={course.schoolSlug ? `/schools/${course.schoolSlug}` : "/courses"}>{course.schoolSlug ? "Academy" : "All courses"}</a>
-          <a href={`/login?next=${encodeURIComponent(`/courses/${id}`)}`}>Sign in</a>
+          {signedIn
+            ? <Link href="/learn">My learning</Link>
+            : <Link href={`/login?next=${encodeURIComponent(`/courses/${id}`)}`}>Sign in</Link>}
         </nav>
       </header>
 
@@ -205,7 +244,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
           <p className="sys-kicker">START LEARNING TODAY</p>
           <h2>{course.priceCents ? `R${(course.priceCents / 100).toFixed(0)}` : "Free"}</h2>
           <button className="sys-primary" disabled={enrolling} onClick={enrol}>
-            {enrolling ? "Joining course..." : course.priceCents ? "Continue to checkout" : "Enrol for free"}
+            {enrolling ? "Joining course..." : enrolled ? "Continue learning" : course.priceCents ? "Continue to checkout" : "Enrol for free"}
           </button>
           {previewCount > 0 && <Link className="course-preview-action" href={`/courses/${id}/preview`}>
             Preview a real lesson - no sign-up
@@ -371,8 +410,8 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
       <section className="course-final-cta">
         <p className="sys-kicker">YOUR NEXT USEFUL STEP</p>
         <h2>Start the course. Build as you learn.</h2>
-        <p>{course.priceCents ? "Sign in to continue to secure checkout." : "No credit card required for this course."}</p>
-        <button className="sys-primary" disabled={enrolling} onClick={enrol}>{enrolling ? "Joining course..." : course.priceCents ? "Continue to checkout" : "Enrol for free"}</button>
+        <p>{enrolled ? "Your progress is saved. Continue where you left off." : course.priceCents ? "Sign in to continue to secure checkout." : "No credit card required for this course."}</p>
+        <button className="sys-primary" disabled={enrolling} onClick={enrol}>{enrolling ? "Joining course..." : enrolled ? "Continue learning" : course.priceCents ? "Continue to checkout" : "Enrol for free"}</button>
       </section>
 
       <footer className="catalog-footer">
