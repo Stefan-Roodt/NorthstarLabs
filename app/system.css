@@ -520,7 +520,8 @@
 }
 
 /* Progressive curriculum navigation */
-.mobile-curriculum-toggle,.curriculum-close,.curriculum-mobile-links{display:none}
+.mobile-curriculum-toggle,.curriculum-mobile-links{display:none}
+.learn-layout>aside .curriculum-close{display:none}
 .learner-curriculum-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .learner-curriculum-heading h2{margin-top:4px!important}
 .learner-section{margin:12px 0;border:1px solid var(--rule);border-radius:10px;background:rgba(255,255,255,.42);overflow:hidden}
