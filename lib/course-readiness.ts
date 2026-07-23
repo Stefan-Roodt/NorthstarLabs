@@ -1,4 +1,4 @@
-import { getLessonGuide } from "./lesson-guide";
+import { getLessonGuide } from "./lesson-guide.ts";
 
 type ReadinessQuestion = {
   prompt: string;

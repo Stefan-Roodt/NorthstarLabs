@@ -60,8 +60,8 @@ test("publishes honest Course Truth Cards and secure no-account lesson previews"
     readFile(new URL("../drizzle/0036_tidy_barracuda.sql", import.meta.url), "utf8"),
   ]);
   assert.match(coursePage, /Before you commit/);
-  assert.match(coursePage, /Preview a real lesson — no sign-up/);
-  assert.match(previewPage, /TRY THE TEACHING · NO ACCOUNT REQUIRED/);
+  assert.match(coursePage, /Preview a real lesson - no sign-up/);
+  assert.match(previewPage, /TRY THE TEACHING - NO ACCOUNT REQUIRED/);
   assert.match(previewPage, /Test what you understood/);
   assert.match(previewApi, /c\.status='published'/);
   assert.match(previewApi, /l\.is_preview=1/);
@@ -761,7 +761,7 @@ test("opens Crypto Mastery with a narrated, interactive and downloadable orienta
   assert.match(generator, /Crypto Mastery Field Guide/);
   assert.match(generator, /Exercises never require you to buy an asset/);
   assert.match(migration, /Start here: Welcome to Crypto Mastery/);
-  assert.match(migration, /static:\/media\/faculty\/Crypto_Mastery_Pathway\.mp4/);
+  assert.match(migration, /static:\/media\/faculty\/crypto-mastery-welcome\.mp4/);
   assert.match(migration, /static:\/media\/course-resources\/crypto-mastery-field-guide\.pdf/);
   assert.match(migration, /cmf-start-here-quiz-q06/);
   assert.match(uploads, /\/media\/course-resources\//);
@@ -972,7 +972,8 @@ test("ships a structured course editor, reusable media library, and safe learner
   assert.match(uploadsApi, /INSERT INTO media_assets/);
   assert.match(uploadsApi, /Remove this file from its lessons before deleting it/);
   assert.match(courseApi, /publishing checklist first/i);
-  assert.match(courseApi, /Finish every lesson title and add content or media/);
+  assert.match(courseApi, /Complete the publishing checklist first/);
+  assert.match(courseApi, /blockers\.map/);
   assert.match(builder, /Autosave pending/);
   assert.match(builder, /Academy media library/);
   assert.match(builder, /draggable/);
@@ -986,7 +987,7 @@ test("ships a structured course editor, reusable media library, and safe learner
   assert.match(learnApi, /lesson_resources/);
   assert.match(learner, /LessonContent/);
   assert.match(learner, /Files to keep and use/);
-  assert.match(learner, /Creator preview · progress is disabled/);
+  assert.match(learner, /Creator preview - progress is disabled/);
   assert.doesNotMatch(renderer, /dangerouslySetInnerHTML/);
 });
 
@@ -1016,7 +1017,7 @@ test("streams protected lesson media with short-lived grants and byte ranges", a
   assert.match(helper, /PLAYBACK_GRANT_TTL_MS/);
   assert.match(helper, /header\.includes\(","\)/);
   assert.match(learnApi, /"r2:protected"/);
-  assert.match(learnApi, /key: learnerMediaKey\(lesson\.primaryKey\)/);
+  assert.match(learnApi, /key: learnerMediaKey\(primaryAssetKey\)/);
   assert.match(learner, /\/api\/media\/playback/);
   assert.match(learner, /function isProtectedMediaKey/);
   assert.match(learner, /key\.startsWith\("static:"\)/);
@@ -1441,12 +1442,12 @@ test("ships a free coach marketplace with optional verified exposure", async () 
   assert.match(plans, /monthlyCents: 0/);
   assert.match(plans, /monthlyCents: 20_000/);
   assert.match(plans, /Northstar Verified/);
-  assert.match(welcome, /FINAL STEP · COACHING/);
+  assert.match(welcome, /FINAL STEP \{"\\u00B7"\} COACHING/);
   assert.match(welcome, /dashboard\/tutors\?setup=1/);
   assert.match(profile, /body\.role === "coach"/);
   assert.match(admin, /Your hourly rate in rand/);
   assert.match(admin, /Verification cannot be bought/);
-  assert.match(admin, /Activate Verified · R200\/month/);
+  assert.match(admin, /Activate Verified - R200\/month/);
   assert.match(marketplace, /EXPLORE BY TOPIC/);
   assert.match(marketplace, /setSubject\(canonicalTopic\)/);
   assert.match(marketplace, /scrollIntoView/);
@@ -1977,8 +1978,8 @@ test("gives creators an honest, actionable learner-quality review", async () => 
   assert.match(readinessSource, /quiz teaches as well as scores/);
   assert.match(styles, /\.quality-score-card/);
   assert.match(styles, /\.lesson-quality-signal/);
-  assert.match(courseApi, /Attach playable media to every video or audio lesson/);
-  assert.match(courseApi, /Add assessment questions to every quiz lesson/);
+  assert.match(readinessSource, /Attach playable primary media before learners reach this lesson/);
+  assert.match(readinessSource, /needs an assessment/);
 });
 
 test("makes narration and branded cinematic intros usable without an external provider", async () => {
@@ -2199,11 +2200,11 @@ test("gives learners a persistent low-bandwidth, text-first course mode", async 
   assert.match(learnApi, /"videoKey", "primaryKey"/);
   assert.ok(player.indexOf("if (!mediaRequested) return;") < player.indexOf('fetch("/api/media/playback"'));
   assert.match(player, /setMediaRequested\(true\)/);
-  assert.match(player, /preload=\{lowBandwidth \? "none" : "metadata"\}/);
-  assert.match(player, /autoPlay=\{!lowBandwidth/);
+  assert.match(player, /preload=\{effectiveLowBandwidth \? "none" : "metadata"\}/);
+  assert.match(player, /autoPlay=\{!effectiveLowBandwidth/);
   assert.match(player, /Only the open lesson&apos;s text and activities are transferred/);
   assert.match(player, /Text-first lesson ready/);
-  assert.match(player, /school\?\.logoUrl && !lowBandwidth/);
+  assert.match(player, /school\?\.logoUrl && !effectiveLowBandwidth/);
   assert.match(learnerHome, /Low-data on/);
   assert.match(learnerHome, /Courses will load text first/);
   assert.match(styles, /\.low-bandwidth-media/);
@@ -2226,7 +2227,7 @@ test("adds purposeful learner guidance, motion, and milestone recognition", asyn
   assert.match(learner, /Show me around/);
   assert.match(learner, /useReducedMotion/);
   assert.match(learner, /disableForReducedMotion: true/);
-  assert.match(learner, /lowBandwidth \|\| shouldReduceMotion/);
+  assert.match(learner, /effectiveLowBandwidth \|\| shouldReduceMotion/);
   assert.match(learner, /A real milestone\. Keep the momentum going\./);
   assert.match(help, /data-tour="lesson-help"/);
   assert.match(styles, /\.learning-celebration/);

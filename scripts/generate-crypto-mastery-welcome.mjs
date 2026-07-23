@@ -4,7 +4,7 @@ import { writeFile } from "node:fs/promises";
 const courseId = "cognizen-crypto-mastery-foundations-production";
 const sectionId = "cmf-start-here";
 const createdAt = 1785384000000;
-const videoPath = new URL("../public/media/faculty/Crypto_Mastery_Pathway.mp4", import.meta.url);
+const videoPath = new URL("../public/media/faculty/crypto-mastery-welcome.mp4", import.meta.url);
 const guidePath = new URL("../public/media/course-resources/crypto-mastery-field-guide.pdf", import.meta.url);
 
 function sql(value) {
@@ -210,7 +210,7 @@ const statements = [];
 
 statements.push(`UPDATE \`courses\` SET \`description\`=${sql("A complete 31-module Crypto Mastery: Foundations production draft, preceded by a guided orientation. Short interactive lessons, evidence-led decisions, explained assessments, practical safety controls and a final capstone. Private CogniZen review draft; educational content, not financial advice.")},\`updated_at\`=${createdAt} WHERE \`id\`=${sql(courseId)};`);
 statements.push(`INSERT OR IGNORE INTO \`course_sections\` (\`id\`,\`course_id\`,\`title\`,\`position\`,\`created_at\`) SELECT ${sql(sectionId)},${sql(courseId)},${sql("Start here: Welcome to Crypto Mastery")},0,${createdAt} WHERE EXISTS (SELECT 1 FROM \`courses\` WHERE \`id\`=${sql(courseId)});`);
-statements.push(`INSERT OR REPLACE INTO \`media_assets\` (\`id\`,\`school_id\`,\`owner_id\`,\`key\`,\`filename\`,\`content_type\`,\`size_bytes\`,\`kind\`,\`alt_text\`,\`created_at\`,\`updated_at\`) SELECT 'cmf-welcome-video',c.\`school_id\`,c.\`owner_id\`,'static:/media/faculty/Crypto_Mastery_Pathway.mp4','Crypto_Mastery_Pathway.mp4','video/mp4',${videoSize},'video','Narrated visual introduction to the Crypto Mastery learning journey.',${createdAt},${createdAt} FROM \`courses\` c WHERE c.\`id\`=${sql(courseId)};`);
+statements.push(`INSERT OR REPLACE INTO \`media_assets\` (\`id\`,\`school_id\`,\`owner_id\`,\`key\`,\`filename\`,\`content_type\`,\`size_bytes\`,\`kind\`,\`alt_text\`,\`created_at\`,\`updated_at\`) SELECT 'cmf-welcome-video',c.\`school_id\`,c.\`owner_id\`,'static:/media/faculty/crypto-mastery-welcome.mp4','crypto-mastery-welcome.mp4','video/mp4',${videoSize},'video','Narrated visual introduction to the Crypto Mastery learning journey.',${createdAt},${createdAt} FROM \`courses\` c WHERE c.\`id\`=${sql(courseId)};`);
 statements.push(`INSERT OR REPLACE INTO \`media_assets\` (\`id\`,\`school_id\`,\`owner_id\`,\`key\`,\`filename\`,\`content_type\`,\`size_bytes\`,\`kind\`,\`alt_text\`,\`created_at\`,\`updated_at\`) SELECT 'cmf-field-guide',c.\`school_id\`,c.\`owner_id\`,'static:/media/course-resources/crypto-mastery-field-guide.pdf','Crypto Mastery Field Guide.pdf','application/pdf',${guideSize},'document','Seven-page working field guide for purpose, evidence, safety and progress.',${createdAt},${createdAt} FROM \`courses\` c WHERE c.\`id\`=${sql(courseId)};`);
 
 lessons.forEach((lesson, index) => {

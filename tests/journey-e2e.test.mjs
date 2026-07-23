@@ -289,7 +289,7 @@ test("seeds the complete Crypto Mastery foundations programme with its guided or
     title: "Crypto Mastery: Foundations — Production draft",
     status: "draft",
     schoolSlug: "cognizen-consulting",
-    sections: 32,
+    sections: 95,
     lessons: 128,
     interactiveLessons: 96,
     quizzes: 32,
