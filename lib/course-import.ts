@@ -130,7 +130,10 @@ function cleanText(value: unknown, limit = 100_000) {
 }
 
 function cleanTitle(value: unknown, fallback: string, limit = 160) {
-  return (cleanText(value, limit) || fallback).replace(/\s+/g, " ").slice(0, limit);
+  return (cleanText(value, limit) || fallback)
+    .replace(/\s+/g, " ")
+    .replace(/:\s*\.\s+/g, ": ")
+    .slice(0, limit);
 }
 
 function clientId(prefix: string, ...parts: Array<string | number>) {
@@ -825,5 +828,13 @@ export function sanitizeImportPlan(value: unknown) {
     sourceFiles: unknownArray(source.sourceFiles).map((file) => cleanText(file, 180)).filter(Boolean).slice(0, 120),
   };
   if (!courses.length && !learners.length) throw new Error("Add course material, a document sequence, or a learner list first.");
+  for (const course of courses) {
+    const lessons = course.sections.flatMap((section) => section.lessons);
+    const teachingLessons = lessons.filter((lesson) => !lesson.questions.length);
+    const purposefulMedia = teachingLessons.filter((lesson) => lesson.mediaUrl || lesson.document);
+    if (teachingLessons.length >= 5 && !purposefulMedia.length) {
+      warnings.push(`${course.title} is a text-first private draft. Add purposeful video, audio, visuals, or source resources and test the learner experience before publishing.`);
+    }
+  }
   return { plan, warnings, summary: summarizeImportPlan(plan) };
 }

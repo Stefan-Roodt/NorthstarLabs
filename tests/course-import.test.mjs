@@ -135,6 +135,24 @@ test("server normalisation preserves zero-based correct-answer indexes from JSON
   assert.equal(plan.courses[0].sections[0].lessons[0].questions[0].correctIndex, 2);
 });
 
+test("cleans malformed module punctuation and flags text-only course drafts honestly", () => {
+  const { plan, warnings } = sanitizeImportPlan({
+    courses: [{
+      title: "Advanced strategy",
+      sections: [{
+        title: "Module 3.2: . Mean-Reversion Strategy",
+        lessons: Array.from({ length: 5 }, (_, index) => ({
+          title: `Lesson ${index + 1}`,
+          content: "Evidence-led teaching content.",
+        })),
+      }],
+    }],
+  });
+  assert.equal(plan.courses[0].sections[0].title, "Module 3.2: Mean-Reversion Strategy");
+  assert.match(warnings.join("\n"), /text-first private draft/i);
+  assert.match(warnings.join("\n"), /before publishing/i);
+});
+
 test("handles tab-delimited exports and embedded newlines", () => {
   const rows = parseDelimitedText("Course\tLesson\tContent\nDemo\tWelcome\t\"Line one\nLine two\"");
   assert.equal(rows.length, 1);

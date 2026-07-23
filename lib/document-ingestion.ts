@@ -39,6 +39,8 @@ function extension(filename: string) {
   return filename.split(".").at(-1)?.toLowerCase() || "";
 }
 
+const ARCHIVE_DOCUMENT_EXTENSIONS = new Set(["docx", "md", "markdown", "txt", "html", "htm"]);
+
 function decodeXml(value: string) {
   return value
     .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => String.fromCodePoint(Number.parseInt(hex, 16)))
@@ -112,8 +114,16 @@ function safeArchiveEntry(name: string) {
 
 function fileFromArchiveEntry(name: string, data: Uint8Array, modified: number) {
   const filename = name.replace(/\\/g, "/").split("/").at(-1) || "course-module.docx";
+  const fileExtension = extension(filename);
+  const contentType = fileExtension === "docx"
+    ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    : fileExtension === "html" || fileExtension === "htm"
+      ? "text/html"
+      : fileExtension === "md" || fileExtension === "markdown"
+        ? "text/markdown"
+        : "text/plain";
   return new File([data], filename, {
-    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    type: contentType,
     lastModified: modified,
   });
 }
@@ -124,7 +134,7 @@ export async function extractDocxArchive(file: File) {
   try {
     entries = unzipSync(new Uint8Array(await file.arrayBuffer()), {
       filter: (entry) => safeArchiveEntry(entry.name)
-        && extension(entry.name) === "docx"
+        && ARCHIVE_DOCUMENT_EXTENSIONS.has(extension(entry.name))
         && entry.originalSize <= MAX_DOCUMENT_BYTES,
     });
   } catch {
@@ -135,7 +145,7 @@ export async function extractDocxArchive(file: File) {
   const files = naturalDocumentSort(Object.entries(entries).map(([name, data]) => (
     fileFromArchiveEntry(name, data, file.lastModified)
   )));
-  if (!files.length) throw new Error("The ZIP archive does not contain any .docx Word files.");
+  if (!files.length) throw new Error("The ZIP archive does not contain readable Word, Markdown, text, or HTML files.");
   if (files.length > MAX_DOCUMENT_SEQUENCE_FILES) {
     throw new Error(`The ZIP archive contains ${files.length} Word files. Import at most ${MAX_DOCUMENT_SEQUENCE_FILES} at a time.`);
   }
