@@ -54,7 +54,7 @@ function safeUrl(value: unknown) {
 }
 
 function templateContent(templateKey: EmailTemplateKey, values: EmailVariables) {
-  const academy = String(values.academy || "NorthStarLabs");
+  const academy = String(values.academy || "NorthstarLabs");
   if (templateKey === "invitation") {
     const course = values.course ? ` for “${values.course}”` : "";
     return {
@@ -247,7 +247,7 @@ function templateContent(templateKey: EmailTemplateKey, values: EmailVariables) 
 
 function renderEmail(templateKey: EmailTemplateKey, values: EmailVariables) {
   const content = templateContent(templateKey, values);
-  const academy = escapeHtml(values.academy || "NorthStarLabs");
+  const academy = escapeHtml(values.academy || "NorthstarLabs");
   const primary = /^#[0-9a-f]{6}$/i.test(String(values.primaryColor || ""))
     ? String(values.primaryColor)
     : "#3556d8";
@@ -263,9 +263,9 @@ function renderEmail(templateKey: EmailTemplateKey, values: EmailVariables) {
 <a href="${escapeHtml(actionUrl)}" style="display:inline-block;background:${primary};color:white;text-decoration:none;font-weight:800;padding:14px 18px;border-radius:9px;margin:16px 0">${escapeHtml(content.actionLabel)}</a>
 <p style="font-size:12px;line-height:1.6;color:#7c756f;border-top:1px solid #e5ddd5;padding-top:18px;margin-top:20px">${escapeHtml(content.detail)}</p>
 </div>
-<p style="font-size:11px;line-height:1.6;color:#817a74;margin:20px 8px">Sent by ${academy} through NorthStarLabs.</p>
+<p style="font-size:11px;line-height:1.6;color:#817a74;margin:20px 8px">Sent by ${academy} through NorthstarLabs.</p>
 </div></body></html>`;
-  const text = `${content.heading}\n\n${content.intro}\n\n${content.actionLabel}: ${actionUrl}\n\n${content.detail}\n\nSent by ${values.academy || "NorthStarLabs"} through NorthStarLabs.`;
+  const text = `${content.heading}\n\n${content.intro}\n\n${content.actionLabel}: ${actionUrl}\n\n${content.detail}\n\nSent by ${values.academy || "NorthstarLabs"} through NorthstarLabs.`;
   return { subject: content.subject, html, text };
 }
 

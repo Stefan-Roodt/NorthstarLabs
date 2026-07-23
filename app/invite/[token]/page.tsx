@@ -82,7 +82,7 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
           <p className="sys-kicker">INVITATION UNAVAILABLE</p>
           <h1>We cannot open this invitation.</h1>
           <p>{message || "Ask the academy to send you a fresh invitation link."}</p>
-          <Link className="sys-primary" href="/">Return to NorthStarLabs</Link>
+          <Link className="sys-primary" href="/">Return to NorthstarLabs</Link>
         </section>
       </main>
     );
@@ -140,7 +140,7 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
           </div>
         )}
         {message && invitation && <p className="form-message" role="status">{message}</p>}
-        {unavailable && <Link className="invite-secondary" href="/">Return to NorthStarLabs</Link>}
+        {unavailable && <Link className="invite-secondary" href="/">Return to NorthstarLabs</Link>}
       </section>
     </main>
   );

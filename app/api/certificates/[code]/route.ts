@@ -23,7 +23,7 @@ async function findCertificate(code: string) {
     `SELECT cert.code,cert.issued_at AS issuedAt,cert.user_id AS userId,
       cert.course_id AS courseId,
       COALESCE(cert.course_title,c.title) AS courseTitle,
-      COALESCE(cert.recipient_name,p.display_name,'NorthStarLabs learner') AS learnerName,
+      COALESCE(cert.recipient_name,p.display_name,'NorthstarLabs learner') AS learnerName,
       cert.certificate_title AS certificateTitle,cert.accent_color AS accentColor,
       cert.status,cert.expires_at AS expiresAt,cert.revoked_at AS revokedAt,
       cert.replaced_by_code AS replacedByCode,s.name AS issuerName

@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   const rows = await env.DB.prepare(
     `SELECT posts.id,posts.body,posts.created_at AS createdAt,posts.status,
       posts.author_id AS authorId,
-      COALESCE(profiles.display_name,'NorthStarLabs member') AS author,
+      COALESCE(profiles.display_name,'NorthstarLabs member') AS author,
       profiles.email AS authorEmail
      FROM posts LEFT JOIN profiles ON profiles.id=posts.author_id
      WHERE posts.community_id=? AND (posts.status='visible' OR ?=1)
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     createdAt,
     status: "visible",
     authorId: user.id,
-    author: profile?.displayName || "NorthStarLabs member",
+    author: profile?.displayName || "NorthstarLabs member",
     authorEmail: profile?.email,
   }, { status: 201 });
 }

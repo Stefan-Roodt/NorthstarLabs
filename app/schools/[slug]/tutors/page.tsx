@@ -73,7 +73,7 @@ export default function TutorDirectoryPage({ params }: { params: Promise<{ slug:
     });
   }, [data, mode, search]);
 
-  if (error) return <main className="system-loading"><div><b>NorthStarLabs</b><p>{error}</p><Link href={`/schools/${slug}`}>Back to academy</Link></div></main>;
+  if (error) return <main className="system-loading"><div><b>NorthstarLabs</b><p>{error}</p><Link href={`/schools/${slug}`}>Back to academy</Link></div></main>;
   if (!data) return <main className="system-loading"><p>Finding available tutors...</p></main>;
 
   const style = {
@@ -159,7 +159,7 @@ export default function TutorDirectoryPage({ params }: { params: Promise<{ slug:
     <footer className="tutor-public-footer">
       <Link href={`/schools/${data.school.slug}`}>{data.school.name}</Link>
       <p>Tutoring arrangements and payment are agreed directly with the tutor.</p>
-      <small>Powered by <Link href="/">NorthStarLabs</Link></small>
+      <small>Powered by <Link href="/">NorthstarLabs</Link></small>
     </footer>
   </main>;
 }

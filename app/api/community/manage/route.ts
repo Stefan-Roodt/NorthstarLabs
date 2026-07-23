@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   if (!access.community || !access.canModerate) return Response.json({ error: "Moderator access required" }, { status: 403 });
   const members = await env.DB.prepare(
     `SELECT cm.id,cm.user_id AS userId,cm.role,cm.status,cm.joined_at AS joinedAt,
-      COALESCE(p.display_name,'NorthStarLabs member') AS displayName,p.email
+      COALESCE(p.display_name,'NorthstarLabs member') AS displayName,p.email
      FROM community_members cm LEFT JOIN profiles p ON p.id=cm.user_id
      WHERE cm.community_id=?
      ORDER BY CASE cm.role WHEN 'owner' THEN 0 WHEN 'moderator' THEN 1 ELSE 2 END,
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     "SELECT id,email,display_name AS displayName FROM profiles WHERE lower(email)=lower(?)",
   ).bind(email.trim()).first<{ id: string; email: string; displayName: string }>();
   if (!profile) {
-    return Response.json({ error: "That person must create a NorthStarLabs account before being added." }, { status: 404 });
+    return Response.json({ error: "That person must create a NorthstarLabs account before being added." }, { status: 404 });
   }
   const id = crypto.randomUUID();
   await env.DB.prepare(

@@ -32,7 +32,7 @@ export default function ForgotPassword() {
     <section className="auth-card compact-auth-card">
       <p className="sys-kicker">ACCOUNT RECOVERY</p>
       <h1>Reset your password.</h1>
-      <p>Enter the email connected to your NorthStarLabs account.</p>
+      <p>Enter the email connected to your NorthstarLabs account.</p>
       <form onSubmit={requestReset}>
         <label>
           Email address

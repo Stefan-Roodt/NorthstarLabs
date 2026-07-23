@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     "SELECT id,email,display_name AS displayName FROM profiles WHERE lower(email)=lower(?)",
   ).bind(email.trim()).first<{ id: string; email: string; displayName: string }>();
   if (!learner) {
-    return Response.json({ error: "That learner must create a NorthStarLabs account first." }, { status: 404 });
+    return Response.json({ error: "That learner must create a NorthstarLabs account first." }, { status: 404 });
   }
   const now = Date.now();
   const existing = await env.DB.prepare(

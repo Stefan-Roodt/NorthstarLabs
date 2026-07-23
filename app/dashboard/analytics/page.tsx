@@ -115,7 +115,7 @@ export default function AnalyticsPage() {
     });
   }, [data, from, to]);
 
-  if (!data) return <main className="system-loading"><div><b>NorthStarLabs reporting</b><p>{message}</p></div></main>;
+  if (!data) return <main className="system-loading"><div><b>NorthstarLabs reporting</b><p>{message}</p></div></main>;
 
   const maxTrend = Math.max(1, ...chart.map((item) => item.value));
   const completionRate = Number(data.summary.activeEnrollments)

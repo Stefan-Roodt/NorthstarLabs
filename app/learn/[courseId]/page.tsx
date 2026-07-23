@@ -1134,9 +1134,9 @@ export default function Learn({
               <img src={school.logoUrl} alt="" />{" "}
             </>
           ) : (
-            <i>{(school?.name || "NorthStarLabs").slice(0, 2).toUpperCase()}</i>
+            <i>{(school?.name || "NorthstarLabs").slice(0, 2).toUpperCase()}</i>
           )}{" "}
-          <b>{school?.name || "NorthStarLabs"}</b>{" "}
+          <b>{school?.name || "NorthstarLabs"}</b>{" "}
         </Link>{" "}
         {preview ? (
           <div className="preview-mode-label">
@@ -1264,7 +1264,7 @@ export default function Learn({
           {" "}
           <div>
             <b>Course completed</b>
-            <span>Your verified NorthStarLabs certificate is ready.</span>
+            <span>Your verified NorthstarLabs certificate is ready.</span>
           </div>{" "}
           <div>
             <Link href={`/certificates/${certificate.code}`}>
@@ -1408,7 +1408,7 @@ export default function Learn({
                   />
                 ) : (
                   <div className="lesson-banner">
-                    {(school?.name || "NorthStarLabs").toUpperCase()} -{" "}
+                    {(school?.name || "NorthstarLabs").toUpperCase()} -{" "}
                     {lesson.lessonType.toUpperCase()} LESSON
                   </div>
                 )}{" "}

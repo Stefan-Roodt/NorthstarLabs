@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.svg" },
   appleWebApp: {
     capable: true,
-    title: "NorthStarLabs",
+    title: "NorthstarLabs",
     statusBarStyle: "black-translucent",
   },
   alternates: { canonical: "/" },

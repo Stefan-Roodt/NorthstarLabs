@@ -99,7 +99,7 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
 
   if (error) {
     return <main className="system-loading"><div>
-      <b>NorthStarLabs</b>
+      <b>NorthstarLabs</b>
       <p>{error}</p>
       <Link href="/courses">Browse all courses</Link>
     </div></main>;
@@ -383,7 +383,7 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
         <a href={terms}>Terms</a>
         <a href={privacy}>Privacy</a>
       </nav>
-      <small>Powered by <Link href="/">NorthStarLabs</Link></small>
+      <small>Powered by <Link href="/">NorthstarLabs</Link></small>
     </footer>
     {(data.courses.length > 0 || data.products.length > 0 || data.tutors.length > 0) && <div className="school-mobile-join">
       <div><small>Ready when you are</small><b>Choose your learning path</b></div>

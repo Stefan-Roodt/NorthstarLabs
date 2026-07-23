@@ -55,7 +55,7 @@ export async function GET(
   const calendar = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//NorthStarLabs//Live Learning//EN",
+    "PRODID:-//NorthstarLabs//Live Learning//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",

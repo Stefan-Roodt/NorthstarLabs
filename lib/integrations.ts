@@ -86,7 +86,7 @@ export async function emitIntegrationEvent(
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "user-agent": "NorthStarLabs-Webhooks/1.0",
+          "user-agent": "NorthstarLabs-Webhooks/1.0",
           "x-northstar-event": eventType,
           "x-northstar-delivery": deliveryId,
           "x-northstar-timestamp": timestamp,

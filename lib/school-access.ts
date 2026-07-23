@@ -52,7 +52,7 @@ function userDisplayName(user: ApiUser) {
     (typeof fullName === "string" && fullName.trim()) ||
     (typeof name === "string" && name.trim()) ||
     user.email?.split("@")[0] ||
-    "NorthStarLabs member"
+    "NorthstarLabs member"
   );
 }
 

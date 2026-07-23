@@ -55,7 +55,7 @@ export function PwaRegister() {
   }
 
   if (!visible) return null;
-  return <button className="pwa-install" onClick={install} aria-label="Install NorthStarLabs on this device">
+  return <button className="pwa-install" onClick={install} aria-label="Install NorthstarLabs on this device">
     <span>+</span>
     <b>Install app</b>
   </button>;
