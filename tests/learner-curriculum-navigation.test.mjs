@@ -36,6 +36,7 @@ test("makes the complete curriculum reachable on small screens", async () => {
   assert.match(styles, /\.learn-page\.curriculum-open \.learn-layout>aside/);
   assert.match(styles, /position:fixed/);
   assert.match(styles, /overflow-y:auto/);
+  assert.match(styles, /\.learn-layout>aside \.curriculum-close\{display:none\}/);
 });
 
 test("reports accessible lesson text instead of a misleading transcript ratio", async () => {
