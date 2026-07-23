@@ -1451,6 +1451,9 @@ test("ships academy tutor discovery, direct contact, protected enquiries, and se
   assert.match(tutorProfile, /Request appointment/);
   assert.match(tutorAdmin, /Learner enquiries/);
   assert.match(tutorAdmin, /Bookable appointment times/);
+  assert.match(tutorAdmin, /coach-workspace-nav/);
+  assert.match(tutorAdmin, /workspaceView/);
+  assert.match(tutorAdmin, /Set availability/);
   assert.match(tutoring, /Personal help, without the admin chase/);
   assert.match(tutoring, /Cancel request/);
   assert.match(marketplace, /Find the person who can get you/);

@@ -173,6 +173,7 @@ function list(value: string) {
 export default function TutorAdminPage() {
   const supabase = getSupabaseBrowser();
   const [pageLoadedAt] = useState(() => Date.now());
+  const [workspaceView, setWorkspaceView] = useState<"profile" | "trust" | "availability" | "inquiries">("profile");
   const [data, setData] = useState<TutorData | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [slots, setSlots] = useState<TutorSlot[]>([]);
@@ -553,7 +554,7 @@ export default function TutorAdminPage() {
       <div>
         <p className="sys-kicker">ONE-TO-ONE SERVICES</p>
         <h1>Turn expertise into personal support.</h1>
-        <p>Create a trusted coach or tutor profile, choose how prominently it is advertised, set your own hourly rate, and manage learner enquiries in one place.</p>
+        <p>Create a trusted coach or tutor profile, set your own hourly rate and availability, and manage learner enquiries in one place.</p>
       </div>
       <dl>
         <div><dt>Visible profiles</dt><dd>{activeTutors}</dd></div>
@@ -561,10 +562,29 @@ export default function TutorAdminPage() {
       </dl>
     </section>
 
+    <nav className="coach-workspace-nav" aria-label="Coach workspace sections">
+      {([
+        ["profile", "1", "Profile", data.tutors.length ? `${data.tutors.length} created` : "Start here"],
+        ["trust", "2", "Verification", credentials.length ? `${credentials.length} submitted` : "Optional"],
+        ["availability", "3", "Availability", slots.length ? `${slots.length} times` : "Add times"],
+        ["inquiries", "4", "Enquiries", newInquiries ? `${newInquiries} new` : "Inbox"],
+      ] as const).map(([value, step, label, status]) => <button
+        aria-current={workspaceView === value ? "step" : undefined}
+        className={workspaceView === value ? "active" : ""}
+        key={value}
+        onClick={() => setWorkspaceView(value)}
+        type="button"
+      >
+        <span>{step}</span>
+        <b>{label}</b>
+        <small>{status}</small>
+      </button>)}
+    </nav>
+
     <section className="tutor-admin-grid">
       {message && <div className="notice tutor-admin-notice" role="status">{message}</div>}
 
-      <form className="panel tutor-editor" onSubmit={saveTutor}>
+      <form className="panel tutor-editor" hidden={workspaceView !== "profile"} onSubmit={saveTutor}>
         <div className="product-section-heading">
           <span>{editingId ? "EDIT" : "NEW"}</span>
           <div><h2>{editingId ? "Update coach profile" : "Create your coach profile"}</h2><p>Use specific topics, a clear hourly rate, and honest availability so learners can choose confidently.</p></div>
@@ -610,7 +630,7 @@ export default function TutorAdminPage() {
         </div>
       </form>
 
-      <section className="tutor-admin-section">
+      <section className="tutor-admin-section" hidden={workspaceView !== "profile"}>
         <div className="product-section-heading">
           <span>LIVE</span>
           <div><h2>Your coach profiles</h2><p>Publish complete profiles and pause them whenever availability changes.</p></div>
@@ -634,7 +654,8 @@ export default function TutorAdminPage() {
             <div className="tutor-admin-actions">
               <button onClick={() => editTutor(tutor)}>Edit</button>
               {tutor.verified && tutor.listingTier !== "verified" && <button className="sys-primary" disabled={busy === `listing-${tutor.id}`} onClick={() => startVerifiedListing(tutor)}>{busy === `listing-${tutor.id}` ? "Opening PayFast…" : "Activate Verified - R200/month"}</button>}
-              {!tutor.verified && <a href="#credentials">Earn verification</a>}
+              {!tutor.verified && <button onClick={() => setWorkspaceView("trust")} type="button">Earn verification</button>}
+              <button onClick={() => setWorkspaceView("availability")} type="button">Set availability</button>
               {tutor.status !== "published" && <button className="sys-primary" disabled={busy === tutor.id} onClick={() => setStatus(tutor, "published")}>Publish</button>}
               {tutor.status === "published" && <Link href={`/schools/${data.school.slug}/tutors/${tutor.slug}`}>View public</Link>}
               {tutor.status === "published" && <button onClick={() => setStatus(tutor, "paused")}>Pause</button>}
@@ -645,7 +666,7 @@ export default function TutorAdminPage() {
         </div> : <article className="panel product-empty"><h3>No coach profiles yet</h3><p>Create your first profile above. It stays private until you publish it.</p></article>}
       </section>
 
-      <section className="tutor-admin-section" id="credentials">
+      <section className="tutor-admin-section" hidden={workspaceView !== "trust"} id="credentials">
         <div className="product-section-heading">
           <span>TRUST</span>
           <div><h2>Credentials and verification</h2><p>Submit structured evidence for independent review. Verification cannot be purchased and remains separate from paid exposure.</p></div>
@@ -673,7 +694,7 @@ export default function TutorAdminPage() {
         </div>
       </section>
 
-      <section className="tutor-admin-section" id="availability">
+      <section className="tutor-admin-section" hidden={workspaceView !== "availability"} id="availability">
         <div className="product-section-heading">
           <span>CALENDAR</span>
           <div><h2>Bookable appointment times</h2><p>Offer exact times, prevent double-booking and keep joining details private until you confirm.</p></div>
@@ -725,7 +746,7 @@ export default function TutorAdminPage() {
         </div>
       </section>
 
-      <section className="tutor-admin-section" id="inquiries">
+      <section className="tutor-admin-section" hidden={workspaceView !== "inquiries"} id="inquiries">
         <div className="product-section-heading">
           <span>INBOX</span>
           <div><h2>Learner enquiries</h2><p>Contact the learner, record the outcome and keep the handover organised.</p></div>
