@@ -7,6 +7,7 @@ import {
 } from "../../../../lib/school-access";
 import { writeAuditLog } from "../../../../lib/audit-log";
 import { queueEnrollmentEmail } from "../../../../lib/email-service";
+import { courseAcceptsLearnerInvitations } from "../../../../lib/invitations";
 
 export async function GET(request: Request) {
   const user = await requireApiUser(request);
@@ -47,9 +48,15 @@ export async function POST(request: Request) {
     return Response.json({ error: "Learner email and course are required." }, { status: 400 });
   }
   const course = await env.DB.prepare(
-    "SELECT id,title FROM courses WHERE id=? AND school_id=?",
-  ).bind(courseId, school.id).first<{ id: string; title: string }>();
+    "SELECT id,title,status FROM courses WHERE id=? AND school_id=?",
+  ).bind(courseId, school.id).first<{ id: string; title: string; status: string }>();
   if (!course) return Response.json({ error: "Course not found." }, { status: 404 });
+  if (!courseAcceptsLearnerInvitations(course.status)) {
+    return Response.json(
+      { error: "Learners can only be enrolled in a published course." },
+      { status: 409 },
+    );
+  }
   const learner = await env.DB.prepare(
     "SELECT id,email,display_name AS displayName FROM profiles WHERE lower(email)=lower(?)",
   ).bind(email.trim()).first<{ id: string; email: string; displayName: string }>();

@@ -100,6 +100,8 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
           {unavailable
             ? invitation.status === "expired"
               ? "The secure link has expired. Ask the academy to send a new invitation."
+              : invitation.status === "course_unavailable"
+                ? "This course is not currently published. Ask the academy to send a new invitation when it is ready."
               : `This invitation has already been ${invitation.status}.`
             : invitation.courseTitle
               ? `You have been invited as a ${invitation.roleLabel.toLowerCase()} with access to "${invitation.courseTitle}".`

@@ -8,6 +8,7 @@ import {
 } from "../../../lib/course-import";
 import { queueEmail } from "../../../lib/email-service";
 import {
+  courseAcceptsLearnerInvitations,
   createInvitationToken,
   hashInvitationToken,
   INVITATION_LIFETIME_MS,
@@ -233,10 +234,13 @@ async function importProject(
   ).bind(now, project.id, school.id).run();
 
   const existingRows = await env.DB.prepare(
-    "SELECT id,title FROM courses WHERE school_id=?",
-  ).bind(school.id).all<{ id: string; title: string }>();
+    "SELECT id,title,status FROM courses WHERE school_id=?",
+  ).bind(school.id).all<{ id: string; title: string; status: string }>();
   const usedTitles = new Set(existingRows.results.map((course) => course.title.toLowerCase()));
-  const courseMatches = new Map(existingRows.results.map((course) => [course.title.toLowerCase(), course.id]));
+  const courseMatches = new Map(existingRows.results.map((course) => [
+    course.title.toLowerCase(),
+    { id: course.id, status: course.status },
+  ]));
   const statements: D1PreparedStatement[] = [];
   const result: ImportResult = { courses: [], documents: [], invitations: [] };
 
@@ -250,7 +254,7 @@ async function importProject(
       originalTitle: course.title,
       editorUrl: `/dashboard/courses/${courseId}`,
     });
-    courseMatches.set(course.title.toLowerCase(), courseId);
+    courseMatches.set(course.title.toLowerCase(), { id: courseId, status: "draft" });
     statements.push(env.DB.prepare(
       `INSERT INTO courses
         (id,school_id,owner_id,title,description,status,price_cents,created_at,updated_at)
@@ -336,9 +340,14 @@ async function importProject(
   if (sendInvitations) {
     for (const learner of plan.learners) {
       const token = createInvitationToken();
-      const courseId = learner.courseTitle
-        ? courseMatches.get(learner.courseTitle.toLowerCase()) || null
-        : result.courses.length === 1 ? result.courses[0].id : null;
+      const courseMatch = learner.courseTitle
+        ? courseMatches.get(learner.courseTitle.toLowerCase())
+        : result.courses.length === 1
+          ? { id: result.courses[0].id, status: "draft" }
+          : undefined;
+      const courseId = courseMatch && courseAcceptsLearnerInvitations(courseMatch.status)
+        ? courseMatch.id
+        : null;
       const invitation = {
         id: crypto.randomUUID(),
         email: learner.email,
@@ -346,7 +355,7 @@ async function importProject(
         token,
         tokenHash: await hashInvitationToken(token),
         expiresAt: now + INVITATION_LIFETIME_MS,
-        courseTitle: learner.courseTitle,
+        courseTitle: courseId ? learner.courseTitle : "",
       };
       invitationDrafts.push(invitation);
       statements.push(env.DB.prepare(

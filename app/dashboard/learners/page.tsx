@@ -78,10 +78,15 @@ export default function LearnerManagement() {
       const invitationResult = await invitationResponse.json() as { invitations: Invitation[] };
       setData(result);
       setInvitations(invitationResult.invitations);
-      setCourseId(result.courses[0]?.id || "");
+      setCourseId(result.courses.find((course) => course.status === "published")?.id || "");
       setMessage("");
     })();
   }, [supabase, token]);
+
+  const publishedCourses = useMemo(
+    () => (data?.courses || []).filter((course) => course.status === "published"),
+    [data],
+  );
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -284,20 +289,34 @@ export default function LearnerManagement() {
       <article className="panel manual-enrollment invitation-builder">
         <div><p className="sys-kicker">SECURE INVITATIONS</p><h2>Invite people to {data.school.name}</h2><p>They can create an account or sign in from the same link-no pre-existing account required.</p></div>
         <form onSubmit={createInvitation}>
-          <input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email address" />
-          <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value)}>
+          <input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email address" aria-label="Email address" />
+          <select value={inviteRole} aria-label="Invitation role" onChange={(event) => {
+            const nextRole = event.target.value;
+            setInviteRole(nextRole);
+            if (nextRole !== "learner") {
+              setCourseId("");
+            } else if (!publishedCourses.some((course) => course.id === courseId)) {
+              setCourseId(publishedCourses[0]?.id || "");
+            }
+          }}>
             <option value="learner">Learner</option>
             {data.school.memberRole !== "instructor" && <option value="instructor">Instructor</option>}
             {data.school.memberRole === "owner" && <option value="admin">Academy admin</option>}
           </select>
-          {inviteRole === "learner" && <select value={courseId} onChange={(event) => setCourseId(event.target.value)}>
+          {inviteRole === "learner" && <select value={courseId} aria-label="Published course access" onChange={(event) => setCourseId(event.target.value)}>
             <option value="">Academy only (no course yet)</option>
-            {data.courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+            {publishedCourses.map((course) => <option key={course.id} value={course.id}>{course.title} — Published</option>)}
           </select>}
           <button className="sys-primary" disabled={busy !== ""}>
             {busy === "add" ? "Creating..." : "Create invite"}
           </button>
         </form>
+        {inviteRole === "learner" && publishedCourses.length === 0 && <p className="invite-access-note">
+          <strong>No published course yet.</strong> Invite this learner to the academy now, then assign learning after a course passes review and is published. <Link href="/dashboard?area=courses">Review course drafts</Link>
+        </p>}
+        {inviteRole !== "learner" && <p className="invite-access-note">
+          Staff access includes the creator workspace and private course drafts for authorised review. It does not enrol the staff member as a learner.
+        </p>}
         {inviteUrl && <div className="invite-link-result">
           <label>Share this one-time link<input readOnly value={inviteUrl} onFocus={(event) => event.currentTarget.select()} /></label>
           <button type="button" onClick={copyInvitation}>Copy link</button>

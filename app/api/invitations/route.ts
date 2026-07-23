@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import {
   createInvitationToken,
+  canAssignInvitationCourse,
   hashInvitationToken,
   INVITATION_LIFETIME_MS,
   INVITATION_ROLES,
@@ -21,7 +22,7 @@ const invitationSelect = `
     i.course_id AS courseId,i.invited_by AS invitedBy,
     i.expires_at AS expiresAt,i.accepted_by AS acceptedBy,
     i.accepted_at AS acceptedAt,i.created_at AS createdAt,
-    c.title AS courseTitle
+    c.title AS courseTitle,c.status AS courseStatus
   FROM invitations i
   LEFT JOIN courses c ON c.id=i.course_id`;
 
@@ -44,11 +45,20 @@ export async function GET(request: Request) {
      ORDER BY CASE i.status WHEN 'pending' THEN 0 ELSE 1 END,i.created_at DESC
      LIMIT 100`,
   ).bind(school.id).all();
-  const invitations = (rows.results as Array<{ status: string; expiresAt: number }>).map((invitation) => ({
+  const invitations = (rows.results as Array<{
+    status: string;
+    expiresAt: number;
+    role: InvitationRole;
+    courseId: string | null;
+    courseStatus: string | null;
+  }>).map((invitation) => ({
     ...invitation,
     status: invitation.status === "pending" && invitation.expiresAt <= Date.now()
       ? "expired"
-      : invitation.status,
+      : invitation.status === "pending" && invitation.courseId &&
+        !canAssignInvitationCourse(invitation.role, invitation.courseStatus)
+        ? "course_unavailable"
+        : invitation.status,
   }));
   return Response.json({ school, invitations });
 }
@@ -81,9 +91,15 @@ export async function POST(request: Request) {
   const courseId = role === "learner" ? body.courseId || null : null;
   if (courseId) {
     const course = await env.DB.prepare(
-      "SELECT id FROM courses WHERE id=? AND school_id=?",
-    ).bind(courseId, school.id).first();
+      "SELECT id,status FROM courses WHERE id=? AND school_id=?",
+    ).bind(courseId, school.id).first<{ id: string; status: string }>();
     if (!course) return Response.json({ error: "Course not found." }, { status: 404 });
+    if (!canAssignInvitationCourse(role, course.status)) {
+      return Response.json(
+        { error: "Learners can only be invited to a published course. Publish the course first, or choose academy-only access." },
+        { status: 409 },
+      );
+    }
   }
 
   const token = createInvitationToken();
