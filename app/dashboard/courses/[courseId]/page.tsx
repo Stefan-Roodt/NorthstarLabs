@@ -6,7 +6,6 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import { getCourseReadiness, type CourseReadinessIssue } from "../../../../lib/course-readiness";
 import { LessonContent } from "../../../../lib/lesson-content";
 import {
-  buildNarrationDraft,
   buildNarrationProductionCsv,
   countNarrationWords,
   estimateNarrationMinutes,
@@ -126,6 +125,37 @@ type NarrationBatchItem = {
   sectionTitle?: string;
   status: NarrationBatchStatus;
   detail: string;
+};
+
+type NarrationDraftPlan = {
+  totalInstructional: number;
+  reviewedScripts: number;
+  draftsWaiting: number;
+  draftable: number;
+  educatorAttention: number;
+  candidateIds: string[];
+  draftLessonIds: string[];
+  samples: Array<{
+    lessonId: string;
+    sectionTitle: string;
+    lessonTitle: string;
+    currentWords: number;
+    draftWords: number;
+    draft: string;
+  }>;
+  educatorAttentionSamples: Array<{
+    lessonId: string;
+    sectionTitle: string;
+    lessonTitle: string;
+  }>;
+};
+
+type NarrationDraft = {
+  id: string;
+  lessonId: string;
+  draftText: string;
+  createdAt: number;
+  updatedAt: number;
 };
 
 const CURRICULUM_SECTION_BATCH = 20;
@@ -296,6 +326,11 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   const [narrationBatch, setNarrationBatch] = useState<NarrationBatchItem[]>([]);
   const [narrationBatchBusy, setNarrationBatchBusy] = useState(false);
   const [narrationBatchResult, setNarrationBatchResult] = useState("");
+  const [narrationDraftPlan, setNarrationDraftPlan] = useState<NarrationDraftPlan | null>(null);
+  const [narrationDraftBusy, setNarrationDraftBusy] = useState(false);
+  const [narrationDraftProgress, setNarrationDraftProgress] = useState("");
+  const [selectedNarrationDraft, setSelectedNarrationDraft] = useState<NarrationDraft | null>(null);
+  const [narrationDraftReview, setNarrationDraftReview] = useState("");
   const revision = useRef(0);
   const contentEditor = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -306,12 +341,16 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   const narrationStream = useRef<MediaStream | null>(null);
   const narrationChunks = useRef<Blob[]>([]);
   const recordingTimer = useRef<number | null>(null);
+  const narrationDraftLessonRequest = useRef("");
   const supabase = getSupabaseBrowser();
 
   const selected = useMemo(
     () => course?.lessons.find((lesson) => lesson.id === selectedId) || null,
     [course, selectedId],
   );
+  const activeNarrationDraft = selectedNarrationDraft?.lessonId === selected?.id
+    ? selectedNarrationDraft
+    : null;
   const readiness = useMemo(
     () => course ? getCourseReadiness(course) : null,
     [course],
@@ -344,6 +383,45 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     return (await supabase?.auth.getSession())?.data.session?.access_token || "";
   }, [supabase]);
 
+  const requestNarrationDraftAction = useCallback(async (body: Record<string, unknown>) => {
+    if (!courseId) {
+      return { ok: false, result: { error: "Course is still loading." } as Record<string, unknown> };
+    }
+    try {
+      const response = await fetch(
+        `/api/courses/${encodeURIComponent(courseId)}/narration-drafts`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${await token()}`,
+          },
+          body: JSON.stringify(body),
+        },
+      );
+      const result = await response.json().catch(() => ({
+        error: "The narration service returned an invalid response.",
+      })) as Record<string, unknown>;
+      return { ok: response.ok, result };
+    } catch {
+      return {
+        ok: false,
+        result: { error: "Northstar could not reach the narration service. Check your connection and try again." } as Record<string, unknown>,
+      };
+    }
+  }, [courseId, token]);
+
+  const loadNarrationDraftForLesson = useCallback(async (lessonId: string) => {
+    if (!courseId || !lessonId) return;
+    narrationDraftLessonRequest.current = lessonId;
+    const response = await requestNarrationDraftAction({ action: "get", lessonId });
+    if (!response.ok) return;
+    const result = response.result as { draft?: NarrationDraft | null };
+    if (narrationDraftLessonRequest.current !== lessonId) return;
+    setSelectedNarrationDraft(result.draft || null);
+    setNarrationDraftReview(result.draft?.draftText || "");
+  }, [courseId, requestNarrationDraftAction]);
+
   useEffect(() => {
     params.then(({ courseId: value }) => setCourseId(value));
   }, [params]);
@@ -372,6 +450,11 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       setMessage(openedFromCreation ? "Private course created - start with the first useful lesson" : "All changes saved");
     })();
   }, [courseId, openedFromCreation, supabase, token]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    void loadNarrationDraftForLesson(selectedId);
+  }, [loadNarrationDraftForLesson, selectedId]);
 
   useEffect(() => () => {
     if (recordingTimer.current) window.clearInterval(recordingTimer.current);
@@ -550,16 +633,27 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     await openProductionLesson(productionLessonQueue[nextIndex].id);
   }
 
-  function draftNarrationScript() {
-    if (!selected || selectedNarrationScriptReady) return;
-    if (selected.transcript.trim() && !confirm("Replace this short transcript with a fuller draft built from the reviewed lesson text?")) return;
-    const draft = buildNarrationDraft(selected.title, selected.content);
-    if (!draft) {
-      setMessage("Add at least a short, reviewed lesson explanation before drafting narration.");
+  async function draftNarrationScript() {
+    if (!course || !selected || selectedNarrationScriptReady || narrationDraftBusy) return;
+    if (activeNarrationDraft) {
+      setMessage("This lesson already has a prepared draft waiting for your review.");
       return;
     }
-    editLesson({ transcript: draft });
-    setMessage("A lesson-grounded narration draft is ready. Review its wording and timing before recording.");
+    if (dirty?.id === selected.id && !await persistLesson(selected, dirty.revision)) return;
+    setNarrationDraftBusy(true);
+    setMessage("Preparing a separate lesson-grounded draft for review.");
+    const response = await requestNarrationDraftAction({
+      action: "generate",
+      lessonIds: [selected.id],
+    });
+    const result = response.result as unknown as { generatedIds?: string[]; error?: string };
+    setNarrationDraftBusy(false);
+    if (!response.ok || !result.generatedIds?.includes(selected.id)) {
+      setMessage(result.error || "Northstar could not prepare a substantive draft from this lesson. Review the lesson material and write the narration manually.");
+      return;
+    }
+    await loadNarrationDraftForLesson(selected.id);
+    setMessage("A lesson-grounded draft is ready below. Edit and approve it before recording.");
     requestAnimationFrame(() => {
       document.querySelector<HTMLElement>(".transcript-editor")?.scrollIntoView({
         behavior: "smooth",
@@ -950,6 +1044,125 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     setCourse((current) => current ? { ...current, media: [result.asset!, ...current.media] } : current);
     setMessage(`${result.asset.filename} added to the media library`);
     return result.asset;
+  }
+
+  async function analyseNarrationScripts(quiet = false) {
+    if (!course) return null;
+    setNarrationDraftBusy(true);
+    if (!quiet) {
+      setNarrationDraftProgress("Analysing every instructional lesson...");
+      setMessage("Checking which narration scripts can be prepared safely.");
+    }
+    const response = await requestNarrationDraftAction({ action: "preview" });
+    const result = response.result as unknown as NarrationDraftPlan & { error?: string };
+    setNarrationDraftBusy(false);
+    if (!response.ok) {
+      setNarrationDraftProgress("");
+      setMessage(result.error || "Narration scripts could not be analysed.");
+      return null;
+    }
+    setNarrationDraftPlan(result);
+    setNarrationDraftProgress("");
+    if (!quiet) {
+      setMessage(
+        result.draftable
+          ? `${result.draftable} lesson-grounded narration drafts can be prepared for educator review`
+          : result.draftsWaiting
+            ? `${result.draftsWaiting} narration drafts are waiting for educator review`
+            : "No additional narration drafts are needed",
+      );
+    }
+    return result;
+  }
+
+  async function generateNarrationDrafts() {
+    if (!course || !narrationDraftPlan?.candidateIds.length || narrationDraftBusy) return;
+    if (selected && dirty?.id === selected.id && !await persistLesson(selected, dirty.revision)) return;
+    const candidateIds = narrationDraftPlan.candidateIds;
+    setNarrationDraftBusy(true);
+    setNarrationDraftProgress(`Preparing 0 of ${candidateIds.length} drafts...`);
+    setMessage("Preparing lesson-grounded narration drafts. Nothing will be approved or published.");
+    let generated = 0;
+    for (let index = 0; index < candidateIds.length; index += 25) {
+      const lessonIds = candidateIds.slice(index, index + 25);
+      const response = await requestNarrationDraftAction({ action: "generate", lessonIds });
+      const result = response.result as unknown as { generatedIds?: string[]; error?: string };
+      if (!response.ok) {
+        setNarrationDraftBusy(false);
+        setNarrationDraftProgress("");
+        setMessage(result.error || `Draft preparation paused after ${generated} lessons.`);
+        return;
+      }
+      generated += result.generatedIds?.length || 0;
+      setNarrationDraftProgress(`Preparing ${Math.min(index + lessonIds.length, candidateIds.length)} of ${candidateIds.length} drafts...`);
+    }
+    setNarrationDraftBusy(false);
+    setNarrationDraftProgress("");
+    const refreshed = await analyseNarrationScripts(true);
+    if (selectedId && candidateIds.includes(selectedId)) {
+      await loadNarrationDraftForLesson(selectedId);
+    }
+    setMessage(
+      `${generated} narration draft${generated === 1 ? "" : "s"} prepared separately for review. ` +
+      `${refreshed?.draftsWaiting || generated} now wait for an educator; nothing was approved or published.`,
+    );
+  }
+
+  async function approveSelectedNarrationDraft() {
+    if (!course || !selected || !activeNarrationDraft || narrationDraftBusy) return;
+    if (countNarrationWords(narrationDraftReview) < 40) {
+      setMessage("Review and expand this draft before approving it.");
+      return;
+    }
+    setNarrationDraftBusy(true);
+    setMessage("Approving this reviewed narration script.");
+    const response = await requestNarrationDraftAction({
+      action: "approve",
+      lessonId: selected.id,
+      draftText: narrationDraftReview,
+    });
+    const result = response.result as unknown as {
+      error?: string;
+      transcript?: string;
+      updatedAt?: number;
+    };
+    setNarrationDraftBusy(false);
+    if (!response.ok || !result.transcript) {
+      setMessage(result.error || "Narration draft could not be approved.");
+      return;
+    }
+    setCourse((current) => current ? {
+      ...current,
+      lessons: current.lessons.map((lesson) =>
+        lesson.id === selected.id
+          ? { ...lesson, transcript: result.transcript!, updatedAt: result.updatedAt || lesson.updatedAt }
+          : lesson
+      ),
+    } : current);
+    setDirty((current) => current?.id === selected.id ? null : current);
+    setSelectedNarrationDraft(null);
+    setNarrationDraftReview("");
+    setMessage("Narration script approved for captions and recording. The course remains unpublished.");
+    void analyseNarrationScripts(true);
+  }
+
+  async function dismissSelectedNarrationDraft() {
+    if (!course || !selected || !activeNarrationDraft || narrationDraftBusy) return;
+    setNarrationDraftBusy(true);
+    const response = await requestNarrationDraftAction({
+      action: "dismiss",
+      lessonId: selected.id,
+    });
+    const result = response.result as unknown as { error?: string };
+    setNarrationDraftBusy(false);
+    if (!response.ok) {
+      setMessage(result.error || "Narration draft could not be dismissed.");
+      return;
+    }
+    setSelectedNarrationDraft(null);
+    setNarrationDraftReview("");
+    setMessage("Prepared draft dismissed. Write this lesson's narration manually when ready.");
+    void analyseNarrationScripts(true);
   }
 
   function downloadNarrationManifest() {
@@ -1735,6 +1948,69 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                   <li><b>3.</b> Stage files, inspect matches, then attach</li>
                 </ol>
               </div>
+              <section className="narration-draft-factory" aria-label="Governed narration script preparation">
+                <div>
+                  <p className="sys-kicker">SCRIPT PREPARATION</p>
+                  <h4>Prepare the repetitive work. Keep editorial judgement human.</h4>
+                  <p>Northstar can turn substantive lesson material into separate draft scripts. Drafts do not count as reviewed transcripts until an educator opens, edits and approves them.</p>
+                </div>
+                {!narrationDraftPlan
+                  ? <button
+                      type="button"
+                      className="sys-secondary"
+                      disabled={narrationDraftBusy}
+                      onClick={() => void analyseNarrationScripts()}
+                    >{narrationDraftBusy ? "Analysing scripts..." : "Analyse narration scripts"}</button>
+                  : <>
+                      <dl>
+                        <div><dt>Reviewed</dt><dd>{narrationDraftPlan.reviewedScripts}</dd></div>
+                        <div><dt>Waiting for review</dt><dd>{narrationDraftPlan.draftsWaiting}</dd></div>
+                        <div><dt>Safe to prepare</dt><dd>{narrationDraftPlan.draftable}</dd></div>
+                        <div><dt>Needs educator writing</dt><dd>{narrationDraftPlan.educatorAttention}</dd></div>
+                      </dl>
+                      {narrationDraftPlan.samples.length > 0 && <details>
+                        <summary>Inspect three draft examples before generating</summary>
+                        <div className="narration-draft-samples">
+                          {narrationDraftPlan.samples.map((sample) => <article key={sample.lessonId}>
+                            <small>{sample.sectionTitle}</small>
+                            <h5>{sample.lessonTitle}</h5>
+                            <span>{sample.currentWords} current words &rarr; {sample.draftWords} draft words</span>
+                            <p>{sample.draft.slice(0, 420)}{sample.draft.length > 420 ? "..." : ""}</p>
+                          </article>)}
+                        </div>
+                      </details>}
+                      {narrationDraftPlan.educatorAttentionSamples.length > 0 && <details>
+                        <summary>Show lessons that need educator writing</summary>
+                        <div className="narration-attention-list">
+                          {narrationDraftPlan.educatorAttentionSamples.map((sample) => <button
+                            type="button"
+                            key={sample.lessonId}
+                            onClick={() => openProductionLesson(sample.lessonId)}
+                          ><span>{sample.sectionTitle}</span><b>{sample.lessonTitle}</b><em>Open lesson &rarr;</em></button>)}
+                        </div>
+                      </details>}
+                      <div className="narration-draft-actions">
+                        {narrationDraftPlan.draftable > 0 && <button
+                          type="button"
+                          className="sys-primary"
+                          disabled={narrationDraftBusy}
+                          onClick={generateNarrationDrafts}
+                        >Prepare {narrationDraftPlan.draftable} review drafts</button>}
+                        {narrationDraftPlan.draftsWaiting > 0 && <button
+                          type="button"
+                          className="sys-secondary"
+                          onClick={() => openProductionLesson(narrationDraftPlan.draftLessonIds[0])}
+                        >Review first prepared draft &rarr;</button>}
+                        <button
+                          type="button"
+                          className="narration-plan-refresh"
+                          disabled={narrationDraftBusy}
+                          onClick={() => void analyseNarrationScripts()}
+                        >Refresh analysis</button>
+                      </div>
+                    </>}
+                {narrationDraftProgress && <p className="narration-draft-progress" aria-live="polite">{narrationDraftProgress}</p>}
+              </section>
               <div className="narration-batch-actions">
                 <button type="button" className="sys-secondary" onClick={downloadNarrationManifest}>
                   Download {productionLessonQueue.length}-lesson production CSV
@@ -2075,7 +2351,11 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
             </div>
             <nav aria-label="Move through unfinished narration lessons">
               <button type="button" disabled={currentProductionIndex <= 0} onClick={() => openAdjacentProductionLesson(-1)}>&larr; Previous gap</button>
-              {!selectedNarrationScriptReady && <button className="production-draft-script" type="button" onClick={draftNarrationScript}>{selectedNarrationWords ? "Expand script from lesson" : "Draft script from lesson"}</button>}
+              {!selectedNarrationScriptReady && <button className="production-draft-script" type="button" disabled={narrationDraftBusy || Boolean(activeNarrationDraft)} onClick={draftNarrationScript}>{activeNarrationDraft
+                ? "Prepared draft waiting below"
+                : selectedNarrationWords
+                  ? "Prepare a fuller review draft"
+                  : "Prepare a review draft"}</button>}
               <button className="production-next-gap" type="button" disabled={currentProductionIndex === productionLessonQueue.length - 1} onClick={() => openAdjacentProductionLesson(1)}>
                 {currentProductionIndex < 0 ? "Open next unfinished lesson" : "Next gap"} &rarr;
               </button>
@@ -2144,13 +2424,44 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                 <b>Reviewed narration script</b>
                 <em>{selectedNarrationWords} words / approximately {selectedNarrationMinutes} {selectedNarrationMinutes === 1 ? "minute" : "minutes"} spoken</em>
               </span>
+              {activeNarrationDraft && <section className="narration-draft-review" aria-label="Prepared narration draft awaiting review">
+                <header>
+                  <div>
+                    <p className="sys-kicker">PREPARED DRAFT · NOT APPROVED</p>
+                    <h3>Edit for accuracy, pronunciation and your teaching voice.</h3>
+                  </div>
+                  <span>{countNarrationWords(narrationDraftReview)} words</span>
+                </header>
+                <textarea
+                  aria-label="Prepared narration draft"
+                  value={narrationDraftReview}
+                  onChange={(event) => setNarrationDraftReview(event.target.value)}
+                />
+                <footer>
+                  <p>Approval copies this text into the lesson’s reviewed transcript. It still does not publish the course or attach media.</p>
+                  <div>
+                    <button
+                      type="button"
+                      className="sys-secondary"
+                      disabled={narrationDraftBusy}
+                      onClick={dismissSelectedNarrationDraft}
+                    >Dismiss and write manually</button>
+                    <button
+                      type="button"
+                      className="sys-primary"
+                      disabled={narrationDraftBusy || countNarrationWords(narrationDraftReview) < 40}
+                      onClick={approveSelectedNarrationDraft}
+                    >Approve reviewed script</button>
+                  </div>
+                </footer>
+              </section>}
               <textarea
                 aria-label="Captions and narration transcript"
                 value={selected.transcript || ""}
                 onChange={(event) => editLesson({ transcript: event.target.value })}
                 placeholder="Paste a reviewed transcript. Video lessons use it for selectable captions and every learner can read it below the lesson."
               />
-              {!selectedNarrationScriptReady && <button className="transcript-draft-action" type="button" onClick={draftNarrationScript}>{selectedNarrationWords ? "Expand this short script from the reviewed lesson text" : "Draft from the reviewed lesson text"}</button>}
+              {!selectedNarrationScriptReady && !activeNarrationDraft && <button className="transcript-draft-action" type="button" disabled={narrationDraftBusy} onClick={draftNarrationScript}>{selectedNarrationWords ? "Prepare a fuller draft from the lesson" : "Prepare a draft from the lesson"}</button>}
               <small>{selected.primaryAsset?.kind === "video" && selected.transcript.trim()
                 ? "Ready: Northstar turns this transcript into selectable captions in the learner video player."
                 : "Add a reviewed transcript to improve accessibility, search and revision. Video transcripts become selectable captions automatically."}</small>

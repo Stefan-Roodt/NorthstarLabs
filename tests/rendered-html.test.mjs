@@ -1073,6 +1073,7 @@ test("ships a structured course editor, reusable media library, and safe learner
   assert.match(schema, /export const courseSections/);
   assert.match(schema, /export const mediaAssets/);
   assert.match(schema, /export const lessonResources/);
+  assert.match(schema, /export const lessonNarrationDrafts/);
   assert.match(migration, /CREATE TABLE `course_sections`/);
   assert.match(migration, /CREATE TABLE `media_assets`/);
   assert.match(migration, /INSERT INTO `course_sections`/);
@@ -1487,6 +1488,7 @@ test("connects email, Zoom, Mailchimp, Zapier, and consent-based Google Analytic
   assert.match(analyticsClient, /send_page_view: false/);
   assert.match(layout, /GoogleAnalytics/);
   assert.doesNotMatch(academyExport, /credentials_json/);
+  assert.match(academyExport, /name: "lesson_narration_drafts"/);
   assert.match(privacy, /pending subscription/);
 });
 
@@ -2231,11 +2233,13 @@ test("makes assessments teach with explanations, answer feedback, and guided ret
 });
 
 test("gives creators an honest, actionable learner-quality review", async () => {
-  const [editor, readinessSource, readinessApi, styles] = await Promise.all([
+  const [editor, readinessSource, readinessApi, styles, narrationDraftApi, narrationDraftMigration] = await Promise.all([
     readFile(new URL("../app/dashboard/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/course-readiness.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/courses/readiness/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/builder.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/courses/[courseId]/narration-drafts/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0092_governed_narration_drafts.sql", import.meta.url), "utf8"),
   ]);
   const { getCourseReadiness } = await import("../lib/course-readiness.ts");
   const review = getCourseReadiness({
@@ -2296,12 +2300,12 @@ test("gives creators an honest, actionable learner-quality review", async () => 
   assert.match(editor, /openProductionLesson/);
   assert.match(editor, /NARRATION PRODUCTION RUN/);
   assert.match(editor, /openAdjacentProductionLesson/);
-  assert.match(editor, /Draft script from lesson/);
+  assert.match(editor, /Prepare a review draft/);
   assert.match(editor, /Short script: \$\{selectedNarrationWords\} words/);
   assert.match(editor, /selectedNarrationScriptReady = selectedNarrationWords >= 40/);
-  assert.match(editor, /Expand script from lesson/);
-  assert.match(editor, /Replace this short transcript with a fuller draft/);
-  assert.match(editor, /buildNarrationDraft/);
+  assert.match(editor, /Prepare a fuller review draft/);
+  assert.match(editor, /Prepare a fuller draft from the lesson/);
+  assert.doesNotMatch(editor, /editLesson\(\{ transcript: draft \}\)/);
   assert.match(editor, /A draft is not approval/);
   assert.match(editor, /Northstar never marks a lesson narrated until playable media and a reviewed transcript are both present/);
   assert.match(editor, /selectedNarrationMinutes = estimateNarrationMinutes\(selected\?\.transcript \|\| ""\)/);
@@ -2311,6 +2315,17 @@ test("gives creators an honest, actionable learner-quality review", async () => 
   assert.match(editor, /Filename does not exactly match an exported production filename/);
   assert.match(editor, /Northstar never guesses, replaces media, or publishes for you/);
   assert.match(editor, /Nothing was published automatically/);
+  assert.match(editor, /SCRIPT PREPARATION/);
+  assert.match(editor, /Drafts do not count as reviewed transcripts/);
+  assert.match(editor, /PREPARED DRAFT · NOT APPROVED/);
+  assert.match(editor, /Approve reviewed script/);
+  assert.match(narrationDraftApi, /requireCourseStaffAccess/);
+  assert.match(narrationDraftApi, /MAX_GENERATION_BATCH = 25/);
+  assert.match(narrationDraftApi, /countNarrationWords\(row\.transcript \|\| ""\) < 40/);
+  assert.match(narrationDraftApi, /status='approved'/);
+  assert.match(narrationDraftApi, /narration_drafts\.generated/);
+  assert.match(narrationDraftMigration, /CHECK \(`status` IN \('draft','approved','dismissed'\)\)/);
+  assert.match(narrationDraftMigration, /UNIQUE \(`lesson_id`\)/);
   assert.match(readinessSource, /Add a learner outcome/);
   assert.match(readinessSource, /course-narrated-teaching/);
   assert.match(readinessSource, /productionQueue/);
@@ -2323,6 +2338,8 @@ test("gives creators an honest, actionable learner-quality review", async () => 
   assert.match(styles, /\.production-queue-list/);
   assert.match(styles, /\.narration-batch/);
   assert.match(styles, /\.narration-batch-files/);
+  assert.match(styles, /\.narration-draft-factory/);
+  assert.match(styles, /\.narration-draft-review/);
   assert.match(styles, /\.lesson-quality-signal/);
   assert.match(readinessApi, /ma\.filename AS primaryFilename/);
   assert.match(readinessApi, /id: lesson\.primaryAssetId/);
