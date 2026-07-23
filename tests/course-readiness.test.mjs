@@ -73,4 +73,12 @@ test("does not label a text-only course as fully produced", () => {
   assert.ok(readiness.improvements.some((issue) => issue.id === "course-narrated-teaching"));
   assert.equal(readiness.productionCoverage.narratedTeaching.ready, 0);
   assert.equal(readiness.productionCoverage.narratedTeaching.total, 1);
+  assert.equal(readiness.productionQueue.length, 1);
+  assert.equal(readiness.productionQueue[0].sectionTitle, "Start here");
+  assert.deepEqual(readiness.productionQueue[0].missingLessons, [{
+    id: "lesson-1",
+    title: "Watch the lesson",
+    hasTranscript: false,
+    hasMedia: false,
+  }]);
 });
