@@ -226,6 +226,7 @@ export default function TutorAdminPage() {
   const [setupDraft, setSetupDraft] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [draft, setDraft] = useState<TutorDraft>(emptyDraft);
+  const [optionalDetailsOpen, setOptionalDetailsOpen] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [learnerRatings, setLearnerRatings] = useState<Record<string, number>>({});
   const [learnerRatingTags, setLearnerRatingTags] = useState<Record<string, string[]>>({});
@@ -347,6 +348,17 @@ export default function TutorAdminPage() {
       slot.startsAt > pageLoadedAt
     ),
   );
+  const draftEssentialChecks = [
+    { label: "Your name", done: draft.displayName.trim().length >= 2 },
+    { label: "A clear headline", done: draft.headline.trim().length >= 10 },
+    { label: "A useful introduction", done: draft.bio.trim().length >= 40 },
+    { label: "Searchable topics", done: list(draft.subjects).length > 0 },
+    { label: "Your hourly rate", done: Number(draft.priceRand) > 0 },
+    { label: "A private reply email", done: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.contactEmail.trim()) },
+  ];
+  const draftEssentialComplete = draftEssentialChecks.filter((item) => item.done).length;
+  const draftNextEssential = draftEssentialChecks.find((item) => !item.done)?.label || "Ready to save";
+  const draftSubjectPreview = list(draft.subjects).slice(0, 3);
 
   function updateDraft<Key extends keyof TutorDraft>(key: Key, value: TutorDraft[Key]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -356,12 +368,14 @@ export default function TutorAdminPage() {
     setEditingId("");
     setDraft(emptyDraft);
     setSetupDraft(false);
+    setOptionalDetailsOpen(false);
   }
 
   function editTutor(tutor: Tutor) {
     setEditingId(tutor.id);
     setDraft(tutorToDraft(tutor));
     setSetupDraft(false);
+    setOptionalDetailsOpen(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -708,27 +722,65 @@ export default function TutorAdminPage() {
           <span>{setupDraft ? "STEP 1" : editingId ? "EDIT" : "NEW"}</span>
           <div><h2>{setupDraft ? "Complete your private coach draft" : editingId ? "Update coach profile" : "Create your coach profile"}</h2><p>Use specific topics, a clear hourly rate, and honest availability so learners can choose confidently.</p></div>
         </div>
-        <div className="product-form-grid">
-          <label>Profile type<select value={draft.serviceType} onChange={(event) => updateDraft("serviceType", event.target.value)}><option value="coaching">Coaching</option><option value="tutoring">Tutoring</option><option value="both">Coaching and tutoring</option></select></label>
-          <label>Coach or tutor name<input required minLength={2} maxLength={100} value={draft.displayName} onChange={(event) => updateDraft("displayName", event.target.value)} placeholder="Lindiwe Mokoena" /></label>
-          <label className="product-span-two">Professional headline<input required maxLength={160} value={draft.headline} onChange={(event) => updateDraft("headline", event.target.value)} placeholder="Career coach for mid-career professionals" /></label>
-          <label className="product-span-two">About your work<textarea maxLength={3000} value={draft.bio} onChange={(event) => updateDraft("bio", event.target.value)} placeholder="Your approach, strengths, and the people you help best." /></label>
-          <label className="product-span-two">Topics learners can search for<input required value={draft.subjects} onChange={(event) => updateDraft("subjects", event.target.value)} placeholder="Career change, Interview preparation, Leadership" /><small>Use specific phrases and separate them with commas.</small></label>
-          <label>Languages<input value={draft.languages} onChange={(event) => updateDraft("languages", event.target.value)} placeholder="English, Afrikaans" /></label>
-          <label className="product-span-two">Qualifications and experience<textarea maxLength={1200} value={draft.qualifications} onChange={(event) => updateDraft("qualifications", event.target.value)} placeholder="Degrees, credentials, industry background, and relevant experience." /></label>
-          <label>Years of experience<input min={0} max={80} type="number" value={draft.experienceYears} onChange={(event) => updateDraft("experienceYears", event.target.value)} /></label>
-          <label>Session format<select value={draft.sessionMode} onChange={(event) => updateDraft("sessionMode", event.target.value)}><option value="online">Online</option><option value="in_person">In person</option><option value="both">Online and in person</option></select></label>
-          <label>Your hourly rate in rand<input required min={1} step="0.01" type="number" value={draft.priceRand} onChange={(event) => updateDraft("priceRand", event.target.value)} placeholder="650" /><small>You control this rate. NorthstarLabs does not set it for you.</small></label>
-          <label>Location<input maxLength={160} value={draft.location} onChange={(event) => updateDraft("location", event.target.value)} placeholder="Windhoek or online" /></label>
-          <label>Timezone<input maxLength={80} value={draft.timezone} onChange={(event) => updateDraft("timezone", event.target.value)} /></label>
-          <label className="product-span-two">Availability<input maxLength={500} value={draft.availability} onChange={(event) => updateDraft("availability", event.target.value)} placeholder="Weekdays after 16:00 and Saturday mornings" /></label>
-          <label className="product-span-two">Profile photo URL<input type="url" value={draft.photoUrl} onChange={(event) => updateDraft("photoUrl", event.target.value)} placeholder="https://…" /><small>Optional. Initials are used when no photograph is supplied.</small></label>
-          <label>Private contact email<input required type="email" value={draft.contactEmail} onChange={(event) => updateDraft("contactEmail", event.target.value)} placeholder="tutor@example.com" /></label>
-          <label>Phone number<input type="tel" value={draft.phoneNumber} onChange={(event) => updateDraft("phoneNumber", event.target.value)} placeholder="+264 81 000 0000" /></label>
-          <label>WhatsApp number<input type="tel" value={draft.whatsappNumber} onChange={(event) => updateDraft("whatsappNumber", event.target.value)} placeholder="+264 81 000 0000" /></label>
-          <label>Booking calendar URL<input type="url" value={draft.bookingUrl} onChange={(event) => updateDraft("bookingUrl", event.target.value)} placeholder="https://calendly.com/…" /></label>
-          <label className="academy-switch product-span-two"><input type="checkbox" checked={draft.showDirectContact} onChange={(event) => updateDraft("showDirectContact", event.target.checked)} /><span><b>Show direct contact buttons publicly</b><small>When off, learners use the protected enquiry form and private contact details remain hidden.</small></span></label>
-        </div>
+        <aside className="coach-draft-progress" aria-live="polite">
+          <div>
+            <span>{draftEssentialComplete}/6 essentials complete</span>
+            <strong>{draftEssentialComplete === 6 ? "Ready to save as a private draft." : `Next: ${draftNextEssential}.`}</strong>
+          </div>
+          <i aria-hidden="true"><b style={{ width: `${(draftEssentialComplete / 6) * 100}%` }} /></i>
+          <small>You can add credentials, a photograph, phone details and an external calendar later.</small>
+        </aside>
+
+        <fieldset className="coach-form-section">
+          <legend><span>1</span><div><b>Describe the help you offer</b><small>These details decide whether the right learner finds and trusts you.</small></div></legend>
+          <div className="product-form-grid">
+            <label>Profile type<select value={draft.serviceType} onChange={(event) => updateDraft("serviceType", event.target.value)}><option value="coaching">Coaching</option><option value="tutoring">Tutoring</option><option value="both">Coaching and tutoring</option></select></label>
+            <label>Coach or tutor name<input required minLength={2} maxLength={100} value={draft.displayName} onChange={(event) => updateDraft("displayName", event.target.value)} placeholder="Lindiwe Mokoena" /></label>
+            <label className="product-span-two">Professional headline<input required minLength={10} maxLength={160} value={draft.headline} onChange={(event) => updateDraft("headline", event.target.value)} placeholder="Career coach for mid-career professionals" /><small>Say who you help and what changes—not only your job title.</small></label>
+            <label className="product-span-two">About your work<textarea required minLength={40} maxLength={3000} value={draft.bio} onChange={(event) => updateDraft("bio", event.target.value)} placeholder="Explain who you help best, how you work, and what a useful first session can achieve." /></label>
+            <label className="product-span-two">Topics learners can search for<input required value={draft.subjects} onChange={(event) => updateDraft("subjects", event.target.value)} placeholder="Career change, Interview preparation, Leadership" /><small>Use specific phrases and separate them with commas.</small></label>
+            <label>Session format<select value={draft.sessionMode} onChange={(event) => updateDraft("sessionMode", event.target.value)}><option value="online">Online</option><option value="in_person">In person</option><option value="both">Online and in person</option></select></label>
+            <label>Your hourly rate in rand<input required min={1} step="0.01" type="number" value={draft.priceRand} onChange={(event) => updateDraft("priceRand", event.target.value)} placeholder="650" /><small>You control this rate. NorthstarLabs does not set it for you.</small></label>
+            <label className="product-span-two">Private contact email<input required type="email" value={draft.contactEmail} onChange={(event) => updateDraft("contactEmail", event.target.value)} placeholder="tutor@example.com" /><small>Private by default. NorthstarLabs uses it to deliver learner enquiries.</small></label>
+          </div>
+        </fieldset>
+
+        <fieldset className="coach-form-section">
+          <legend><span>2</span><div><b>Help learners plan the session</b><small>Give an honest picture of where, when and in which language you can help.</small></div></legend>
+          <div className="product-form-grid">
+            <label>Languages<input value={draft.languages} onChange={(event) => updateDraft("languages", event.target.value)} placeholder="English, Afrikaans" /></label>
+            <label>Location<input maxLength={160} value={draft.location} onChange={(event) => updateDraft("location", event.target.value)} placeholder="Windhoek or online" /></label>
+            <label>Timezone<input maxLength={80} value={draft.timezone} onChange={(event) => updateDraft("timezone", event.target.value)} /></label>
+            <label className="product-span-two">General availability<input maxLength={500} value={draft.availability} onChange={(event) => updateDraft("availability", event.target.value)} placeholder="Weekdays after 16:00 and Saturday mornings" /><small>You can publish exact bookable appointment times after saving.</small></label>
+          </div>
+        </fieldset>
+
+        <details className="coach-optional-details" open={optionalDetailsOpen} onToggle={(event) => setOptionalDetailsOpen(event.currentTarget.open)}>
+          <summary><span>3</span><div><b>Add trust and contact extras</b><small>Optional now: credentials, photograph, direct contact and an external calendar.</small></div><em>Optional</em></summary>
+          <div className="product-form-grid">
+            <label className="product-span-two">Qualifications and experience<textarea maxLength={1200} value={draft.qualifications} onChange={(event) => updateDraft("qualifications", event.target.value)} placeholder="Degrees, credentials, industry background, and relevant experience." /></label>
+            <label>Years of experience<input min={0} max={80} type="number" value={draft.experienceYears} onChange={(event) => updateDraft("experienceYears", event.target.value)} /></label>
+            <label className="product-span-two">Profile photo URL<input type="url" value={draft.photoUrl} onChange={(event) => updateDraft("photoUrl", event.target.value)} placeholder="https://…" /><small>Initials are used when no photograph is supplied.</small></label>
+            <label>Phone number<input type="tel" value={draft.phoneNumber} onChange={(event) => updateDraft("phoneNumber", event.target.value)} placeholder="+264 81 000 0000" /></label>
+            <label>WhatsApp number<input type="tel" value={draft.whatsappNumber} onChange={(event) => updateDraft("whatsappNumber", event.target.value)} placeholder="+264 81 000 0000" /></label>
+            <label className="product-span-two">Booking calendar URL<input type="url" value={draft.bookingUrl} onChange={(event) => updateDraft("bookingUrl", event.target.value)} placeholder="https://calendly.com/…" /></label>
+            <label className="academy-switch product-span-two"><input type="checkbox" checked={draft.showDirectContact} onChange={(event) => updateDraft("showDirectContact", event.target.checked)} /><span><b>Show direct contact buttons publicly</b><small>When off, learners use the protected enquiry form and your contact details remain hidden.</small></span></label>
+          </div>
+        </details>
+
+        <aside className="coach-draft-preview" aria-label="Public profile preview">
+          <div>
+            <p className="sys-kicker">PUBLIC PROFILE PREVIEW</p>
+            <h3>{draft.displayName.trim() || "Your name"}</h3>
+            <p>{draft.headline.trim() || "A clear promise to the learner will appear here."}</p>
+            <div>{draftSubjectPreview.length ? draftSubjectPreview.map((subject) => <span key={subject}>{subject}</span>) : <span>Add searchable topics</span>}</div>
+          </div>
+          <dl>
+            <div><dt>Format</dt><dd>{draft.sessionMode.replaceAll("_", " ")}</dd></div>
+            <div><dt>Rate</dt><dd>{Number(draft.priceRand) > 0 ? `R${Number(draft.priceRand).toLocaleString("en-ZA")}/hour` : "Add your rate"}</dd></div>
+            <div><dt>Contact</dt><dd>{draft.showDirectContact ? "Direct or protected enquiry" : "Protected enquiry"}</dd></div>
+          </dl>
+        </aside>
         <aside className="coach-free-listing-note"><b>Your public listing is free.</b><span>Saving keeps this profile private. You decide when to publish it, and verification remains a separate optional step.</span></aside>
         <div className="tutor-editor-actions">
           <button className="sys-primary" disabled={busy === "profile"}>{busy === "profile" ? "Saving…" : setupDraft ? "Save profile and continue" : editingId ? "Save coach changes" : "Create coach draft"}</button>
