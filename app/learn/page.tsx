@@ -12,6 +12,9 @@ type Enrolment = {
   progress: number;
   schoolName: string;
   schoolSlug: string;
+  lessonCount: number;
+  completedLessons: number;
+  nextLessonTitle: string | null;
 };
 type LearnerProfile = { displayName: string; email: string };
 type MasterySummary = { ready: number; strengthening: number; mastered: number; total: number };
@@ -190,8 +193,12 @@ export default function LearnerHome() {
           <span>{nextCourse.schoolName}</span>
           <h2>{nextCourse.title}</h2>
           <p>{nextCourse.progress > 0
-            ? `You are ${Math.round(nextCourse.progress)}% through. A focused next lesson keeps the momentum going.`
-            : "This course is ready when you are. Start the first lesson and turn intention into progress."}</p>
+            ? `You are ${Math.round(nextCourse.progress)}% through. Your exact next lesson is ready.`
+            : "This course is ready when you are. Your first lesson is waiting below."}</p>
+          {nextCourse.nextLessonTitle && <p className="learner-next-lesson">
+            <span>{nextCourse.progress > 0 ? "Continue with" : "Start with"}</span>
+            <b>{nextCourse.nextLessonTitle}</b>
+          </p>}
           <div className="learner-next-progress">
             <i><b style={{ width: `${Math.min(100, Math.max(0, nextCourse.progress))}%` }} /></i>
             <span>{Math.round(nextCourse.progress)}%</span>
@@ -261,6 +268,7 @@ export default function LearnerHome() {
               <div className="learner-course-meta"><p className="sys-kicker">{started ? "IN PROGRESS" : "READY TO START"}</p><small>{item.schoolName}</small></div>
               <h3>{item.title}</h3>
               <p>{item.description || "Continue your next lesson and put your learning into practice."}</p>
+              {item.nextLessonTitle && <p className="learner-course-next"><span>Next lesson</span><b>{item.nextLessonTitle}</b></p>}
               <div className="progress-line"><i><b style={{ width: `${progress}%` }} /></i><span>{Math.round(progress)}%</span></div>
               <Link className="sys-primary" href={`/learn/${item.courseId}`}>{started ? "Continue learning" : "Start course"} {"\u2192"}</Link>
             </article>;
