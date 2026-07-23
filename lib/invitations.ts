@@ -3,6 +3,17 @@ export type InvitationRole = (typeof INVITATION_ROLES)[number];
 
 export const INVITATION_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
 
+export function courseAcceptsLearnerInvitations(status: string | null | undefined) {
+  return status === "published";
+}
+
+export function canAssignInvitationCourse(
+  role: InvitationRole,
+  status: string | null | undefined,
+) {
+  return role !== "learner" || courseAcceptsLearnerInvitations(status);
+}
+
 export function normalizeInvitationEmail(value: string) {
   return value.trim().toLowerCase();
 }

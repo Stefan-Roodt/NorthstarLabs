@@ -959,7 +959,7 @@ test("guides new members into creating or learning with a low-friction join flow
 });
 
 test("persists onboarding and supports secure invitations for new or existing accounts", async () => {
-  const [schema, migration, helper, invitationApi, acceptApi, invitePage, learners, profile, login] = await Promise.all([
+  const [schema, migration, helper, invitationApi, acceptApi, invitePage, learners, learnerAdminApi, importApi, importPage, profile, login] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0007_nappy_tyrannus.sql", import.meta.url), "utf8"),
     readFile(new URL("../lib/invitations.ts", import.meta.url), "utf8"),
@@ -967,6 +967,9 @@ test("persists onboarding and supports secure invitations for new or existing ac
     readFile(new URL("../app/api/invitations/[token]/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/invite/[token]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/dashboard/learners/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/learners/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/imports/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/import/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/profile/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
   ]);
@@ -976,14 +979,26 @@ test("persists onboarding and supports secure invitations for new or existing ac
   assert.match(migration, /`token_hash` text NOT NULL/);
   assert.doesNotMatch(migration, /`token` text/);
   assert.match(helper, /crypto\.subtle\.digest\("SHA-256"/);
+  assert.match(helper, /courseAcceptsLearnerInvitations/);
+  assert.match(helper, /role !== "learner"/);
   assert.match(invitationApi, /INVITATION_LIFETIME_MS/);
   assert.match(invitationApi, /status='revoked'/);
+  assert.match(invitationApi, /SELECT id,status FROM courses/);
+  assert.match(invitationApi, /Learners can only be invited to a published course/);
   assert.match(acceptApi, /user\.email\.toLowerCase\(\) !== invitation\.email\.toLowerCase\(\)/);
   assert.match(acceptApi, /ON CONFLICT\(user_id,course_id\)/);
+  assert.match(acceptApi, /This course is not currently published/);
   assert.match(invitePage, /Create account and accept/);
   assert.match(invitePage, /Your invitation is kept while you join/);
+  assert.match(invitePage, /This course is not currently published/);
   assert.match(learners, /Pending invitations/);
   assert.match(learners, /Copy link/);
+  assert.match(learners, /course\.status === "published"/);
+  assert.match(learners, /No published course yet/);
+  assert.match(learners, /Staff access includes the creator workspace and private course drafts/);
+  assert.match(learnerAdminApi, /Learners can only be enrolled in a published course/);
+  assert.match(importApi, /courseAcceptsLearnerInvitations/);
+  assert.match(importPage, /these invitations grant academy access only/);
   assert.match(profile, /onboarding_completed=1/);
   assert.match(profile, /CASE WHEN role='creator' THEN role ELSE 'learner' END/);
   assert.match(login, /onboarding_path/);

@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import {
+  canAssignInvitationCourse,
   hashInvitationToken,
   invitationRoleLabel,
   maskInvitationEmail,
@@ -14,6 +15,7 @@ type InvitationRow = {
   schoolSlug: string;
   courseId: string | null;
   courseTitle: string | null;
+  courseStatus: string | null;
   email: string;
   role: string;
   status: string;
@@ -24,7 +26,7 @@ async function invitationByToken(token: string) {
   const tokenHash = await hashInvitationToken(token);
   return env.DB.prepare(
     `SELECT i.id,i.school_id AS schoolId,s.name AS schoolName,s.slug AS schoolSlug,
-      i.course_id AS courseId,c.title AS courseTitle,i.email,i.role,i.status,
+      i.course_id AS courseId,c.title AS courseTitle,c.status AS courseStatus,i.email,i.role,i.status,
       i.expires_at AS expiresAt
      FROM invitations i
      JOIN schools s ON s.id=i.school_id AND s.status='active'
@@ -36,7 +38,10 @@ async function invitationByToken(token: string) {
 function publicInvitation(invitation: InvitationRow) {
   const status = invitation.status === "pending" && invitation.expiresAt <= Date.now()
     ? "expired"
-    : invitation.status;
+    : invitation.status === "pending" && invitation.courseId &&
+      !canAssignInvitationCourse(invitation.role as "learner" | "instructor" | "admin", invitation.courseStatus)
+      ? "course_unavailable"
+      : invitation.status;
   return {
     schoolName: invitation.schoolName,
     courseTitle: invitation.courseTitle,
@@ -77,6 +82,18 @@ export async function POST(
     return Response.json(
       { error: `Sign in with the invited account (${maskInvitationEmail(invitation.email)}).` },
       { status: 403 },
+    );
+  }
+  if (
+    invitation.courseId &&
+    !canAssignInvitationCourse(
+      invitation.role as "learner" | "instructor" | "admin",
+      invitation.courseStatus,
+    )
+  ) {
+    return Response.json(
+      { error: "This course is not currently published. Ask the academy to send a new invitation when it is ready." },
+      { status: 409 },
     );
   }
 
