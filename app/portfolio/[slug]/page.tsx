@@ -46,7 +46,7 @@ export default function PublicPortfolioPage({ params }: { params: Promise<{ slug
       {data.certificates.length > 0 && <section className="public-proof-section">
         <header><p className="sys-kicker">ACADEMY-VERIFIED</p><h2>Certificates with live status.</h2><p>Each record links to the issuing academy&apos;s independent verification page.</p></header>
         <div className="public-certificate-grid">{data.certificates.map((item) => <article key={item.code}>
-          <span>[OK]</span><small>{item.issuerName}</small><h3>{item.title}</h3><p>{item.courseTitle}</p><footer><time>{new Date(item.achievedAt).toLocaleDateString("en-ZA")}</time><Link href={`/certificates/${item.code}`}>Verify certificate</Link></footer>
+          <span aria-hidden="true">&#10003;</span><small>{item.issuerName}</small><h3>{item.title}</h3><p>{item.courseTitle}</p><footer><time>{new Date(item.achievedAt).toLocaleDateString("en-ZA")}</time><Link href={`/certificates/${item.code}`}>Verify certificate</Link></footer>
         </article>)}</div>
       </section>}
 

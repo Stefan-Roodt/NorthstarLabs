@@ -87,7 +87,7 @@ export default function Catalog() {
         </div>
         <label className="catalog-search">
           <span>What would you like to achieve?</span>
-          <div><input value={query} onChange={(event) => updateQuery(event.target.value)} placeholder="Search a topic, skill, project, or outcome" /><b aria-hidden="true">?</b></div>
+          <div><input value={query} onChange={(event) => updateQuery(event.target.value)} placeholder="Search a topic, skill, project, or outcome" /><b aria-hidden="true">&#128269;</b></div>
         </label>
       </section>
 
@@ -127,7 +127,7 @@ export default function Catalog() {
       </section>
 
       {!filteredCourses.length && <section className="catalog-empty">
-        <span>?</span>
+        <span aria-hidden="true">&#128269;</span>
         <div><p className="sys-kicker">NO FORCED MATCHES</p><h2>We do not have a credible course match yet.</h2><p>Try a broader phrase, look for a coach who works in this area, or send NorthstarLabs the detail below so we can investigate.</p><div><button type="button" onClick={() => updateQuery("")}>Show all courses</button><Link href={`/tutors?topic=${encodeURIComponent(query.trim())}`}>Look for a coach →</Link></div></div>
       </section>}
 

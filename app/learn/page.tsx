@@ -201,7 +201,7 @@ export default function LearnerHome() {
           </Link>
         </div>
       </article> : completed.length > 0 ? <article className="learner-finish-card">
-        <div><span>?</span></div>
+        <div><span aria-hidden="true">&#9733;</span></div>
         <section>
           <p className="sys-kicker">A STRONG FINISH</p>
           <h2>You completed {completed.length} {completed.length === 1 ? "course" : "courses"}.</h2>
@@ -278,7 +278,7 @@ export default function LearnerHome() {
         </div>
         <div className="learner-completed-list">
           {completed.map(item => <article className="panel" key={item.courseId}>
-            <span>?</span>
+            <span aria-hidden="true">&#10003;</span>
             <div><small>{item.schoolName}</small><h3>{item.title}</h3></div>
             <Link href={`/learn/${item.courseId}`}>Review course {"\u2192"}</Link>
           </article>)}

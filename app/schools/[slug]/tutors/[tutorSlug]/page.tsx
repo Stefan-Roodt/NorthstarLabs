@@ -200,7 +200,7 @@ export default function TutorDetailPage({ params }: {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={tutor.photoUrl} alt="" />
         </> : <span>{tutor.displayName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span>}
-        <div><p className="sys-kicker">{tutor.verified ? tutor.verifiedCredentialCount > 0 ? `[OK] VERIFIED - ${tutor.verifiedCredentialCount} APPROVED ${tutor.verifiedCredentialCount === 1 ? "CREDENTIAL" : "CREDENTIALS"}` : "[OK] VERIFIED PROFILE" : `COACH OR TUTOR AT ${data.school.name.toUpperCase()}`}</p><h1>{tutor.displayName}</h1><p>{tutor.headline}</p>{tutor.reviewCount > 0 && <div className="tutor-profile-rating"><b>{tutor.averageRating} *</b><span>{tutor.reviewCount} verified-session {tutor.reviewCount === 1 ? "review" : "reviews"}</span></div>}</div>
+        <div><p className="sys-kicker">{tutor.verified ? tutor.verifiedCredentialCount > 0 ? `\u2713 VERIFIED - ${tutor.verifiedCredentialCount} APPROVED ${tutor.verifiedCredentialCount === 1 ? "CREDENTIAL" : "CREDENTIALS"}` : "\u2713 VERIFIED PROFILE" : `COACH OR TUTOR AT ${data.school.name.toUpperCase()}`}</p><h1>{tutor.displayName}</h1><p>{tutor.headline}</p>{tutor.reviewCount > 0 && <div className="tutor-profile-rating"><b>{tutor.averageRating} {"\u2605"}</b><span>{tutor.reviewCount} verified-session {tutor.reviewCount === 1 ? "review" : "reviews"}</span></div>}</div>
       </div>
       <aside className="tutor-book-card">
         <small>ONE-TO-ONE SESSION</small>
@@ -236,7 +236,7 @@ export default function TutorDetailPage({ params }: {
         <section className="tutor-review-section">
           <div><p className="sys-kicker">VERIFIED LEARNER PROOF</p><h2>{reviews.length ? "What learners experienced." : "Reviews will appear after completed sessions."}</h2><p>Only learners connected to a completed NorthstarLabs session can publish a review.</p></div>
           {reviews.length > 0 && <div>{reviews.map((review) => <article key={review.id}>
-            <header><strong>{"*".repeat(review.rating)}{"*".repeat(5 - review.rating)}</strong><span>[OK] VERIFIED SESSION</span></header>
+            <header><strong>{"\u2605".repeat(review.rating)}{"\u2606".repeat(5 - review.rating)}</strong><span>{"\u2713"} VERIFIED SESSION</span></header>
             {review.tags.length > 0 && <div className="tutor-review-tags">{review.tags.map((tag) => <span key={tag}>{reviewTagLabels[tag] || tag.replaceAll("_", " ")}</span>)}</div>}
             {review.comment && <blockquote>{review.comment}</blockquote>}
             <footer><b>{review.reviewerName}</b><time>{new Date(review.createdAt).toLocaleDateString("en-ZA", { month: "short", year: "numeric" })}</time></footer>
@@ -265,7 +265,7 @@ export default function TutorDetailPage({ params }: {
           </div> : <p>No published times right now. Send a general enquiry and suggest what works for you.</p>}
           {selectedSlotId && <button className="tutor-slot-clear" type="button" onClick={() => setSelectedSlotId("")}>Choose timing later instead</button>}
         </fieldset>
-        <label>What do you need help with?<input required minLength={2} maxLength={160} value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="Grade 11 Mathematics exam preparation" /></label>
+        <label>What do you need help with?<input required minLength={2} maxLength={160} value={subject} onChange={(event) => setSubject(event.target.value)} placeholder={tutor.subjects.length ? `e.g. Help me understand ${tutor.subjects[0]}` : "e.g. Prepare for an important decision or assessment"} /></label>
         <label>Tell the tutor a little more<textarea required minLength={10} maxLength={2000} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="The topics, level and outcome you are working towards." /></label>
         <label>{selectedSlotId ? "Alternative timing note (optional)" : "Preferred days or times"}<textarea maxLength={500} value={preferredTimes} onChange={(event) => setPreferredTimes(event.target.value)} placeholder="Weekdays after 16:00, ideally Tuesday or Thursday." /></label>
         <div className="tutor-enquiry-row">

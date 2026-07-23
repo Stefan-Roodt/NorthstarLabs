@@ -291,7 +291,7 @@ export default function TutorMarketplacePage() {
               <div><dt>Hourly rate</dt><dd>{priceLabel(tutor)}</dd></div>
             </dl>
             <div className={`marketplace-availability ${tutor.availableSlotCount ? "open" : ""}`}>
-              <span>{tutor.availableSlotCount ? "o" : "o"}</span>
+              <span aria-hidden="true">{tutor.availableSlotCount ? "\u25CF" : "\u25CB"}</span>
               <p><b>{tutor.availableSlotCount
                 ? `Next opening ${new Date(tutor.nextAvailableAt || 0).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" })}`
                 : "Ask about availability"}</b><small>{tutor.availableSlotCount ? `${tutor.availableSlotCount} requestable ${tutor.availableSlotCount === 1 ? "time" : "times"}` : tutor.availability || "Send a private enquiry"}</small></p>
@@ -304,7 +304,7 @@ export default function TutorMarketplacePage() {
             </div>
           </article>
         )}</div> : !loading && <article className="marketplace-empty">
-          <span>?</span><div><h2>{selectedTopic ? `No ${selectedTopic} coach is published yet.` : "No coaches are published yet."}</h2><p>{selectedTopic
+          <span aria-hidden="true">&#128269;</span><div><h2>{selectedTopic ? `No ${selectedTopic} coach is published yet.` : "No coaches are published yet."}</h2><p>{selectedTopic
             ? `Your ${selectedTopic} selection worked. NorthstarLabs does not currently have a published profile offering that topic, so we will not show you an unrelated coach.`
             : "Published coach and tutor profiles will appear here as soon as they are available."}</p><div className="marketplace-empty-actions"><button onClick={clearFilters}>Show all available coaches</button><a href="#request-a-match">Ask Northstar to find it</a><Link href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach">Offer this topic</Link></div></div>
         </article>}

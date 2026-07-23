@@ -327,7 +327,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
               "A clear understanding of the core ideas",
               "Practical actions you can apply immediately",
               "A record of your learning progress",
-            ]).map((outcome) => <li key={outcome}><span>[OK]</span>{outcome}</li>)}
+            ]).map((outcome) => <li key={outcome}><span aria-hidden="true">&#10003;</span>{outcome}</li>)}
           </ul>
         </div>
 
