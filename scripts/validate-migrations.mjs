@@ -352,6 +352,15 @@ const cryptoMasteryOutcomeGaps = database.prepare(
 if (cryptoMasteryOutcomeGaps.count !== 0) {
   throw new Error("At least one Crypto Mastery lesson is missing a learner outcome.");
 }
+const cryptoMasteryLegacyOutcomeHeadings = database.prepare(
+  `SELECT COUNT(*) AS count
+   FROM lessons
+   WHERE course_id='cognizen-crypto-mastery-foundations-production'
+     AND content LIKE '%## Outcome%'`,
+).get();
+if (cryptoMasteryLegacyOutcomeHeadings.count !== 0) {
+  throw new Error("Crypto Mastery still contains a legacy outcome heading.");
+}
 for (const table of ["course_sections", "media_assets", "lesson_resources"]) {
   if (!tables.some((item) => item.name === table)) {
     throw new Error(`The ${table} course-authoring table was not created.`);
