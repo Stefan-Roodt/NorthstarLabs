@@ -1103,6 +1103,7 @@ test("ships a structured course editor, reusable media library, and safe learner
   assert.match(builder, /Show next \{Math\.min\(CURRICULUM_SECTION_BATCH, remainingSectionCount\)\} sections/);
   assert.match(builder, /The complete curriculum remains searchable/);
   assert.match(builder, /Math\.ceil\(\(sectionIndex \+ 1\) \/ CURRICULUM_SECTION_BATCH\)/);
+  assert.match(builder, /!nextQuery\.trim\(\) && selected\?\.sectionId/);
   assert.match(builder, /openSectionIds\.has\(section\.id\)/);
   assert.match(builder, /isOpen && <div className="curriculum-lessons">/);
   assert.match(builder, /isBlankNewLesson/);
