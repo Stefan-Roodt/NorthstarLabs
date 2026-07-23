@@ -149,7 +149,7 @@ export default function AcademyExportsPage() {
 
   return <main className="freedom-page">
     <header className="freedom-topbar">
-      <Link href="/dashboard">← Creator workspace</Link>
+      <Link href="/dashboard/control">← Control centre</Link>
       <b>Freedom Centre</b>
       <span>{school.name}</span>
     </header>
