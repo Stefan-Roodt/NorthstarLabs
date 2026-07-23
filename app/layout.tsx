@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { DM_Sans, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import "./system.css";
 import "./builder.css";
@@ -9,8 +8,6 @@ import { PwaRegister } from "./pwa-register";
 import { AuthCallbackRedirect } from "./auth-callback-redirect";
 import { GoogleAnalytics } from "./google-analytics";
 
-const display = Space_Grotesk({ variable: "--font-display", subsets: ["latin"] });
-const body = DM_Sans({ variable: "--font-body", subsets: ["latin"] });
 export const dynamic = "force-dynamic";
 const publicSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://northstarlabs.co.za";
 
@@ -92,5 +89,5 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       },
     ],
   }).replace(/</g, "\\u003c");
-  return <html lang="en-ZA"><body className={`${display.variable} ${body.variable}`}><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} /><script dangerouslySetInnerHTML={{ __html: `window.__NORTHSTARLABS_CONFIG__=${publicConfig}` }} /><AuthCallbackRedirect />{children}<GoogleAnalytics /><PwaRegister /></body></html>;
+  return <html lang="en-ZA"><body><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData }} /><script dangerouslySetInnerHTML={{ __html: `window.__NORTHSTARLABS_CONFIG__=${publicConfig}` }} /><AuthCallbackRedirect />{children}<GoogleAnalytics /><PwaRegister /></body></html>;
 }

@@ -1,5 +1,7 @@
 @import "tailwindcss";
-:root{--ink:#171724;--paper:#fffaf4;--warm:#f6eee5;--blue:#3556d8;--deep:#273fa9;--acid:#ffbd8a;--muted:#6e655f;--rule:#ddd0c4;--lav:#e8ddff}
+@font-face{font-family:"Northstar Display";font-style:normal;font-weight:300 700;font-display:swap;src:url("/fonts/space-grotesk-latin.woff2") format("woff2")}
+@font-face{font-family:"Northstar Body";font-style:normal;font-weight:100 1000;font-display:swap;src:url("/fonts/dm-sans-latin.woff2") format("woff2")}
+:root{--ink:#171724;--paper:#fffaf4;--warm:#f6eee5;--blue:#3556d8;--deep:#273fa9;--acid:#ffbd8a;--muted:#6e655f;--rule:#ddd0c4;--lav:#e8ddff;--font-display:"Northstar Display","Avenir Next","Segoe UI",Arial,sans-serif;--font-body:"Northstar Body","Segoe UI",Arial,sans-serif}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--warm);color:var(--ink);font-family:var(--font-body),sans-serif}a{color:inherit;text-decoration:none}button{font:inherit}.shell{width:min(1480px,calc(100% - 160px));margin:auto}
   .nav{height:94px;display:flex;align-items:center;border-bottom:1px solid var(--rule);position:relative;z-index:20}.brand{font:700 18px/1 var(--font-display);letter-spacing:.04em;display:inline-flex;gap:10px;align-items:center;flex:0 0 auto}.brand-mark{width:20px;height:20px;display:grid;place-items:center;color:var(--blue);font-size:22px;line-height:1;transform:translateY(-2px)}.brand-wordmark{display:block;line-height:1}.brand small{display:block;margin-top:6px;color:var(--muted);font:700 7px/1 var(--font-body);letter-spacing:.13em;text-transform:uppercase}.nav-links{display:flex;align-items:stretch;gap:4px;margin-left:auto;margin-right:20px}.nav-links .nav-route{display:grid;gap:4px;min-width:116px;padding:12px 14px;border-radius:10px;transition:.18s}.nav-links .nav-route small{font:800 7px/1 var(--font-body);letter-spacing:.14em;color:var(--blue)}.nav-links .nav-route b{font-size:12px;white-space:nowrap}.nav-links .nav-route:hover{background:var(--paper);box-shadow:inset 0 0 0 1px var(--rule);color:var(--ink)}.nav-links .nav-how{align-self:center;margin-left:5px;font-size:12px;font-weight:700;white-space:nowrap}.nav-links .nav-how:hover,.login:hover{color:var(--blue)}.nav-actions{display:flex;align-items:center;gap:18px}.login{font-size:12px;white-space:nowrap}.menu{display:none;background:none;color:var(--ink);border:0}.button{display:inline-flex;align-items:center;gap:28px;background:var(--blue);color:white;padding:16px 22px;font-weight:700;font-size:14px;border:1px solid var(--blue);border-radius:12px;transition:.2s}.button:hover{transform:translateY(-2px);box-shadow:0 12px 28px #3556d82b}.button.small{padding:12px 18px;gap:14px;white-space:nowrap}.button.dark{background:var(--ink);border-color:var(--ink)}
 .hero{display:grid;grid-template-columns:52% 48%;min-height:730px;border-bottom:1px solid var(--rule)}.hero-copy{padding:80px 65px 70px 0;position:relative;z-index:2;align-self:center}.eyebrow,.section-kicker{font:700 11px var(--font-display);letter-spacing:.17em;text-transform:uppercase}.eyebrow span{color:var(--blue);padding:0 7px}.hero h1{font:700 clamp(60px,6vw,94px)/.91 var(--font-display);letter-spacing:-.065em;margin:29px 0 34px;max-width:760px}.hero h1 em{font-style:normal;color:var(--blue)}.lede{color:var(--muted);font-size:18px;line-height:1.6;max-width:620px}.hero-actions{display:flex;align-items:center;gap:36px;margin-top:36px}.text-link{font-weight:700;font-size:14px;border-bottom:1px solid var(--rule);padding-bottom:7px}.text-link span{color:var(--blue);margin-left:10px}.micro-proof{display:flex;align-items:center;gap:14px;margin-top:38px;color:var(--muted);font-size:12px}.micro-proof strong{color:var(--ink)}.faces{display:flex}.faces i{font-style:normal;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--lav);border:2px solid var(--warm);margin-left:-7px;font-weight:700;font-size:10px}.faces i:first-child{margin:0;background:var(--acid)}
@@ -138,4 +140,24 @@
   .import-hero-promise>li{padding:9px 0;border-top:1px solid var(--rule)}
   .import-hero-promise>li:first-child{border-top:0}
   .import-hero-promise>li+li:before{content:none}
+}
+
+/* Homepage decision text is a core navigation control, not decorative microcopy. */
+.decision-kicker,
+.decision-trust span,
+.decision-path>div>p,
+.decision-path>div>span,
+.decision-path footer small,
+.decision-path footer b,
+.decision-dock span,
+.decision-footer>div span,
+.decision-footer nav a,
+.decision-footer>small,
+.decision-topic-list a,
+.decision-topic-request span{font-size:12px}
+.decision-dock b,
+.decision-topic-request b{font-size:13px}
+@media(max-width:720px){
+  .decision-menu summary,
+  .decision-menu a{font-size:12px}
 }

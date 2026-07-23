@@ -11,6 +11,18 @@ test("defines NorthstarLabs production metadata", async () => {
   assert.doesNotMatch(layout, /codex-preview|Starter Project/);
 });
 
+test("self-hosts production fonts without leaking local workspace paths", async () => {
+  const [layout, styles] = await Promise.all([
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+  assert.doesNotMatch(layout, /next\/font/);
+  assert.doesNotMatch(layout, /DM_Sans|Space_Grotesk|\.variable/);
+  assert.match(styles, /url\("\/fonts\/space-grotesk-latin\.woff2"\)/);
+  assert.match(styles, /url\("\/fonts\/dm-sans-latin\.woff2"\)/);
+  assert.doesNotMatch(styles, /file:\/\/\/|[A-Z]:\/Users\//);
+});
+
 test("publishes complete terms and privacy pages", async () => {
   const [terms, privacy] = await Promise.all([
     readFile(new URL("../app/legal/terms/page.tsx", import.meta.url), "utf8"),
