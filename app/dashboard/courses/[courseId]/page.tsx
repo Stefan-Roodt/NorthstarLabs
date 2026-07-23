@@ -306,6 +306,9 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   const currentProductionLesson = currentProductionIndex >= 0
     ? productionLessonQueue[currentProductionIndex]
     : null;
+  const selectedNarrationWords = countNarrationWords(selected?.transcript || "");
+  const selectedNarrationMinutes = estimateNarrationMinutes(selected?.transcript || "");
+  const selectedNarrationScriptReady = selectedNarrationWords >= 40;
 
   const token = useCallback(async () => {
     return (await supabase?.auth.getSession())?.data.session?.access_token || "";
@@ -518,7 +521,8 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   }
 
   function draftNarrationScript() {
-    if (!selected || selected.transcript.trim()) return;
+    if (!selected || selectedNarrationScriptReady) return;
+    if (selected.transcript.trim() && !confirm("Replace this short transcript with a fuller draft built from the reviewed lesson text?")) return;
     const draft = buildNarrationDraft(selected.title, selected.content);
     if (!draft) {
       setMessage("Add at least a short, reviewed lesson explanation before drafting narration.");
@@ -1777,15 +1781,19 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
             <div className="production-run-status">
               {currentProductionLesson
                 ? <>
-                    <span className={selected.transcript.trim() ? "ready" : ""}>{selected.transcript.trim() ? "Script ready" : "Script needed"}</span>
+                    <span className={selectedNarrationScriptReady ? "ready" : ""}>{selectedNarrationScriptReady
+                      ? "Script ready"
+                      : selectedNarrationWords
+                        ? `Short script: ${selectedNarrationWords} words`
+                        : "Script needed"}</span>
                     <span className={currentProductionLesson.hasMedia ? "ready" : ""}>{currentProductionLesson.hasMedia ? "Media attached" : "Narration media needed"}</span>
                   </>
                 : <span className="ready">Current lesson meets the automated standard</span>}
-              <span>{countNarrationWords(selected.transcript)} words / approximately {estimateNarrationMinutes(selected.transcript)} minutes</span>
+              <span>{selectedNarrationWords} words / approximately {selectedNarrationMinutes} {selectedNarrationMinutes === 1 ? "minute" : "minutes"}</span>
             </div>
             <nav aria-label="Move through unfinished narration lessons">
               <button type="button" disabled={currentProductionIndex <= 0} onClick={() => openAdjacentProductionLesson(-1)}>&larr; Previous gap</button>
-              {!selected.transcript.trim() && <button className="production-draft-script" type="button" onClick={draftNarrationScript}>Draft script from lesson</button>}
+              {!selectedNarrationScriptReady && <button className="production-draft-script" type="button" onClick={draftNarrationScript}>{selectedNarrationWords ? "Expand script from lesson" : "Draft script from lesson"}</button>}
               <button className="production-next-gap" type="button" disabled={currentProductionIndex === productionLessonQueue.length - 1} onClick={() => openAdjacentProductionLesson(1)}>
                 {currentProductionIndex < 0 ? "Open next unfinished lesson" : "Next gap"} &rarr;
               </button>
@@ -1852,7 +1860,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
             <section className="transcript-editor" aria-labelledby="transcript-heading">
               <span className="transcript-heading" id="transcript-heading">
                 <b>Reviewed narration script</b>
-                <em>{countNarrationWords(selected.transcript)} words / approximately {estimateNarrationMinutes(selected.transcript)} minutes spoken</em>
+                <em>{selectedNarrationWords} words / approximately {selectedNarrationMinutes} {selectedNarrationMinutes === 1 ? "minute" : "minutes"} spoken</em>
               </span>
               <textarea
                 aria-label="Captions and narration transcript"
@@ -1860,7 +1868,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                 onChange={(event) => editLesson({ transcript: event.target.value })}
                 placeholder="Paste a reviewed transcript. Video lessons use it for selectable captions and every learner can read it below the lesson."
               />
-              {!selected.transcript.trim() && <button className="transcript-draft-action" type="button" onClick={draftNarrationScript}>Draft from the reviewed lesson text</button>}
+              {!selectedNarrationScriptReady && <button className="transcript-draft-action" type="button" onClick={draftNarrationScript}>{selectedNarrationWords ? "Expand this short script from the reviewed lesson text" : "Draft from the reviewed lesson text"}</button>}
               <small>{selected.primaryAsset?.kind === "video" && selected.transcript.trim()
                 ? "Ready: Northstar turns this transcript into selectable captions in the learner video player."
                 : "Add a reviewed transcript to improve accessibility, search and revision. Video transcripts become selectable captions automatically."}</small>
