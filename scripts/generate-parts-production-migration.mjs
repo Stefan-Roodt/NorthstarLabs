@@ -21,12 +21,27 @@ function sqlString(value) {
   return `'${String(value)
     .replace(/\\/g, "\\\\")
     .replace(/'/g, "''")
-    .replace(/\n/g, "\\n")
     .replace(/\r/g, "")}'`;
 }
 
 function sqlQuestionArray(value) {
   return sqlString(JSON.stringify(value));
+}
+
+function withLearnerOutcome(lesson) {
+  const content = String(lesson.content || "")
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .join("\n")
+    .trim();
+  if (/^#{2,3}\s+(?:your\s+)?(?:learning\s+)?outcome\b/im.test(content)) return content;
+  return [
+    "## Your outcome",
+    "",
+    `Explain the key ideas in ${lesson.title}, distinguish evidence from assumption, and apply them to a practical digital-asset decision.`,
+    "",
+    content,
+  ].join("\n");
 }
 
 function sectionId(part, index) {
@@ -53,7 +68,8 @@ function buildMigration(plan, partLabel) {
   for (let sectionIndex = 0; sectionIndex < course.sections.length; sectionIndex++) {
     const section = course.sections[sectionIndex];
     const secPos = sectionIndex + 1;
-    const secId = sectionId(partLabel, secPos);
+    const moduleNumber = partLabel === "3" ? sectionIndex : secPos;
+    const secId = sectionId(partLabel, moduleNumber);
 
     lines.push(`INSERT OR IGNORE INTO \`course_sections\` (\`id\`,\`course_id\`,\`title\`,\`position\`,\`created_at\`) SELECT ${sqlString(secId)},${sqlString(courseId)},${sqlString(section.title)},${secPos},${timestamp} WHERE EXISTS (SELECT 1 FROM \`courses\` WHERE \`id\`=${sqlString(courseId)});`);
     lines.push("--> statement-breakpoint");
@@ -61,10 +77,10 @@ function buildMigration(plan, partLabel) {
     for (let lessonIndex = 0; lessonIndex < section.lessons.length; lessonIndex++) {
       const lesson = section.lessons[lessonIndex];
       const lessonPos = lessonIndex + 1;
-      const lessonIdValue = lessonId(partLabel, secPos, lessonPos);
+      const lessonIdValue = lessonId(partLabel, moduleNumber, lessonPos);
       const lessonType = lesson.lessonType || "text";
 
-      lines.push(`INSERT OR IGNORE INTO \`lessons\` (\`id\`,\`course_id\`,\`title\`,\`section_id\`,\`lesson_type\`,\`content\`,\`content_format\`,\`video_key\`,\`primary_asset_id\`,\`intro_asset_id\`,\`duration_minutes\`,\`is_preview\`,\`available_after_days\`,\`required_watch_percent\`,\`transcript\`,\`experience_json\`,\`position\`,\`updated_at\`) SELECT ${sqlString(lessonIdValue)},${sqlString(courseId)},${sqlString(lesson.title)},${sqlString(secId)},${sqlString(lessonType)},${sqlString(lesson.content)},'markdown',NULL,NULL,NULL,${lesson.durationMinutes || 0},0,0,0,${sqlString(lesson.transcript || "")},${sqlString(lesson.experienceJson || null)},${lessonPos},${timestamp} WHERE EXISTS (SELECT 1 FROM \`courses\` WHERE \`id\`=${sqlString(courseId)});`);
+      lines.push(`INSERT OR IGNORE INTO \`lessons\` (\`id\`,\`course_id\`,\`title\`,\`section_id\`,\`lesson_type\`,\`content\`,\`content_format\`,\`video_key\`,\`primary_asset_id\`,\`intro_asset_id\`,\`duration_minutes\`,\`is_preview\`,\`available_after_days\`,\`required_watch_percent\`,\`transcript\`,\`experience_json\`,\`position\`,\`updated_at\`) SELECT ${sqlString(lessonIdValue)},${sqlString(courseId)},${sqlString(lesson.title)},${sqlString(secId)},${sqlString(lessonType)},${sqlString(withLearnerOutcome(lesson))},'markdown',NULL,NULL,NULL,${lesson.durationMinutes || 0},0,0,0,${sqlString(lesson.transcript || "")},${sqlString(lesson.experienceJson || "")},${lessonPos},${timestamp} WHERE EXISTS (SELECT 1 FROM \`courses\` WHERE \`id\`=${sqlString(courseId)});`);
       lines.push("--> statement-breakpoint");
 
       if (lessonType === "quiz" && Array.isArray(lesson.questions) && lesson.questions.length > 0) {
@@ -91,13 +107,26 @@ function buildMigration(plan, partLabel) {
 }
 
 async function main() {
+  const repairedParts = [];
   for (const item of Object.values(sourceFiles)) {
     const raw = await fs.readFile(item.input, "utf8");
     const plan = JSON.parse(raw);
     const sql = buildMigration(plan, item.label);
     await fs.writeFile(item.output, sql, "utf8");
+    repairedParts.push(sql);
     console.log(`Wrote ${item.output}`);
   }
+  const repairOutput = "drizzle/0090_crypto_mastery_part_2_3_lesson_repair.sql";
+  await fs.writeFile(
+    repairOutput,
+    [
+      "-- Repair Part 2 and Part 3 lessons skipped when experience_json was written as NULL.",
+      "-- INSERT OR IGNORE makes this safe for fresh databases where 0077/0078 now succeed.",
+      ...repairedParts,
+    ].join("\n"),
+    "utf8",
+  );
+  console.log(`Wrote ${repairOutput}`);
 }
 
 main().catch((error) => {

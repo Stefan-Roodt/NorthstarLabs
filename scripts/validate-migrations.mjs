@@ -115,6 +115,26 @@ const aiCommandCourse = database.prepare(`
   WHERE c.id='northstar-ai-command-studio'
   GROUP BY c.id
 `).get();
+const cryptoMasteryCourse = database.prepare(`
+  SELECT c.id,c.status,c.school_id AS schoolId,
+    COUNT(DISTINCT cs.id) AS sections,COUNT(DISTINCT l.id) AS lessons,
+    COUNT(DISTINCT q.id) AS quizzes
+  FROM courses c
+  LEFT JOIN course_sections cs ON cs.course_id=c.id
+  LEFT JOIN lessons l ON l.course_id=c.id
+  LEFT JOIN quizzes q ON q.lesson_id=l.id
+  WHERE c.id='cognizen-crypto-mastery-foundations-production'
+  GROUP BY c.id
+`).get();
+const emptyCryptoMasterySections = database.prepare(`
+  SELECT cs.id,cs.title
+  FROM course_sections cs
+  LEFT JOIN lessons l ON l.section_id=cs.id
+  WHERE cs.course_id='cognizen-crypto-mastery-foundations-production'
+  GROUP BY cs.id,cs.title
+  HAVING COUNT(l.id)=0
+  ORDER BY cs.position,cs.id
+`).all();
 
 if (!tables.some((table) => table.name === "schools")) {
   throw new Error("The schools table was not created.");
@@ -157,6 +177,19 @@ if (!aiCommandCourse ||
     aiCommandCourse.lessons !== 12 ||
     aiCommandCourse.quizzes !== 4) {
   throw new Error("The AI Command Studio course did not migrate with its complete curriculum.");
+}
+if (
+  !cryptoMasteryCourse ||
+  cryptoMasteryCourse.sections !== 95 ||
+  cryptoMasteryCourse.lessons !== 718
+) {
+  throw new Error("Crypto Mastery did not migrate with all 95 sections and 718 lessons.");
+}
+if (emptyCryptoMasterySections.length > 0) {
+  throw new Error(
+    `Crypto Mastery contains ${emptyCryptoMasterySections.length} empty curriculum sections: ` +
+    emptyCryptoMasterySections.slice(0, 5).map((section) => section.title).join(", "),
+  );
 }
 if (!tables.some((table) => table.name === "school_members")) {
   throw new Error("The school_members table was not created.");
@@ -593,4 +626,5 @@ console.log(JSON.stringify({
   ],
   schools,
   courseScopes,
+  cryptoMasteryCourse,
 }, null, 2));
