@@ -1025,12 +1025,13 @@ test("ships a structured course editor, reusable media library, and safe learner
 });
 
 test("streams protected lesson media with short-lived grants and byte ranges", async () => {
-  const [schema, migration, playback, stream, learnApi, learner, helper] = await Promise.all([
+  const [schema, migration, playback, stream, learnApi, previewApi, learner, helper] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0009_high_giant_man.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/api/media/playback/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/media/stream/[token]/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/learn/[courseId]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/catalog/[courseId]/preview/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/media-stream.ts", import.meta.url), "utf8"),
   ]);
@@ -1051,6 +1052,8 @@ test("streams protected lesson media with short-lived grants and byte ranges", a
   assert.match(helper, /header\.includes\(","\)/);
   assert.match(learnApi, /"r2:protected"/);
   assert.match(learnApi, /key: learnerMediaKey\(primaryAssetKey\)/);
+  assert.doesNotMatch(learnApi, /COURSE_VIDEO_FALLBACKS|fallbackAssetForLesson/);
+  assert.doesNotMatch(previewApi, /COURSE_VIDEO_FALLBACKS|fallbackAssetForLesson/);
   assert.match(learner, /\/api\/media\/playback/);
   assert.match(learner, /function isProtectedMediaKey/);
   assert.match(learner, /key\.startsWith\("static:"\)/);

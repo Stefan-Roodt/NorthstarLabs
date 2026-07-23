@@ -55,57 +55,7 @@ type PreviewAsset = {
   altText?: string;
 };
 
-const COURSE_VIDEO_FALLBACKS: Record<string, Record<string, {
-  id: string;
-  key: string;
-  filename: string;
-  contentType: string;
-  altText: string;
-}>> = {
-  "cognizen-crypto-mastery-foundations-production": {
-    "1": {
-      id: "cmf-module-1-fallback-premium-track",
-      key: "static:/media/faculty/crypto-mastery-welcome.mp4",
-      filename: "crypto-mastery-welcome.mp4",
-      contentType: "video/mp4",
-      altText: "Crypto Mastery fallback track for Module 1",
-    },
-    "2": {
-      id: "cmf-module-2-premium-track",
-      key: "static:/media/faculty/cmf-module-2-premium-track.mp4",
-      filename: "cmf-module-2-premium-track.mp4",
-      contentType: "video/mp4",
-      altText: "Crypto Mastery fallback track for Module 2",
-    },
-    "3": {
-      id: "cmf-module-3-premium-track",
-      key: "static:/media/faculty/cmf-module-3-premium-track.mp4",
-      filename: "cmf-module-3-premium-track.mp4",
-      contentType: "video/mp4",
-      altText: "Crypto Mastery fallback track for Module 3",
-    },
-  },
-};
-
-function fallbackAssetForLesson(courseId: string, lessonType: string, lessonId: unknown) {
-  if (lessonType === "quiz" || typeof lessonId !== "string") return null;
-  const moduleFallbacks = COURSE_VIDEO_FALLBACKS[courseId];
-  if (!moduleFallbacks) return null;
-  const match = /^cmf-module-(\d+)-/.exec(lessonId);
-  if (!match) return null;
-  const fallback = moduleFallbacks[match[1]];
-  if (!fallback) return null;
-  return {
-    id: fallback.id,
-    key: fallback.key,
-    filename: fallback.filename,
-    contentType: fallback.contentType,
-    kind: "video",
-    altText: fallback.altText,
-  };
-}
-
-function resolvePrimaryPreviewAsset(row: PreviewRow, fallbackAsset: PreviewAsset | null) {
+function resolvePrimaryPreviewAsset(row: PreviewRow) {
   if (row.primaryAssetId && isPlayableMediaKey(row.primaryKey)) {
     return {
       id: row.primaryAssetId,
@@ -128,7 +78,7 @@ function resolvePrimaryPreviewAsset(row: PreviewRow, fallbackAsset: PreviewAsset
     };
   }
 
-  return fallbackAsset;
+  return null;
 }
 
 async function publicMedia(
@@ -189,8 +139,7 @@ export async function GET(
 
   if (!row) return Response.json({ error: "This course does not have a public preview lesson yet." }, { status: 404 });
 
-  const fallbackAsset = fallbackAssetForLesson(row.courseId, row.lessonType, row.lessonId);
-  const selectedAsset = resolvePrimaryPreviewAsset(row, fallbackAsset);
+  const selectedAsset = resolvePrimaryPreviewAsset(row);
   const primaryAsset = selectedAsset ? await publicMedia(row, selectedAsset) : null;
   const questions = await env.DB.prepare(
     `SELECT qq.id,qq.prompt,qq.options_json AS optionsJson,

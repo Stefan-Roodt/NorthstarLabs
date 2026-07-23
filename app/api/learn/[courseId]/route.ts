@@ -26,56 +26,6 @@ function isPlayableMediaKey(key: unknown) {
   );
 }
 
-const COURSE_VIDEO_FALLBACKS: Record<string, Record<string, {
-  id: string;
-  key: string;
-  filename: string;
-  contentType: string;
-  altText: string;
-}>> = {
-  "cognizen-crypto-mastery-foundations-production": {
-    "1": {
-      id: "cmf-module-1-fallback-premium-track",
-      key: "static:/media/faculty/crypto-mastery-welcome.mp4",
-      filename: "crypto-mastery-welcome.mp4",
-      contentType: "video/mp4",
-      altText: "Crypto Mastery fallback track for Module 1",
-    },
-    "2": {
-      id: "cmf-module-2-premium-track",
-      key: "static:/media/faculty/cmf-module-2-premium-track.mp4",
-      filename: "cmf-module-2-premium-track.mp4",
-      contentType: "video/mp4",
-      altText: "Crypto Mastery fallback track for Module 2",
-    },
-    "3": {
-      id: "cmf-module-3-premium-track",
-      key: "static:/media/faculty/cmf-module-3-premium-track.mp4",
-      filename: "cmf-module-3-premium-track.mp4",
-      contentType: "video/mp4",
-      altText: "Crypto Mastery fallback track for Module 3",
-    },
-  },
-};
-
-function fallbackAssetForLesson(courseId: string, lessonType: string, lessonId: unknown) {
-  if (lessonType === "quiz" || typeof lessonId !== "string") return null;
-  const moduleFallbacks = COURSE_VIDEO_FALLBACKS[courseId];
-  if (!moduleFallbacks) return null;
-  const match = /^cmf-module-(\d+)-/.exec(lessonId);
-  if (!match) return null;
-  const fallback = moduleFallbacks[match[1]];
-  if (!fallback) return null;
-  return {
-    id: fallback.id,
-    key: fallback.key,
-    filename: fallback.filename,
-    contentType: fallback.contentType,
-    kind: "video",
-    altText: fallback.altText,
-  };
-}
-
 function publicLessonFields(lesson: Record<string, unknown>) {
   const safe = { ...lesson };
   for (const key of [
@@ -85,10 +35,7 @@ function publicLessonFields(lesson: Record<string, unknown>) {
   return safe;
 }
 
-function resolvePrimaryLessonAsset(
-  lesson: Record<string, unknown>,
-  fallbackAsset: Record<string, unknown> | null,
-) {
+function resolvePrimaryLessonAsset(lesson: Record<string, unknown>) {
   const primaryAssetId = typeof lesson.primaryAssetId === "string" ? lesson.primaryAssetId : null;
   const primaryAssetKey = typeof lesson.primaryKey === "string" ? lesson.primaryKey : null;
   const primaryFilename = typeof lesson.primaryFilename === "string" ? lesson.primaryFilename : null;
@@ -119,7 +66,7 @@ function resolvePrimaryLessonAsset(
     };
   }
 
-  return fallbackAsset;
+  return null;
 }
 
 export async function GET(request: Request, context: { params: Promise<{ courseId: string }> }) {
@@ -305,9 +252,6 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
     sections: sections.results,
     lessons: controlledLessons.map(({lesson,availableAt,locked,lockReason})=>{
     const includeDetail = !compact || String(lesson.id) === detailLessonId;
-      const fallbackAsset = includeDetail
-        ? fallbackAssetForLesson(courseId, String(lesson.lessonType || ""), lesson.id)
-        : null;
       return {
       ...publicLessonFields(lesson as Record<string, unknown>),
       content: includeDetail ? lesson.content : "",
@@ -318,7 +262,7 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
       locked,
       lockReason,
       primaryAsset: includeDetail
-        ? resolvePrimaryLessonAsset(lesson as Record<string, unknown>, fallbackAsset as Record<string, unknown> | null)
+        ? resolvePrimaryLessonAsset(lesson as Record<string, unknown>)
         : null,
       resources: includeDetail ? resources.get(String(lesson.id)) || [] : [],
       quiz:includeDetail ? quizzes.get(String(lesson.id))||null : null
