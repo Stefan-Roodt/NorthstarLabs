@@ -2294,6 +2294,14 @@ test("gives creators an honest, actionable learner-quality review", async () => 
   assert.match(editor, /Continue production/);
   assert.match(editor, /Narration needed/);
   assert.match(editor, /openProductionLesson/);
+  assert.match(editor, /NARRATION PRODUCTION RUN/);
+  assert.match(editor, /openAdjacentProductionLesson/);
+  assert.match(editor, /Draft script from lesson/);
+  assert.match(editor, /buildNarrationDraft/);
+  assert.match(editor, /A draft is not approval/);
+  assert.match(editor, /Northstar never marks a lesson narrated until playable media and a reviewed transcript are both present/);
+  assert.match(editor, /estimateNarrationMinutes\(selected\.transcript\)/);
+  assert.match(editor, /aria-label="Captions and narration transcript"/);
   assert.match(readinessSource, /Add a learner outcome/);
   assert.match(readinessSource, /course-narrated-teaching/);
   assert.match(readinessSource, /productionQueue/);
