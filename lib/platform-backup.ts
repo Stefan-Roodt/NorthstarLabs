@@ -44,6 +44,7 @@ const BACKUP_TABLES = [
   "portfolio_evidence",
   "email_messages",
   "notification_preferences",
+  "in_app_notifications",
   "report_schedules",
   "audit_logs",
   "system_events",

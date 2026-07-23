@@ -1106,10 +1106,11 @@ test("publishes branded school storefronts and routes communities by academy", a
   assert.match(metadata, /generateMetadata/);
 });
 
-test("queues transactional email and ships reporting plus secured administration", async () => {
-  const [schema, migration, email, invitations, enrollment, progress, reporting, analytics, operations, platform, admin, auth, preferences] = await Promise.all([
+test("queues transactional and in-app notifications with reporting plus secured administration", async () => {
+  const [schema, migration, notificationMigration, email, invitations, enrollment, progress, reporting, analytics, operations, platform, admin, auth, preferences, account] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0012_sudden_baron_strucker.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0085_in_app_notifications.sql", import.meta.url), "utf8"),
     readFile(new URL("../lib/email-service.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/invitations/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/enrollments/route.ts", import.meta.url), "utf8"),
@@ -1121,16 +1122,21 @@ test("queues transactional email and ships reporting plus secured administration
     readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/server-auth.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/notifications/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/account/page.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(schema, /export const emailMessages/);
+  assert.match(schema, /export const inAppNotifications/);
   assert.match(schema, /export const reportSchedules/);
   assert.match(schema, /export const auditLogs/);
   assert.match(migration, /CREATE TABLE `email_messages`/);
   assert.match(migration, /CREATE TABLE `report_schedules`/);
   assert.match(migration, /ALTER TABLE `profiles` ADD `status`/);
+  assert.match(notificationMigration, /CREATE TABLE IF NOT EXISTS `in_app_notifications`/);
+  assert.match(notificationMigration, /in_app_notifications_idempotency_unique/);
   assert.match(email, /https:\/\/api\.resend\.com\/emails/);
   assert.match(email, /idempotency-key/);
   assert.match(email, /configuration_required/);
+  assert.match(email, /INSERT INTO in_app_notifications/);
   assert.match(invitations, /templateKey: "invitation"/);
   assert.match(enrollment, /queueEnrollmentEmail/);
   assert.match(progress, /queueCertificateEmail/);
@@ -1146,6 +1152,10 @@ test("queues transactional email and ships reporting plus secured administration
   assert.match(auth, /access\?\.status === "suspended"/);
   assert.match(auth, /access\?\.deletionPending/);
   assert.match(preferences, /notification_preferences/);
+  assert.match(preferences, /mark_all_read/);
+  assert.match(preferences, /unreadCount/);
+  assert.match(account, /YOUR UPDATES/);
+  assert.match(account, /Notifications \{unreadCount/);
 });
 
 test("hardens production with rate limits, monitoring, backups, safe deletion, and journey tests", async () => {
@@ -1182,11 +1192,14 @@ test("hardens production with rate limits, monitoring, backups, safe deletion, a
   assert.match(uploads, /SCHOOL_STORAGE_QUOTA_BYTES/);
   assert.match(uploads, /academy storage quota/);
   assert.match(backup, /northstarlabs-d1-backup/);
+  assert.match(backup, /"in_app_notifications"/);
   assert.match(backup, /checksum verification failed/);
   assert.match(reliability, /createPlatformBackup/);
   assert.match(reliability, /hide_reported_post/);
   assert.match(health, /recentBackup/);
   assert.match(account, /northstarlabs-personal-data-export/);
+  assert.match(account, /notifications: notifications\.results/);
+  assert.match(account, /DELETE FROM in_app_notifications/);
   assert.match(account, /auth\.admin\.deleteUser/);
   assert.match(courseDelete, /DELETE FROM quiz_attempts/);
   assert.match(courseDelete, /media\.cleanup_failed/);
