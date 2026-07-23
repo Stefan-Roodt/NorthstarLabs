@@ -19,6 +19,7 @@ import { useLowBandwidthMode } from "../../../lib/low-bandwidth";
 import { preferredSpeechVoice } from "../../../lib/speech-voices";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 import { ContextualLessonHelp } from "./lesson-help";
+import { LessonConceptVisual } from "./lesson-concept-visual";
 import { InteractiveLessonExperience } from "./lesson-experience";
 type Quiz = {
   id: string;
@@ -1437,10 +1438,13 @@ export default function Learn({
                     effectiveLowBandwidth={effectiveLowBandwidth}
                   />
                 ) : (
-                  <div className="lesson-banner">
-                    {(school?.name || "NorthstarLabs").toUpperCase()} -{" "}
-                    {lesson.lessonType.toUpperCase()} LESSON
-                  </div>
+                  <LessonConceptVisual
+                    academyName={school?.name || "NorthstarLabs"}
+                    lessonType={lesson.lessonType}
+                    moduleTitle={currentSection?.title || "Course content"}
+                    title={lesson.title}
+                    outline={lessonGuide.outline}
+                  />
                 )}{" "}
                 <p className="sys-kicker">
                   LESSON {current + 1} OF {lessons.length}
