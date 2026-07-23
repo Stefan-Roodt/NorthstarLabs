@@ -174,6 +174,90 @@ export async function availableTutorSlug(
   return `${base.slice(0, 38)}-${crypto.randomUUID().slice(0, 15)}`;
 }
 
+export async function ensureCoachDraft(
+  database: D1Database,
+  input: {
+    schoolId: string;
+    userId: string;
+    displayName: string;
+    contactEmail: string;
+  },
+) {
+  const existing = await database.prepare(
+    `SELECT id FROM tutors
+     WHERE school_id=? AND status<>'archived'
+       AND (user_id=? OR created_by=?)
+     ORDER BY updated_at DESC LIMIT 1`,
+  ).bind(input.schoolId, input.userId, input.userId).first<{ id: string }>();
+  if (existing) return { id: existing.id, created: false };
+
+  const displayName = input.displayName.trim().slice(0, 100) ||
+    input.contactEmail.split("@")[0] ||
+    "NorthstarLabs coach";
+  const contactEmail = input.contactEmail.trim().toLowerCase().slice(0, 160);
+  const id = crypto.randomUUID();
+  const now = Date.now();
+  const slug = await availableTutorSlug(database, input.schoolId, displayName);
+  await database.prepare(
+    `INSERT INTO tutors
+      (id,school_id,user_id,created_by,slug,display_name,headline,bio,
+       service_type,subjects_json,languages_json,qualifications,experience_years,
+       price_cents,price_unit,listing_tier,listing_monthly_cents,
+       session_mode,location,timezone,availability,
+       photo_url,contact_email,phone_number,whatsapp_number,booking_url,
+       show_direct_contact,verified,status,created_at,updated_at)
+     SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+     WHERE NOT EXISTS (
+       SELECT 1 FROM tutors
+       WHERE school_id=? AND status<>'archived'
+         AND (user_id=? OR created_by=?)
+     )`,
+  ).bind(
+    id,
+    input.schoolId,
+    input.userId,
+    input.userId,
+    slug,
+    displayName,
+    "",
+    "",
+    "coaching",
+    "[]",
+    "[]",
+    "",
+    0,
+    0,
+    "hour",
+    "listed",
+    0,
+    "online",
+    "",
+    "Africa/Johannesburg",
+    "",
+    null,
+    contactEmail,
+    "",
+    "",
+    null,
+    0,
+    0,
+    "draft",
+    now,
+    now,
+    input.schoolId,
+    input.userId,
+    input.userId,
+  ).run();
+  const draft = await database.prepare(
+    `SELECT id FROM tutors
+     WHERE school_id=? AND status<>'archived'
+       AND (user_id=? OR created_by=?)
+     ORDER BY updated_at DESC LIMIT 1`,
+  ).bind(input.schoolId, input.userId, input.userId).first<{ id: string }>();
+  if (!draft) throw new Error("Coach profile draft could not be initialized.");
+  return { id: draft.id, created: draft.id === id };
+}
+
 export function cleanStringList(value: unknown, maximum = 12) {
   const raw = Array.isArray(value)
     ? value

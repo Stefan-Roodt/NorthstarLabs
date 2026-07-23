@@ -8,6 +8,7 @@ import {
   getUserSchools,
   switchActiveSchool,
 } from "../../../lib/school-access";
+import { ensureCoachDraft } from "../../../lib/tutors";
 
 async function profileResponse(user: NonNullable<Awaited<ReturnType<typeof requireApiUser>>>) {
   const profile = await ensureProfile(user);
@@ -41,7 +42,8 @@ export async function PATCH(request: Request) {
     activeSchoolId?: string;
     createSchoolName?: string;
   };
-  await ensureProfile(user);
+  const profile = await ensureProfile(user);
+  if (!profile) return Response.json({ error: "Profile unavailable." }, { status: 403 });
 
   if (body.createSchoolName !== undefined) {
     const schoolName = body.createSchoolName.trim();
@@ -84,7 +86,19 @@ export async function PATCH(request: Request) {
         { status: 400 },
       );
     }
-    await createCreatorSchool(user, schoolName, body.role === "coach" ? "coach" : "creator");
+    const school = await createCreatorSchool(
+      user,
+      schoolName,
+      body.role === "coach" ? "coach" : "creator",
+    );
+    if (body.role === "coach") {
+      await ensureCoachDraft(env.DB, {
+        schoolId: school.id,
+        userId: user.id,
+        displayName: profile.displayName,
+        contactEmail: user.email,
+      });
+    }
   } else if (body.role === "learner") {
     await env.DB.prepare(
       `UPDATE profiles SET role=CASE WHEN role='creator' THEN role ELSE 'learner' END,

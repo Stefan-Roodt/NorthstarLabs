@@ -712,6 +712,76 @@ test("grants and revokes bundle, community, and live-session access", async () =
   );
 });
 
+test("creates one private coach draft during onboarding and never advertises it early", async () => {
+  const db = await migratedDatabase();
+  const now = Date.UTC(2026, 6, 20, 10);
+  db.exec(`
+    INSERT INTO profiles
+      (id,email,display_name,role,onboarding_path,onboarding_completed,status,created_at)
+    VALUES
+      ('coach-onboarding','coach@example.com','Amina Daniels','creator','coach',1,'active',${now});
+    INSERT INTO schools
+      (id,slug,name,description,primary_color,accent_color,hero_title,hero_description,
+       font_theme,support_email,seo_title,seo_description,show_community,
+       owner_id,status,created_at,updated_at)
+    VALUES
+      ('coach-practice','amina-coaching','Amina Coaching','','#3556d8','#ffbd8a','','',
+       'modern','coach@example.com','','',1,'coach-onboarding','active',${now},${now});
+    INSERT INTO school_members (id,school_id,user_id,role,status,joined_at)
+    VALUES
+      ('coach-practice-owner','coach-practice','coach-onboarding','owner','active',${now});
+  `);
+  const createDraft = (id) => db.prepare(`
+    INSERT INTO tutors
+      (id,school_id,user_id,created_by,slug,display_name,contact_email,status,
+       created_at,updated_at)
+    SELECT ?,?,?,?,?,?,?,'draft',?,?
+    WHERE NOT EXISTS (
+      SELECT 1 FROM tutors
+      WHERE school_id=? AND status<>'archived'
+        AND (user_id=? OR created_by=?)
+    )
+  `).run(
+    id,
+    "coach-practice",
+    "coach-onboarding",
+    "coach-onboarding",
+    "amina-daniels",
+    "Amina Daniels",
+    "coach@example.com",
+    now,
+    now,
+    "coach-practice",
+    "coach-onboarding",
+    "coach-onboarding",
+  );
+  createDraft("coach-draft-first");
+  createDraft("coach-draft-duplicate");
+
+  const draft = db.prepare(`
+    SELECT COUNT(*) AS count,MIN(id) AS id,MIN(status) AS status,
+      MIN(user_id) AS userId,MIN(display_name) AS displayName,
+      MIN(contact_email) AS contactEmail
+    FROM tutors
+    WHERE school_id='coach-practice' AND status<>'archived'
+  `).get();
+  assert.deepEqual({ ...draft }, {
+    count: 1,
+    id: "coach-draft-first",
+    status: "draft",
+    userId: "coach-onboarding",
+    displayName: "Amina Daniels",
+    contactEmail: "coach@example.com",
+  });
+  assert.equal(
+    db.prepare(`
+      SELECT COUNT(*) AS count FROM tutors
+      WHERE school_id='coach-practice' AND status='published'
+    `).get().count,
+    0,
+  );
+});
+
 test("publishes academy tutors and protects learner enquiry details", async () => {
   const db = await migratedDatabase();
   const now = Date.UTC(2026, 6, 19, 12);
