@@ -630,6 +630,31 @@ test("upgrades Modules 1.16 to 1.18 to narrated premium teaching", async () => {
   }
 });
 
+test("upgrades Modules 1.19 to 1.20 to narrated premium teaching", async () => {
+  const [generator, mediaScript, migration] = await Promise.all([
+    readFile(new URL("../scripts/generate-module-1-19-20-premium.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/generate-module-1-19-20-media.ps1", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0073_crypto_mastery_module_1_19_20_premium.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(generator, /module-1-19-fees-and-gas-video/);
+  assert.match(generator, /module-1-20-stablecoin-models-video/);
+  assert.match(mediaScript, /generate-neural-voice\.py/);
+  assert.match(mediaScript, /bm_george/);
+  assert.match(migration, /cmf-module-1-19-lesson-01/);
+  assert.match(migration, /cmf-module-1-20-lesson-01/);
+  assert.match(migration, /required_watch_percent`=75/);
+  assert.match(migration, /Neural-narrated visual lesson for cmf-module-1-19-lesson-01/);
+  for (const file of [
+    "module-1-19-fees-and-gas.mp4",
+    "module-1-20-stablecoin-models.mp4",
+  ]) {
+    const media = await import("node:fs/promises").then(({ stat }) =>
+      stat(new URL(`../public/media/faculty/${file}`, import.meta.url)),
+    );
+    assert.ok(media.size > 1_000_000, `${file} must contain a genuine narrated video`);
+  }
+});
+
 test("turns recovery, exchange use and transaction execution into practical production learning", async () => {
   const [generator, migration] = await Promise.all([
     readFile(new URL("../scripts/generate-foundations-production-batch-4.mjs", import.meta.url), "utf8"),
