@@ -401,17 +401,20 @@ export async function GET(
   const access = await requireCourseStaffAccess(user.id, courseId);
   if (!access) return Response.json({ error: "Course not found" }, { status: 404 });
   const course = await env.DB.prepare(
-    `SELECT id,school_id AS schoolId,title,description,status,
-      price_cents AS priceCents,enforce_lesson_order AS enforceLessonOrder,
-      truth_outcome AS truthOutcome,truth_audience AS truthAudience,
-      truth_not_for AS truthNotFor,truth_prerequisites AS truthPrerequisites,
-      truth_evidence AS truthEvidence,truth_source_standard AS truthSourceStandard,
-      truth_level AS truthLevel,truth_delivery AS truthDelivery,
-      truth_reviewed_at AS truthReviewedAt,
-      available_from AS availableFrom,certificate_title AS certificateTitle,
-      certificate_accent AS certificateAccent,
-      certificate_valid_days AS certificateValidDays,updated_at AS updatedAt
-     FROM courses WHERE id=?`,
+    `SELECT c.id,c.school_id AS schoolId,s.name AS schoolName,s.slug AS schoolSlug,
+      c.title,c.description,c.status,c.price_cents AS priceCents,
+      c.enforce_lesson_order AS enforceLessonOrder,
+      c.truth_outcome AS truthOutcome,c.truth_audience AS truthAudience,
+      c.truth_not_for AS truthNotFor,c.truth_prerequisites AS truthPrerequisites,
+      c.truth_evidence AS truthEvidence,c.truth_source_standard AS truthSourceStandard,
+      c.truth_level AS truthLevel,c.truth_delivery AS truthDelivery,
+      c.truth_reviewed_at AS truthReviewedAt,
+      c.available_from AS availableFrom,c.certificate_title AS certificateTitle,
+      c.certificate_accent AS certificateAccent,
+      c.certificate_valid_days AS certificateValidDays,c.updated_at AS updatedAt
+     FROM courses c
+     JOIN schools s ON s.id=c.school_id
+     WHERE c.id=?`,
     ).bind(courseId).first<{ schoolId: string }>();
   if (!course) return Response.json({ error: "Course not found" }, { status: 404 });
   const [{ media, sections, lessons }, pendingImport] = await Promise.all([

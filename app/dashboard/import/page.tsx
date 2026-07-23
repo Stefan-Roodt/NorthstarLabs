@@ -449,8 +449,8 @@ export default function ImportStudioPage() {
 
   return <main className="import-page">
     <header className="import-topbar">
-      <Link href="/dashboard">Creator workspace</Link>
-      <b>Northstar Migration Studio</b>
+      <Link href="/dashboard?area=courses">&larr; {academy.name} courses</Link>
+      <b>NorthstarLabs / {academy.name} / Import</b>
       <span>Free - private drafts first</span>
     </header>
 
