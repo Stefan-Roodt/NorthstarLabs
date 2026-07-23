@@ -6,6 +6,13 @@ import { getStarterCourse, starterCourses, type CatalogCourse } from "../../lib/
 import { getSupabaseBrowser } from "../../lib/supabase-client";
 import { LearningRequestForm } from "../learning-request-form";
 
+function guidedDuration(course: CatalogCourse, fallback?: string) {
+  if (!course.durationMinutes) return fallback || `${course.lessonCount} lessons`;
+  const hours = Math.max(1, Math.round(course.durationMinutes / 60));
+  const project = fallback?.match(/\+\s*(.+)$/)?.[1];
+  return `${hours} guided ${hours === 1 ? "hour" : "hours"}${project ? ` + ${project}` : ""}`;
+}
+
 export default function Catalog() {
   const [courses, setCourses] = useState<CatalogCourse[]>(starterCourses);
   const [notice, setNotice] = useState("");
@@ -70,7 +77,7 @@ export default function Catalog() {
             <Link href="/learn">My learning</Link>
             <Link href="/account">Account</Link>
           </> : <>
-            <Link href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcreator">Create modules</Link>
+            <Link href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcreator">Build a course</Link>
             <Link href="/login">Sign in</Link>
           </>}
         </nav>
@@ -78,8 +85,8 @@ export default function Catalog() {
 
       <section className="catalog-hero">
         <p className="sys-kicker">NORTHSTARLABS ORIGINALS</p>
-        <h1>Choose a module to take.</h1>
-        <p>This is the learner catalogue. Open a module, inspect its syllabus, and enrol when it is right for you.</p>
+        <h1>Choose a course that moves you forward.</h1>
+        <p>This is the learner catalogue. Open a course, inspect its modules and lessons, then enrol only when the fit is right.</p>
         <div className="catalog-promises" aria-label="Course collection benefits">
           <span>See the syllabus first</span>
           <span>Start as a learner</span>
@@ -96,7 +103,7 @@ export default function Catalog() {
           <p className="sys-kicker">{keyword ? "GOAL-MATCHED RESULTS" : "STARTER COLLECTION"}</p>
           <h2>{keyword ? `${filteredCourses.length} ${filteredCourses.length === 1 ? "course" : "courses"} for "${query.trim()}"` : "Choose your next useful step."}</h2>
         </div>
-        <p>{keyword ? "Inspect the promise and structure before enrolling. If nothing fits, NorthstarLabs can look for a coach or a more relevant course." : "Each course is deliberately short, action-focused, and built inside the same learning experience your own students can use."}</p>
+        <p>{keyword ? "Inspect the promise and structure before enrolling. If nothing fits, NorthstarLabs can look for a coach or a more relevant course." : "Each course is outcome-led, action-focused, and built inside the same learning experience your own students can use."}</p>
       </section>
 
       {notice && <p className="catalog-notice" role="status">{notice}</p>}
@@ -112,15 +119,22 @@ export default function Catalog() {
               </div>
               <p className="sys-kicker">
                 {course.lessonCount} LESSONS
-                {starter?.duration ? ` - ${starter.duration.toUpperCase()}` : ""}
+                {` - ${guidedDuration(course, starter?.duration).toUpperCase()}`}
               </p>
               <h2>{course.title}</h2>
               <p>{course.description || "A focused course designed to help you make meaningful progress."}</p>
+              <div className="catalog-card-proof" aria-label="Course structure">
+                <span>{course.sectionCount || "—"} modules</span>
+                <span>{course.assessmentCount || "—"} assessed checks</span>
+                <span>{course.playableVideoCount
+                  ? `${course.playableVideoCount} faculty video${course.playableVideoCount === 1 ? "" : "s"}`
+                  : "Guided lessons"}</span>
+              </div>
               <div className="catalog-card-meta">
                 <span>By {course.creator || "NorthstarLabs"}</span>
                 <b>{course.priceCents ? `R${(course.priceCents / 100).toFixed(0)}` : "Free"}</b>
               </div>
-              <a className="sys-primary" href={`/courses/${course.id}`}>View module syllabus →</a>
+              <a className="sys-primary" href={`/courses/${course.id}`}>View course syllabus →</a>
             </article>
           );
         })}
@@ -142,11 +156,11 @@ export default function Catalog() {
 
       <section className="catalog-creator-cta">
         <div>
-          <p className="sys-kicker">TEACH SOMETHING NEXT</p>
-          <h2>Want to build modules instead?</h2>
-          <p>This is the creator route: open your academy, create your modules, then publish them for your learners.</p>
+          <p className="sys-kicker">CREATOR ROUTE</p>
+          <h2>Want to teach instead?</h2>
+          <p>Create an academy, build a course from modules and lessons, then publish it for your learners.</p>
         </div>
-        <a className="sys-primary" href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcreator">Create an academy →</a>
+        <a className="sys-primary" href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcreator">Build a course →</a>
       </section>
 
       <footer className="catalog-footer">

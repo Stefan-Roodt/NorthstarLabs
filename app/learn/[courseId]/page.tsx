@@ -1506,10 +1506,12 @@ export default function Learn({
                     <div>
                       <b>
                         {watchRequirementMet
-                          ? "Video requirement complete"
+                          ? lesson.completed
+                            ? "Video requirement complete"
+                            : "Watch target reached"
                           : `Watch ${lesson.requiredWatchPercent}% to complete`}
                       </b>
-                      <span>{lesson.watchedPercent}% watched</span>
+                      <span>{lesson.watchedPercent}% watched{watchRequirementMet && !lesson.completed ? " · Finish the lesson below" : ""}</span>
                     </div>{" "}
                     <i>
                       <b

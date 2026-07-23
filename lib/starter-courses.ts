@@ -4,6 +4,10 @@ export type CatalogCourse = {
   description: string;
   priceCents: number;
   lessonCount: number;
+  durationMinutes?: number;
+  sectionCount?: number;
+  assessmentCount?: number;
+  playableVideoCount?: number;
   creator: string;
   schoolId?: string;
   schoolName?: string;
@@ -29,12 +33,16 @@ export const starterCourses: StarterCourse[] = [
     description: "Turn generative AI from an occasional chatbot into a reliable, governed work system that saves time and improves the quality of real decisions.",
     priceCents: 0,
     lessonCount: 12,
+    durationMinutes: 320,
+    sectionCount: 4,
+    assessmentCount: 4,
+    playableVideoCount: 1,
     creator: "NorthstarLabs Studio",
     schoolId: "northstarlabs",
     schoolName: "NorthstarLabs",
     schoolSlug: "northstarlabs",
     category: "Signature programme · AI",
-    duration: "6 hours + capstone",
+    duration: "5 guided hours + capstone",
     level: "Ambitious beginner to professional",
     format: "Studio labs + portfolio challenge",
     artClass: "course-art-ai",
@@ -71,12 +79,16 @@ export const starterCourses: StarterCourse[] = [
     description: "An evidence-led investigation of Bitcoin’s engineering, economics, custody, governance, regulation, risks, and plausible futures—built for people who must form their own judgement.",
     priceCents: 0,
     lessonCount: 35,
+    durationMinutes: 210,
+    sectionCount: 7,
+    assessmentCount: 7,
+    playableVideoCount: 1,
     creator: "NorthstarLabs Studio",
     schoolId: "northstarlabs",
     schoolName: "NorthstarLabs",
     schoolSlug: "northstarlabs",
     category: "Signature programme · Bitcoin",
-    duration: "14 hours + board briefing",
+    duration: "4 guided hours + board briefing",
     level: "Foundation to strategic",
     format: "Investigations + simulations + boardroom capstone",
     artClass: "course-art-pricing",
@@ -113,12 +125,16 @@ export const starterCourses: StarterCourse[] = [
     description: "A sceptical, hands-on product studio for deciding when decentralised technology earns its complexity—and designing safer systems when it does.",
     priceCents: 0,
     lessonCount: 24,
+    durationMinutes: 144,
+    sectionCount: 6,
+    assessmentCount: 6,
+    playableVideoCount: 1,
     creator: "NorthstarLabs Studio",
     schoolId: "northstarlabs",
     schoolName: "NorthstarLabs",
     schoolSlug: "northstarlabs",
     category: "Signature programme · Web3",
-    duration: "10 hours + product defence",
+    duration: "2 guided hours + product defence",
     level: "Foundation to product builder",
     format: "Architecture labs + threat modelling + product defence",
     artClass: "course-art-community",
