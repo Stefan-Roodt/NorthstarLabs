@@ -490,7 +490,7 @@ export default function ImportStudioPage() {
 
         <article className="import-input-card documents">
           <p className="sys-kicker">DOCUMENT SEQUENCE</p><h3>A folder of files becomes a real course</h3>
-          <p>Upload one ZIP of Word files, or select individual documents. Northstar reads DOCX content, uses natural filename order, and keeps every original as a protected source file.</p>
+          <p>Upload one ZIP of Word, Markdown, text or HTML files, or select individual documents. Northstar reads the content, uses natural filename order, and keeps every original as a protected source file.</p>
           <label>Course title<input value={courseTitle} onChange={(event) => { setCourseTitle(event.target.value); invalidatePreview(); }} placeholder="e.g. Digital Assets Foundations" /></label>
           <label className="import-file-label"><input multiple type="file" accept=".zip,.pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.html" onChange={(event) => void chooseDocuments(event)} disabled={busy === "documents"} /><span>{busy === "documents" ? "Reading documents..." : documents.length ? `${documents.length} documents ready` : "Choose documents or one ZIP"}</span><b>{busy === "documents" ? "Wait" : "Browse"}</b></label>
           <small className="import-file-help">Up to {MAX_DOCUMENT_SEQUENCE_FILES} documents. Word text stays on this device until you inspect and approve the private draft.</small>
