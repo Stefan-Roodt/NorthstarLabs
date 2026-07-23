@@ -118,3 +118,8 @@
 @media(max-width:760px){.import-history-actions{grid-column:2;justify-content:flex-start;flex-wrap:wrap}}
 .builder-import-blocker{margin:0 0 20px;padding:24px 26px;display:flex;align-items:center;justify-content:space-between;gap:24px;border:1px solid #b34f18;background:#fff0e7}.builder-import-blocker h2{margin:7px 0 8px;font:700 24px/1.05 var(--font-display);letter-spacing:-.03em}.builder-import-blocker p:last-child{margin:0;max-width:740px;color:var(--muted);font-size:10px;line-height:1.55}.builder-import-blocker>a{flex:none;padding:13px 16px;border-radius:8px;background:#9c3d10;color:#fff;font-size:9px;font-weight:900}.builder-import-blocker .sys-kicker{color:#9c3d10}
 @media(max-width:700px){.builder-import-blocker{align-items:flex-start;flex-direction:column}.builder-import-blocker>a{width:100%;text-align:center}}
+
+/* Keep every import step inside the viewport, including long filenames. */
+.import-page{overflow-x:clip}.import-hero>*,.import-workspace>*,.import-input-grid>*,.import-autopilot>*,.import-history>*,.document-sequence li>div{min-width:0}.import-provider-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:1050px){.import-provider-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.import-provider-grid{grid-template-columns:minmax(0,1fr)}}

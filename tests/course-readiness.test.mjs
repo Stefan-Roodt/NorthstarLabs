@@ -1,0 +1,51 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { getCourseReadiness } from "../lib/course-readiness.ts";
+
+function courseWithLesson(overrides = {}) {
+  return {
+    title: "Media integrity course",
+    description: "A complete course promise that explains the audience, useful outcome and practical evidence.",
+    certificateTitle: "Certificate of completion",
+    sections: [{ id: "section-1", title: "Start here" }],
+    lessons: [{
+      id: "lesson-1",
+      sectionId: "section-1",
+      title: "Watch the lesson",
+      lessonType: "video",
+      content: "## Your outcome\n\nExplain the idea clearly after watching the lesson.",
+      durationMinutes: 6,
+      transcript: "This reviewed transcript contains enough words to support accessibility, revision and low bandwidth learning for every participant who completes this focused lesson experience today.",
+      resources: [],
+      quiz: null,
+      ...overrides,
+    }],
+  };
+}
+
+test("does not treat an orphaned media id as playable lesson media", () => {
+  const readiness = getCourseReadiness(courseWithLesson({
+    primaryAssetId: "missing-media-row",
+    primaryAsset: null,
+    videoKey: "",
+  }));
+
+  assert.ok(readiness.blockers.some((issue) => issue.id === "lesson-1-media"));
+});
+
+test("accepts a joined media asset or supported protected media key", () => {
+  const joined = getCourseReadiness(courseWithLesson({
+    primaryAssetId: "asset-1",
+    primaryAsset: {
+      id: "asset-1",
+      filename: "lesson.mp4",
+      kind: "video",
+    },
+  }));
+  const protectedKey = getCourseReadiness(courseWithLesson({
+    videoKey: "static:/media/faculty/lesson.mp4",
+  }));
+
+  assert.ok(!joined.blockers.some((issue) => issue.id === "lesson-1-media"));
+  assert.ok(!protectedKey.blockers.some((issue) => issue.id === "lesson-1-media"));
+});

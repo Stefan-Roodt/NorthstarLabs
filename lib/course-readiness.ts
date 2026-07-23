@@ -83,6 +83,24 @@ function isPlaceholderMedia(lesson: ReadinessLesson) {
     /\bcmf-module-[23]-premium-track\b/.test(identifiers);
 }
 
+function hasUsablePrimaryAsset(lesson: ReadinessLesson) {
+  const assetId = lesson.primaryAsset?.id?.trim() || "";
+  const filename = lesson.primaryAsset?.filename?.trim() || "";
+  const kind = lesson.primaryAsset?.kind?.trim() || "";
+  return Boolean(
+    assetId &&
+    filename &&
+    ["video", "audio", "image"].includes(kind) &&
+    (!lesson.primaryAssetId || lesson.primaryAssetId === assetId),
+  );
+}
+
+function hasPlayableMediaReference(lesson: ReadinessLesson) {
+  const key = lesson.videoKey?.trim() || "";
+  return hasUsablePrimaryAsset(lesson) ||
+    /^(r2:|static:|https:\/\/)/i.test(key);
+}
+
 export function getCourseReadiness(course: ReadinessCourse) {
   const issues: CourseReadinessIssue[] = [];
   let earned = 0;
@@ -163,7 +181,7 @@ export function getCourseReadiness(course: ReadinessCourse) {
 
   for (const lesson of course.lessons) {
     const lessonTitle = lesson.title.trim() || "Untitled lesson";
-    const hasMedia = Boolean(lesson.primaryAssetId || lesson.primaryAsset || lesson.videoKey);
+    const hasMedia = hasPlayableMediaReference(lesson);
     const hasSubstance = lesson.content.trim().length > 0 || hasMedia || lesson.resources.length > 0;
     const guide = getLessonGuide(lesson.content);
     const isMediaLesson = ["video", "audio"].includes(lesson.lessonType);

@@ -125,9 +125,9 @@ function formatBytes(bytes: number) {
 }
 
 function assetIcon(kind: string) {
-  if (kind === "video") return "?";
-  if (kind === "audio") return "?";
-  if (kind === "image") return "?";
+  if (kind === "video") return "VID";
+  if (kind === "audio") return "AUD";
+  if (kind === "image") return "IMG";
   if (kind === "archive") return "ZIP";
   return "DOC";
 }
@@ -234,7 +234,7 @@ function drawCinematicFrame(
   context.fillRect(left, height - 58, (width - left * 2) * progress, 5);
   context.fillStyle = "#ffffff";
   context.font = "700 18px Arial, sans-serif";
-  context.fillText("?", width - left - 24, height - 79);
+  context.fillText("N", width - left - 24, height - 79);
 }
 
 export default function CourseBuilder({ params }: { params: Promise<{ courseId: string }> }) {
@@ -1087,7 +1087,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
 
   return <main className="builder-page builder-page-expanded">
     <header className="builder-top">
-      <Link href="/dashboard">? Creator workspace</Link>
+      <Link href="/dashboard">&larr; Creator workspace</Link>
       <div>
         <input
           aria-label="Course title"
@@ -1137,9 +1137,9 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                   onBlur={() => saveSection(section)}
                 />
                 <div>
-                  <button title="Move section up" disabled={sectionIndex === 0} onClick={() => moveSection(section.id, -1)}>?</button>
-                  <button title="Move section down" disabled={sectionIndex === course.sections.length - 1} onClick={() => moveSection(section.id, 1)}>?</button>
-                  <button title="Delete section" onClick={() => deleteSection(section)}>|</button>
+                  <button aria-label="Move section up" title="Move section up" disabled={sectionIndex === 0} onClick={() => moveSection(section.id, -1)}>&uarr;</button>
+                  <button aria-label="Move section down" title="Move section down" disabled={sectionIndex === course.sections.length - 1} onClick={() => moveSection(section.id, 1)}>&darr;</button>
+                  <button aria-label="Delete section" title="Delete section" onClick={() => deleteSection(section)}>&times;</button>
                 </div>
               </header>
               <div className="curriculum-lessons">
@@ -1171,8 +1171,8 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                         </div>
                       </button>
                       <div className="lesson-order-controls">
-                        <button disabled={lessonIndex === 0} onClick={() => moveLesson(lesson.id, -1)}>?</button>
-                        <button disabled={lessonIndex === siblings.length - 1} onClick={() => moveLesson(lesson.id, 1)}>?</button>
+                        <button aria-label={`Move ${lesson.title} up`} disabled={lessonIndex === 0} onClick={() => moveLesson(lesson.id, -1)}>&uarr;</button>
+                        <button aria-label={`Move ${lesson.title} down`} disabled={lessonIndex === siblings.length - 1} onClick={() => moveLesson(lesson.id, 1)}>&darr;</button>
                       </div>
                     </article>
                   )}
@@ -1186,7 +1186,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
           )}
         </div>
         <button className="media-library-button" onClick={() => setWorkspaceTab("media")}>
-          <span>?</span><div><b>Academy media library</b><small>{course.media.length} reusable files</small></div>
+          <span>MEDIA</span><div><b>Academy media library</b><small>{course.media.length} reusable files</small></div>
         </button>
       </aside>
 
@@ -1237,7 +1237,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                   <h3>{issue.title}</h3>
                   <p>{issue.detail}</p>
                 </div>
-                <button onClick={() => openQualityIssue(issue)}>{issue.action} ?</button>
+                <button onClick={() => openQualityIssue(issue)}>{issue.action} &rarr;</button>
               </article>)}
             </div>
           </section>}
@@ -1261,7 +1261,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
           </section>}
 
           {!readiness.issues.length && <section className="quality-complete">
-            <span>?</span>
+            <span>READY</span>
             <div><p className="sys-kicker">QUALITY REVIEW COMPLETE</p><h2>The course is ready for a real learner.</h2><p>Preview the full journey once, then publish with confidence.</p></div>
             <Link className="sys-primary" href={`/learn/${course.id}?preview=1`}>Run final preview</Link>
           </section>}
@@ -1465,10 +1465,11 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               </label>
             </section>
 
-            <section className="primary-media-editor">
-              <div><p className="sys-kicker">PRIMARY MEDIA</p><h2>{selected.primaryAsset ? selected.primaryAsset.filename : selected.videoKey?.startsWith("r2:") ? "Existing lesson video" : "Add video, audio, or an image"}</h2><p>{selected.primaryAsset ? `${selected.primaryAsset.kind} | ${formatBytes(selected.primaryAsset.sizeBytes)}` : selected.videoKey?.startsWith("r2:") ? "This earlier upload remains securely attached. Upload it again only if you want it in the reusable library." : "Choose from your academy library or upload something new."}</p></div>
+            <section className={`primary-media-editor${selected.primaryAssetId && !selected.primaryAsset && !selected.videoKey ? " missing-media" : ""}`}>
+              <div><p className="sys-kicker">PRIMARY MEDIA</p><h2>{selected.primaryAsset ? selected.primaryAsset.filename : selected.videoKey?.startsWith("r2:") ? "Existing lesson video" : selected.primaryAssetId ? "Media file missing" : "Add video, audio, or an image"}</h2><p>{selected.primaryAsset ? `${selected.primaryAsset.kind} | ${formatBytes(selected.primaryAsset.sizeBytes)}` : selected.videoKey?.startsWith("r2:") ? "This earlier upload remains securely attached. Upload it again only if you want it in the reusable library." : selected.primaryAssetId ? "The saved media reference no longer points to a reusable academy file. Replace it before publishing." : "Choose from your academy library or upload something new."}</p></div>
               <button type="button" onClick={() => setWorkspaceTab("media")}>{selected.primaryAsset ? "Change media" : "Open media library"}</button>
               {selected.primaryAsset && <button type="button" onClick={() => editLesson({ primaryAssetId: null, primaryAsset: null })}>Remove</button>}
+              {!selected.primaryAsset && selected.primaryAssetId && <button type="button" onClick={() => editLesson({ primaryAssetId: null, primaryAsset: null })}>Clear missing reference</button>}
               {!selected.primaryAsset && selected.videoKey?.startsWith("r2:") && <button type="button" onClick={() => editLesson({ videoKey: "" })}>Remove</button>}
             </section>
 
@@ -1521,11 +1522,11 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                   </div>
                   <div className="media-production-actions">
                     {mediaProduction === "recording"
-                      ? <button className="record-stop" type="button" onClick={stopNarrationRecording}>? Stop & attach</button>
-                      : <button className="production-primary" type="button" disabled={Boolean(mediaProduction)} onClick={startNarrationRecording}>? Record narration</button>}
+                      ? <button className="record-stop" type="button" onClick={stopNarrationRecording}>Stop &amp; attach</button>
+                      : <button className="production-primary" type="button" disabled={Boolean(mediaProduction)} onClick={startNarrationRecording}>Record narration</button>}
                     <button type="button" disabled={Boolean(mediaProduction)} onClick={() => narrationInput.current?.click()}>Upload audio</button>
                   </div>
-                  {selected.transcript.trim() && <button className="advanced-media-action" type="button" disabled={studioBusy || Boolean(mediaProduction)} onClick={generateStudioNarration}>{studioBusy ? "AI narrator is working." : "Use a connected AI narrator ?"}</button>}
+                  {selected.transcript.trim() && <button className="advanced-media-action" type="button" disabled={studioBusy || Boolean(mediaProduction)} onClick={generateStudioNarration}>{studioBusy ? "AI narrator is working." : "Use a connected AI narrator"}</button>}
                 </article>
 
                 <article className="caption-production-card">
@@ -1549,7 +1550,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                 </article>
 
                 <article className="cinematic-production-card">
-                  <div className="cinematic-preview" aria-hidden="true"><span>? NORTHSTARLABS</span><b>{selected.title}</b><i /></div>
+                  <div className="cinematic-preview" aria-hidden="true"><span>NORTHSTARLABS</span><b>{selected.title}</b><i /></div>
                   <p className="sys-kicker">CINEMATIC INTRO</p>
                   <h3>Generate a branded opening clip.</h3>
                   <p>Create a polished six-second 16:9 title animation that plays before the main lesson media. No model, credits or external key required.</p>
@@ -1563,7 +1564,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                     <button type="button" disabled={Boolean(mediaProduction)} onClick={() => videoInput.current?.click()}>Upload main video</button>
                   </div>
                   {selected.introAsset && <button className="advanced-media-action" type="button" onClick={() => editLesson({ introAssetId: null, introAsset: null })}>Remove opening clip</button>}
-                  <Link className="advanced-media-action" href="/dashboard/integrations#creator-studio-providers">Advanced AI production options ?</Link>
+                  <Link className="advanced-media-action" href="/dashboard/integrations#creator-studio-providers">Advanced AI production options &rarr;</Link>
                 </article>
               </div>
               <footer><b>Nothing is published automatically.</b><span>Preview the complete sequence as a learner. The opening, main media and captions remain separate so one can never destroy another.</span></footer>
