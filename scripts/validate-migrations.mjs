@@ -118,11 +118,12 @@ const aiCommandCourse = database.prepare(`
 const cryptoMasteryCourse = database.prepare(`
   SELECT c.id,c.status,c.school_id AS schoolId,
     COUNT(DISTINCT cs.id) AS sections,COUNT(DISTINCT l.id) AS lessons,
-    COUNT(DISTINCT q.id) AS quizzes
+    COUNT(DISTINCT q.id) AS quizzes,COUNT(DISTINCT qq.id) AS quizQuestions
   FROM courses c
   LEFT JOIN course_sections cs ON cs.course_id=c.id
   LEFT JOIN lessons l ON l.course_id=c.id
   LEFT JOIN quizzes q ON q.lesson_id=l.id
+  LEFT JOIN quiz_questions qq ON qq.quiz_id=q.id
   WHERE c.id='cognizen-crypto-mastery-foundations-production'
   GROUP BY c.id
 `).get();
@@ -134,6 +135,37 @@ const emptyCryptoMasterySections = database.prepare(`
   GROUP BY cs.id,cs.title
   HAVING COUNT(l.id)=0
   ORDER BY cs.position,cs.id
+`).all();
+const cryptoMasteryAssessmentGaps = database.prepare(`
+  SELECT cs.id,cs.title
+  FROM course_sections cs
+  LEFT JOIN lessons l ON l.section_id=cs.id
+  LEFT JOIN quizzes q ON q.lesson_id=l.id
+  WHERE cs.course_id='cognizen-crypto-mastery-foundations-production'
+  GROUP BY cs.id,cs.title
+  HAVING COUNT(DISTINCT q.id)=0
+`).all();
+const appliedCryptoMasteryAssessments = database.prepare(`
+  SELECT COUNT(DISTINCT q.id) AS quizzes,COUNT(DISTINCT qq.id) AS questions
+  FROM quizzes q
+  JOIN lessons l ON l.id=q.lesson_id
+  LEFT JOIN quiz_questions qq ON qq.quiz_id=q.id
+  WHERE l.course_id='cognizen-crypto-mastery-foundations-production'
+    AND l.content LIKE '%Answer all five questions%'
+`).get();
+const cryptoMasteryQuestionQualityIssues = database.prepare(`
+  SELECT qq.id
+  FROM quiz_questions qq
+  JOIN quizzes q ON q.id=qq.quiz_id
+  JOIN lessons l ON l.id=q.lesson_id
+  WHERE l.course_id='cognizen-crypto-mastery-foundations-production'
+    AND (
+      json_array_length(qq.options_json)<2 OR
+      qq.correct_index<0 OR
+      qq.correct_index>=json_array_length(qq.options_json) OR
+      trim(qq.explanation)='' OR
+      trim(qq.concept_label)=''
+    )
 `).all();
 
 if (!tables.some((table) => table.name === "schools")) {
@@ -181,15 +213,31 @@ if (!aiCommandCourse ||
 if (
   !cryptoMasteryCourse ||
   cryptoMasteryCourse.sections !== 95 ||
-  cryptoMasteryCourse.lessons !== 718
+  cryptoMasteryCourse.lessons !== 724 ||
+  cryptoMasteryCourse.quizzes !== 95 ||
+  cryptoMasteryCourse.quizQuestions !== 576
 ) {
-  throw new Error("Crypto Mastery did not migrate with all 95 sections and 718 lessons.");
+  throw new Error("Crypto Mastery did not migrate with the complete curriculum and assessments.");
 }
 if (emptyCryptoMasterySections.length > 0) {
   throw new Error(
     `Crypto Mastery contains ${emptyCryptoMasterySections.length} empty curriculum sections: ` +
     emptyCryptoMasterySections.slice(0, 5).map((section) => section.title).join(", "),
   );
+}
+if (cryptoMasteryAssessmentGaps.length > 0) {
+  throw new Error(
+    `Crypto Mastery contains ${cryptoMasteryAssessmentGaps.length} sections without a native assessment.`,
+  );
+}
+if (
+  appliedCryptoMasteryAssessments.quizzes !== 62 ||
+  appliedCryptoMasteryAssessments.questions !== 310
+) {
+  throw new Error("The Part 2 and Part 3 applied-assessment pass is incomplete.");
+}
+if (cryptoMasteryQuestionQualityIssues.length > 0) {
+  throw new Error("Crypto Mastery contains malformed questions or questions without teaching feedback.");
 }
 if (!tables.some((table) => table.name === "school_members")) {
   throw new Error("The school_members table was not created.");
@@ -356,7 +404,7 @@ const cryptoMasteryProfileCount = (lessonType) =>
 if (
   cryptoMasteryProfileCount("video") !== 39 ||
   cryptoMasteryProfileCount("interactive") !== 57 ||
-  cryptoMasteryProfileCount("quiz") !== 32
+  cryptoMasteryProfileCount("quiz") !== 94
 ) {
   throw new Error("Crypto Mastery does not preserve the intended dedicated-video, interactive and quiz lesson mix.");
 }

@@ -175,6 +175,8 @@ console.log(JSON.stringify({
   score: readiness.score,
   label: readiness.label,
   lessons: lessons.length,
+  quizzes: quizzes.size,
+  quizQuestions: quizRows.filter((row) => row.prompt).length,
   blockers: readiness.blockers.length,
   improvements: readiness.improvements.length,
   counts,
