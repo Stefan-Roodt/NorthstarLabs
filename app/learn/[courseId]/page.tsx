@@ -236,7 +236,7 @@ function LessonTranscriptNarrator({
           aria-pressed={playing}
         >
           {" "}
-          {playing ? `Pause narration` : `Narrate ${lessonTitle}`}{" "}
+          {playing ? "Pause read-aloud" : `Read ${lessonTitle} aloud`}{" "}
         </button>{" "}
         <label>
           {" "}
@@ -305,6 +305,7 @@ function MediaViewer({
     !effectiveLowBandwidth && !isProtectedMediaKey(asset.key) ? asset.key : "",
   );
   const [error, setError] = useState("");
+  const [slowAttempt, setSlowAttempt] = useState(-1);
   const [renewal, setRenewal] = useState(0);
   const [captionUrl, setCaptionUrl] = useState("");
   const lastWatchReport = useRef(0);
@@ -353,6 +354,12 @@ function MediaViewer({
     mediaRequested,
     renewal,
   ]);
+  useEffect(() => {
+    if (!mediaRequested || source || error) return;
+    const timer = window.setTimeout(() => setSlowAttempt(renewal), 8_000);
+    return () => window.clearTimeout(timer);
+  }, [error, mediaRequested, renewal, source]);
+  const slow = slowAttempt === renewal && !source && !error;
   useEffect(
     () => () => {
       if (captionUrl) URL.revokeObjectURL(captionUrl);
@@ -421,8 +428,18 @@ function MediaViewer({
     );
   if (!source)
     return (
-      <div className="media-placeholder">
-        <p>Loading lesson media.</p>
+      <div className="media-placeholder media-loading-card" role="status" aria-live="polite">
+        <span className="media-loading-orbit" aria-hidden="true"><i /></span>
+        <div>
+          <small>PROTECTED LESSON MEDIA</small>
+          <h2>{slow ? "The recorded lesson is taking longer than expected." : "Preparing your recorded lesson"}</h2>
+          <p>{slow
+            ? "The lesson below is ready while secure playback reconnects."
+            : "Authorising secure playback. You can begin with the lesson guide while this finishes."}</p>
+          {slow && <button type="button" onClick={() => setRenewal((current) => current + 1)}>
+            Try secure playback again
+          </button>}
+        </div>
       </div>
     );
   if (activeAsset.kind === "image") {
@@ -470,7 +487,6 @@ function MediaViewer({
           playsInline
           preload={effectiveLowBandwidth ? "none" : "metadata"}
           src={source}
-          autoPlay={!effectiveLowBandwidth}
           onLoadedMetadata={prepareCaptions}
           onTimeUpdate={reportVideoProgress}
           onEnded={finishVideo}
@@ -1028,6 +1044,7 @@ export default function Learn({
     (section) => section.id === lesson.sectionId,
   );
   const lessonGuide = getLessonGuide(lesson.content);
+  const hasRecordedMedia = ["video", "audio"].includes(lesson.primaryAsset?.kind || "");
   const normalizedSearch = search.trim().toLowerCase();
   const watchRequirementMet =
     lesson.requiredWatchPercent <= lesson.watchedPercent;
@@ -1504,7 +1521,10 @@ export default function Learn({
                   </div>
                 )}{" "}
                 {lesson.experience && (
-                  <InteractiveLessonExperience experience={lesson.experience} />
+                  <InteractiveLessonExperience
+                    experience={lesson.experience}
+                    allowBrowserNarration={!hasRecordedMedia}
+                  />
                 )}{" "}
                 {lesson.content ? (
                   lesson.experience ? (
@@ -1534,11 +1554,13 @@ export default function Learn({
                     lesson.
                   </p>
                 )}{" "}
-                <LessonTranscriptNarrator
-                  transcript={lesson.transcript}
-                  lessonContent={lesson.content}
-                  lessonTitle={lesson.title}
-                />{" "}
+                {!hasRecordedMedia && (
+                  <LessonTranscriptNarrator
+                    transcript={lesson.transcript}
+                    lessonContent={lesson.content}
+                    lessonTitle={lesson.title}
+                  />
+                )}{" "}
                 {!preview && (
                   <ContextualLessonHelp
                     key={lesson.id}

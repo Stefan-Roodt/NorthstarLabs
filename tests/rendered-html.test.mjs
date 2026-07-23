@@ -288,6 +288,8 @@ test("turns Module 2.3 into a native interactive learning pilot", async () => {
   assert.match(experience, /DECISION POINT/);
   assert.match(experience, /CONFIDENCE LAB/);
   assert.match(experience, /speechSynthesis/);
+  assert.match(experience, /Accessibility read-aloud/);
+  assert.match(experience, /allowBrowserNarration/);
   assert.match(learnerPage, /InteractiveLessonExperience/);
   assert.match(learnerPage, /Open the source-backed reference notes/);
 });
@@ -2030,6 +2032,9 @@ test("keeps course context through registration and welcomes new enrolments into
   assert.match(learn, /YOU ARE ENROLLED/);
   assert.match(learn, /Start my first lesson/);
   assert.match(learn, /history\.replaceState/);
+  assert.match(learn, /Preparing your recorded lesson/);
+  assert.match(learn, /hasRecordedMedia/);
+  assert.match(learn, /allowBrowserNarration=\{!hasRecordedMedia\}/);
   assert.match(styles, /\.auth-course-context/);
   assert.match(styles, /\.first-lesson-welcome/);
 });
@@ -2069,6 +2074,7 @@ Apply it.`);
   assert.doesNotMatch(learn, /continue \?/i);
   assert.match(guideSource, /getLessonGuide/);
   assert.match(styles, /\.lesson-brief/);
+  assert.match(styles, /\.media-loading-card/);
   assert.match(styles, /\.learn-page\.focus-mode/);
 });
 
@@ -2453,7 +2459,7 @@ test("gives learners a persistent low-bandwidth, text-first course mode", async 
   assert.ok(player.indexOf("if (!mediaRequested) return;") < player.indexOf('fetch("/api/media/playback"'));
   assert.match(player, /setMediaRequested\(true\)/);
   assert.match(player, /preload=\{effectiveLowBandwidth \? "none" : "metadata"\}/);
-  assert.match(player, /autoPlay=\{!effectiveLowBandwidth/);
+  assert.doesNotMatch(player, /autoPlay=\{!effectiveLowBandwidth/);
   assert.match(player, /Only the open lesson&apos;s text and activities are transferred/);
   assert.match(player, /Text-first lesson ready/);
   assert.match(player, /school\?\.logoUrl && !effectiveLowBandwidth/);
