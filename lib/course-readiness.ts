@@ -68,6 +68,22 @@ export type CourseReadinessCoverageSignal = {
   detail: string;
 };
 
+export type CourseProductionLesson = {
+  id: string;
+  title: string;
+  hasTranscript: boolean;
+  hasMedia: boolean;
+};
+
+export type CourseProductionSection = {
+  sectionId: string;
+  sectionTitle: string;
+  ready: number;
+  total: number;
+  percent: number;
+  missingLessons: CourseProductionLesson[];
+};
+
 export type CourseReadinessPayload = {
   title: string;
   description: string;
@@ -389,6 +405,7 @@ export function getCourseReadiness(course: ReadinessCourse) {
 
   const instructionalLessons = course.lessons.filter((lesson) => lesson.lessonType !== "quiz");
   const narratedLessons = instructionalLessons.filter(hasNarratedTeaching);
+  const narratedLessonIds = new Set(narratedLessons.map((lesson) => lesson.id));
   const guidedPracticeLessons = instructionalLessons.filter(hasGuidedPractice);
   const assessedSections = course.sections.filter((section) =>
     course.lessons.some((lesson) => lesson.sectionId === section.id && Boolean(lesson.quiz))
@@ -400,6 +417,31 @@ export function getCourseReadiness(course: ReadinessCourse) {
   const accessibleRecordedMediaLessons = recordedMediaLessons.filter((lesson) =>
     wordCount(lesson.transcript) >= 40
   );
+  const productionQueue = course.sections.map((section): CourseProductionSection => {
+    const lessons = instructionalLessons.filter((lesson) => lesson.sectionId === section.id);
+    const missingLessons = lessons
+      .filter((lesson) => !narratedLessonIds.has(lesson.id))
+      .map((lesson) => {
+        const mediaKind = lesson.primaryAsset?.kind || lesson.lessonType;
+        return {
+          id: lesson.id,
+          title: lesson.title,
+          hasTranscript: wordCount(lesson.transcript) >= 40,
+          hasMedia: ["video", "audio"].includes(mediaKind) &&
+            hasPlayableMediaReference(lesson) &&
+            !isPlaceholderMedia(lesson),
+        };
+      });
+    const ready = lessons.length - missingLessons.length;
+    return {
+      sectionId: section.id,
+      sectionTitle: section.title,
+      ready,
+      total: lessons.length,
+      percent: lessons.length ? Math.round((ready / lessons.length) * 100) : 0,
+      missingLessons,
+    };
+  }).filter((section) => section.total > 0);
   const productionCoverage = {
     narratedTeaching: coverageSignal(
       narratedLessons.length,
@@ -477,6 +519,7 @@ export function getCourseReadiness(course: ReadinessCourse) {
     improvements,
     lessonIssueCounts,
     productionCoverage,
+    productionQueue,
     earnedPoints: earned,
     totalPoints: possible,
   };

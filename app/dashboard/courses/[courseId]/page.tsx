@@ -261,6 +261,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   const [launchGuideDismissed, setLaunchGuideDismissed] = useState(false);
   const [curriculumQuery, setCurriculumQuery] = useState("");
   const [openSectionIds, setOpenSectionIds] = useState<Set<string>>(new Set());
+  const [showAllProductionSections, setShowAllProductionSections] = useState(false);
   const revision = useRef(0);
   const contentEditor = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -279,6 +280,12 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   const readiness = useMemo(
     () => course ? getCourseReadiness(course) : null,
     [course],
+  );
+  const productionMissingLessonIds = useMemo(
+    () => new Set(readiness?.productionQueue.flatMap((section) =>
+      section.missingLessons.map((lesson) => lesson.id)
+    ) || []),
+    [readiness],
   );
 
   const token = useCallback(async () => {
@@ -446,6 +453,16 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   }
 
   function openQualityIssue(issue: CourseReadinessIssue) {
+    if (issue.id === "course-narrated-teaching") {
+      setWorkspaceTab("review");
+      requestAnimationFrame(() => {
+        document.getElementById("production-queue")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+      return;
+    }
     if (issue.lessonId) {
       setSelectedId(issue.lessonId);
       const lesson = course?.lessons.find((item) => item.id === issue.lessonId);
@@ -458,6 +475,17 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
         block: "start",
       });
     });
+  }
+
+  async function openProductionLesson(lessonId: string) {
+    await chooseLesson(lessonId);
+    setWorkspaceTab("lesson");
+    window.setTimeout(() => {
+      document.getElementById("media-production")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 50);
   }
 
   async function chooseLesson(lessonId: string) {
@@ -1155,6 +1183,12 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
         )
       )
     : orderedSections;
+  const productionSections = readiness?.productionQueue.filter((section) =>
+    section.missingLessons.length > 0
+  ) || [];
+  const visibleProductionSections = showAllProductionSections
+    ? productionSections
+    : productionSections.slice(0, 8);
 
   return <main className="builder-page builder-page-expanded">
     <header className="builder-top">
@@ -1246,6 +1280,8 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               (total, lesson) => total + (readiness?.lessonIssueCounts[lesson.id] || 0),
               0,
             );
+            const productionSection = readiness?.productionQueue.find((item) => item.sectionId === section.id);
+            const narrationRemaining = productionSection?.missingLessons.length || 0;
             const isOpen = Boolean(curriculumSearch) || openSectionIds.has(section.id);
             return <section
               className={`curriculum-section${isOpen ? " open" : ""}`}
@@ -1274,7 +1310,11 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                   />
                   <small className={sectionLessons.length ? "" : "needs-work"}>
                     {sectionLessons.length
-                      ? `${sectionLessons.length} lesson${sectionLessons.length === 1 ? "" : "s"} · ${issueCount ? `${issueCount} quality fix${issueCount === 1 ? "" : "es"}` : "quality ready"}`
+                      ? `${sectionLessons.length} lesson${sectionLessons.length === 1 ? "" : "s"} · ${narrationRemaining
+                          ? `${productionSection?.ready || 0}/${productionSection?.total || 0} narrated`
+                          : issueCount
+                            ? `${issueCount} quality fix${issueCount === 1 ? "" : "es"}`
+                            : "production ready"}`
                       : "Empty section · add a lesson"}
                   </small>
                 </label>
@@ -1287,6 +1327,8 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               {isOpen && <div className="curriculum-lessons">
                 {visibleLessons.map((lesson) => {
                   const lessonIndex = sectionLessons.findIndex((item) => item.id === lesson.id);
+                  const narrationMissing = productionMissingLessonIds.has(lesson.id);
+                  const lessonIssueCount = readiness?.lessonIssueCounts[lesson.id] || 0;
                   return <article
                       draggable
                       className={selected?.id === lesson.id ? "active" : ""}
@@ -1303,10 +1345,12 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                         <div>
                           <b>{lesson.title}</b>
                           <small>{lesson.lessonType}{lesson.quiz ? " | quiz" : ""}</small>
-                          <em className={readiness?.lessonIssueCounts[lesson.id] ? "lesson-quality-signal needs-work" : "lesson-quality-signal"}>
-                            {readiness?.lessonIssueCounts[lesson.id]
-                              ? `${readiness.lessonIssueCounts[lesson.id]} quality fix${readiness.lessonIssueCounts[lesson.id] === 1 ? "" : "es"}`
-                              : "Quality ready"}
+                          <em className={lessonIssueCount || narrationMissing ? "lesson-quality-signal needs-work" : "lesson-quality-signal"}>
+                            {lessonIssueCount
+                              ? `${lessonIssueCount} quality fix${lessonIssueCount === 1 ? "" : "es"}`
+                              : narrationMissing
+                                ? "Narration needed"
+                                : "Production ready"}
                           </em>
                         </div>
                       </button>
@@ -1376,6 +1420,54 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               <p>{signal.ready} of {signal.total} covered</p>
               <small>{signal.detail}</small>
             </article>)}
+          </section>
+
+          <section className="production-queue" id="production-queue">
+            <header>
+              <div>
+                <p className="sys-kicker">PRODUCTION QUEUE</p>
+                <h2>{productionSections.length
+                  ? `${readiness.productionCoverage.narratedTeaching.total - readiness.productionCoverage.narratedTeaching.ready} lessons still need narrated teaching.`
+                  : "Every instructional lesson has narrated teaching."}</h2>
+                <p>{productionSections.length
+                  ? "Work module by module. Northstar opens the exact lesson, script and media tools so you never hunt through the curriculum."
+                  : "Keep the queue clear by reviewing replacement media and transcripts before publishing."}</p>
+              </div>
+              {productionSections.length > 0 && <button
+                className="sys-primary"
+                type="button"
+                onClick={() => openProductionLesson(productionSections[0].missingLessons[0].id)}
+              >Continue production &rarr;</button>}
+            </header>
+            {visibleProductionSections.length > 0 && <div className="production-queue-list">
+              {visibleProductionSections.map((section, index) => {
+                const nextLesson = section.missingLessons[0];
+                return <article key={section.sectionId}>
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <div>
+                    <small>{section.ready} of {section.total} narrated</small>
+                    <h3>{section.sectionTitle}</h3>
+                    <p><b>Next:</b> {nextLesson.title}</p>
+                    <em>{nextLesson.hasTranscript
+                      ? nextLesson.hasMedia
+                        ? "Media and script need a final production review"
+                        : "Script ready · record, upload or generate narration"
+                      : "Write and review the narration script first"}</em>
+                  </div>
+                  <div className="production-queue-progress" aria-label={`${section.sectionTitle}: ${section.percent}% narrated`}>
+                    <i style={{ width: `${section.percent}%` }} />
+                  </div>
+                  <button type="button" onClick={() => openProductionLesson(nextLesson.id)}>Open lesson &rarr;</button>
+                </article>;
+              })}
+            </div>}
+            {productionSections.length > 8 && <button
+              className="production-queue-more"
+              type="button"
+              onClick={() => setShowAllProductionSections((current) => !current)}
+            >{showAllProductionSections
+              ? "Show the next eight modules only"
+              : `Show all ${productionSections.length} modules needing production`}</button>}
           </section>
 
           {readiness.blockers.length > 0 && <section className="quality-issue-section blockers">
