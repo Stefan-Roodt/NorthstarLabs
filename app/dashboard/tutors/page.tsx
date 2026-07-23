@@ -781,7 +781,7 @@ export default function TutorAdminPage() {
               <p className="sys-kicker">PRIVATE TWO-WAY RATING</p>
               <h4>How did {inquiry.learnerName} participate?</h4>
               <div className="coach-rating-stars" aria-label="Choose a learner rating">{[1, 2, 3, 4, 5].map((value) =>
-                <button aria-label={`${value} star${value === 1 ? "" : "s"}`} aria-pressed={learnerRatings[inquiry.id] === value} key={value} onClick={() => chooseLearnerRating(inquiry.id, value)} type="button">*</button>
+                <button aria-label={`${value} star${value === 1 ? "" : "s"}`} aria-pressed={learnerRatings[inquiry.id] === value} key={value} onClick={() => chooseLearnerRating(inquiry.id, value)} type="button">{"\u2605"}</button>
               )}</div>
               {Number(learnerRatings[inquiry.id] || 0) > 0 && <div className="rating-tag-picker">
                 {(learnerRatings[inquiry.id] === 5 ? learnerPraiseTags : learnerImprovementTags).map((tag) =>

@@ -270,7 +270,7 @@ export default function IntegrationsPage() {
           </article>
 
           <article className="panel provider-connection-card">
-            <div className="provider-card-heading"><span>?</span><div><p className="sys-kicker">NO-CODE AUTOMATION</p><h3>Zapier</h3></div>{providerStatus(data.integrations, "zapier")}</div>
+            <div className="provider-card-heading"><span>Z</span><div><p className="sys-kicker">NO-CODE AUTOMATION</p><h3>Zapier</h3></div>{providerStatus(data.integrations, "zapier")}</div>
             <p>Paste a Webhooks by Zapier Catch Hook URL, choose events, and test the Zap before relying on it.</p>
             <label>Catch Hook URL<input type="url" value={zapierUrl} onChange={(event) => setZapierUrl(event.target.value)} placeholder="https://hooks.zapier.com/hooks/catch/..." /></label>
             <fieldset className="webhook-events compact"><legend>Send these events</legend>

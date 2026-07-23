@@ -146,7 +146,7 @@ export default function MasteryPage() {
 
   return <main className="mastery-page">
     <header className="mastery-topbar">
-      <Link className="system-brand" href="/">? NORTHSTARLABS</Link>
+      <Link className="system-brand" href="/">&#9733; NORTHSTARLABS</Link>
       <nav><Link href="/learn">My learning</Link><Link href="/portfolio">Proof portfolio</Link><Link href="/account">Account settings</Link><button onClick={signOut}>Sign out</button></nav>
     </header>
 
@@ -159,7 +159,7 @@ export default function MasteryPage() {
           {ready.length > 0 && <button className="sys-primary" onClick={() => {
             setActiveId(ready[0]?.questionId || items.find((item) => item.due)?.questionId || "");
             document.querySelector<HTMLElement>(".mastery-practice")?.scrollIntoView({ behavior: "smooth" });
-          }}>Review {ready.length} now ?</button>}
+          }}>Review {ready.length} now &rarr;</button>}
           <Link href="/learn">Return to my courses</Link>
         </div>
       </div>
@@ -172,9 +172,9 @@ export default function MasteryPage() {
 
     {loading ? <section className="mastery-empty"><p>Preparing your personal review queue...</p></section> : <>
       {summary.total === 0 ? <section className="mastery-empty">
-        <span>?</span><h2>Your mastery record starts with real learning.</h2>
+        <span aria-hidden="true">&#8635;</span><h2>Your mastery record starts with real learning.</h2>
         <p>Complete a knowledge check. If a concept needs work, Northstar will bring it here with the original lesson and explanation.</p>
-        <Link className="sys-primary" href="/learn">Open my courses ?</Link>
+        <Link className="sys-primary" href="/learn">Open my courses &rarr;</Link>
       </section> : <>
         <section className="mastery-practice">
           <div className="mastery-section-heading">
@@ -198,10 +198,10 @@ export default function MasteryPage() {
               <b>{feedback.correct ? (feedback.status === "mastered" ? "Mastered." : "Correct. One later check will confirm it.") : "Not yet-keep the concept in your loop."}</b>
               {!feedback.correct && <span>Correct answer: {feedback.correctAnswer}</span>}
               <p>{feedback.explanation}</p>
-              <button className="sys-primary" onClick={continueReview}>{ready.length > 1 ? "Continue review ?" : "Finish for now"}</button>
+              <button className="sys-primary" onClick={continueReview}>{ready.length > 1 ? "Continue review \u2192" : "Finish for now"}</button>
             </div> : <button className="sys-primary" onClick={submitPractice}>Check my answer</button>}
           </article> : <div className="mastery-caught-up">
-            <span>?</span><div><h3>No concept needs attention right now.</h3><p>Northstar will place the next spaced check here when it is due.</p></div>
+            <span aria-hidden="true">&#10003;</span><div><h3>No concept needs attention right now.</h3><p>Northstar will place the next spaced check here when it is due.</p></div>
           </div>}
           {message && <p className="mastery-message" role="status">{message}</p>}
         </section>
@@ -213,7 +213,7 @@ export default function MasteryPage() {
               <i>1/2</i><div><b>{item.conceptLabel}</b><span>{item.courseTitle}</span></div><small>{reviewDate(item.nextReviewAt)}</small>
             </article>) : <p>Your first correct review moves a concept here.</p>}</div>
             <div><h3>Mastered <span>{mastered.length}</span></h3>{mastered.length ? mastered.map((item) => <article key={item.questionId}>
-              <i>?</i><div><b>{item.conceptLabel}</b><span>{item.courseTitle}</span></div><Link href={`/learn/${item.courseId}`}>Revisit</Link>
+              <i aria-hidden="true">&#10003;</i><div><b>{item.conceptLabel}</b><span>{item.courseTitle}</span></div><Link href={`/learn/${item.courseId}`}>Revisit</Link>
             </article>) : <p>Two correct checks move a concept here.</p>}</div>
           </div>
         </section>

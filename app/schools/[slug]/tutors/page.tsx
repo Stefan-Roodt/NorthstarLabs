@@ -129,7 +129,7 @@ export default function TutorDirectoryPage({ params }: { params: Promise<{ slug:
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={tutor.photoUrl} alt="" />
             </> : <span>{tutor.displayName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span>}
-            <div><small>{tutor.verified ? "[OK] VERIFIED TUTOR" : data.school.name}</small><h2>{tutor.displayName}</h2><p>{tutor.headline}</p></div>
+            <div><small>{tutor.verified ? "\u2713 VERIFIED TUTOR" : data.school.name}</small><h2>{tutor.displayName}</h2><p>{tutor.headline}</p></div>
           </div>
           <div className="tutor-directory-subjects">{tutor.subjects.slice(0, 5).map((subject) => <span key={subject}>{subject}</span>)}</div>
           <dl>
@@ -137,7 +137,7 @@ export default function TutorDirectoryPage({ params }: { params: Promise<{ slug:
             <div><dt>Experience</dt><dd>{tutor.experienceYears ? `${tutor.experienceYears}+ years` : "Academy listed"}</dd></div>
             <div><dt>Price</dt><dd>{tutor.priceCents ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}/${tutor.priceUnit}` : "Ask tutor"}</dd></div>
           </dl>
-          {tutor.availability && <p className="tutor-availability"><span>o</span>{tutor.availability}</p>}
+          {tutor.availability && <p className="tutor-availability"><span aria-hidden="true">&#9675;</span>{tutor.availability}</p>}
           <Link href={`/schools/${data.school.slug}/tutors/${tutor.slug}`}>View profile & book</Link>
         </article>)}
       </div> : <article className="tutor-empty">

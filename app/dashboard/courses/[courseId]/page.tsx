@@ -1255,7 +1255,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                   <h3>{issue.title}</h3>
                   <p>{issue.detail}</p>
                 </div>
-                <button onClick={() => openQualityIssue(issue)}>{issue.action} ?</button>
+                <button onClick={() => openQualityIssue(issue)}>{issue.action} &rarr;</button>
               </article>)}
             </div>
           </section>}
@@ -1382,7 +1382,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
             </ul>
             {!!publishingErrors.length && <div className="publishing-errors">{publishingErrors.map((error) => <p key={error}>{error}</p>)}</div>}
             <button className="quality-review-cta" onClick={() => setWorkspaceTab("review")}>
-              Open the full learner-quality review <b>{readiness?.score || 0}%</b> ?
+              Open the full learner-quality review <b>{readiness?.score || 0}%</b> &rarr;
             </button>
           </div>
           <div className="editor-save-row">

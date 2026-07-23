@@ -1968,9 +1968,40 @@ Apply it.`);
   assert.match(learn, /IN THIS LESSON/);
   assert.match(learn, /Focus mode/);
   assert.match(learn, /omitLessonIntro/);
+  assert.match(learn, /Saved lessons:/);
+  assert.match(learn, /&larr; Previous/);
+  assert.doesNotMatch(learn, /\? Previous/);
+  assert.doesNotMatch(learn, /\? Save lesson/);
+  assert.doesNotMatch(learn, /Download \?/);
+  assert.doesNotMatch(learn, /continue \?/i);
   assert.match(guideSource, /getLessonGuide/);
   assert.match(styles, /\.lesson-brief/);
   assert.match(styles, /\.learn-page\.focus-mode/);
+});
+
+test("keeps learner and creator navigation free of broken placeholder glyphs", async () => {
+  const sources = await Promise.all([
+    "../app/learn/[courseId]/page.tsx",
+    "../app/learn/page.tsx",
+    "../app/mastery/page.tsx",
+    "../app/courses/page.tsx",
+    "../app/tutors/page.tsx",
+    "../app/dashboard/page.tsx",
+    "../app/dashboard/integrations/page.tsx",
+    "../app/dashboard/courses/[courseId]/page.tsx",
+    "../app/dashboard/tutors/page.tsx",
+    "../app/tutoring/page.tsx",
+    "../app/courses/[courseId]/page.tsx",
+    "../app/portfolio/[slug]/page.tsx",
+    "../app/schools/[slug]/tutors/page.tsx",
+    "../app/schools/[slug]/tutors/[tutorSlug]/page.tsx",
+  ].map((path) => readFile(new URL(path, import.meta.url), "utf8")));
+  for (const source of sources) {
+    assert.doesNotMatch(source, />\s*\?\s*</);
+    assert.doesNotMatch(source, /\w+ \?["<]/);
+    assert.doesNotMatch(source, /\[OK\]/);
+    assert.doesNotMatch(source, />o</);
+  }
 });
 
 test("makes assessments teach with explanations, answer feedback, and guided retries", async () => {

@@ -350,7 +350,7 @@ function TutoringCard({
       <p className="sys-kicker">VERIFIED SESSION RATING</p>
       <h4>How was your session?</h4>
       <div aria-label="Choose a rating">{[1, 2, 3, 4, 5].map((value) =>
-        <button aria-label={`${value} star${value === 1 ? "" : "s"}`} aria-pressed={rating === value} key={value} onClick={() => onRating(value)} type="button">*</button>
+        <button aria-label={`${value} star${value === 1 ? "" : "s"}`} aria-pressed={rating === value} key={value} onClick={() => onRating(value)} type="button">{"\u2605"}</button>
       )}</div>
       {rating > 0 && <div className="rating-tag-picker" aria-label={needsReason ? "Choose at least one reason" : "Choose helpful highlights"}>
         {availableTags.map((tag) =>
