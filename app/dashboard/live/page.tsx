@@ -193,7 +193,7 @@ export default function LiveLearningPage() {
   return <main className="live-admin-page">
     <header className="product-admin-top">
       <Link className="system-brand" href="/dashboard">* NORTHSTARLABS</Link>
-      <nav><Link href="/dashboard/products">Products</Link><Link href="/dashboard/integrations">Integrations</Link><Link href="/learn">Learner view</Link></nav>
+      <nav><Link href="/dashboard/control">Control centre</Link><Link href="/dashboard/products">Products</Link><Link href="/dashboard/integrations">Integrations</Link><Link href="/learn">Learner view</Link></nav>
     </header>
     <section className="live-admin-hero">
       <div><p className="sys-kicker">COHORTS & LIVE LEARNING</p><h1>Make learning happen together.</h1><p>Schedule 1:1 or group sessions, register everyone with access, send automatic email reminders, export calendars with alarms, track attendance and attach recordings later.</p></div>

@@ -232,7 +232,7 @@ export default function IntegrationsPage() {
   return <main className="integration-page">
     <header className="product-admin-top">
       <Link className="system-brand" href="/dashboard">* NORTHSTARLABS</Link>
-      <nav><Link href="/dashboard/products">Products</Link><Link href="/dashboard/live">Live learning</Link><Link href="/account">Account settings</Link><button onClick={signOut}>Sign out</button></nav>
+      <nav><Link href="/dashboard/control">Control centre</Link><Link href="/dashboard/products">Products</Link><Link href="/dashboard/live">Live learning</Link><Link href="/account">Account settings</Link><button onClick={signOut}>Sign out</button></nav>
     </header>
     <section className="integration-hero">
       <div><p className="sys-kicker">MOBILE & INTEGRATIONS</p><h1>Connect learning to the rest of the work.</h1><p>Calendar downloads, meeting links and installable mobile access work immediately. Signed webhooks connect NorthStarLabs events to automation tools, CRMs and your own systems.</p></div>

@@ -24,6 +24,25 @@ test("publishes complete terms and privacy pages", async () => {
   assert.match(privacy, /Complete academy exports/);
 });
 
+test("gives academy owners one operational control centre without payment dependencies", async () => {
+  const [page, api, dashboard] = await Promise.all([
+    readFile(new URL("../app/dashboard/control/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/control-center/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(page, /Do the right work next/);
+  assert.match(page, /Every operational area, without the maze/);
+  assert.match(page, /Learners & invitations/);
+  assert.match(api, /Academy owner or administrator access is required/);
+  assert.match(api, /lesson_help_requests/);
+  assert.match(api, /course_import_projects/);
+  assert.match(api, /academy_exports/);
+  assert.match(api, /status='scheduled' AND ends_at<\?/);
+  assert.doesNotMatch(page, /payfast|checkout|payment/i);
+  assert.doesNotMatch(api, /payfast|checkout|payment/i);
+  assert.match(dashboard, /Control centre/);
+});
+
 test("adds browser security headers to every response", async () => {
   const worker = await readFile(new URL("../worker/index.ts", import.meta.url), "utf8");
   assert.match(worker, /frame-ancestors 'none'/);

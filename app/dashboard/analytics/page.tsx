@@ -124,7 +124,7 @@ export default function AnalyticsPage() {
 
   return <main className="admin-page reporting-page">
     <header className="admin-top reporting-top">
-      <Link href="/dashboard">← Creator workspace</Link>
+      <Link href="/dashboard/control">← Control centre</Link>
       <div><p className="sys-kicker">CREATOR REPORTING</p><h1>Learning performance</h1></div>
       <div><Link href="/dashboard/operations">Email & schedules</Link><button className="sys-primary" disabled={exporting} onClick={downloadReport}>{exporting ? "Exporting..." : "Export CSV"}</button></div>
     </header>

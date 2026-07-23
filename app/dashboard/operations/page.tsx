@@ -127,7 +127,7 @@ export default function OperationsPage() {
 
   return <main className="operations-page">
     <header className="operations-top">
-      <Link href="/dashboard">← Creator workspace</Link>
+      <Link href="/dashboard/control">← Control centre</Link>
       <div><p className="sys-kicker">EMAIL & ADMINISTRATION</p><h1>Operations centre</h1></div>
       <Link className="sys-primary" href="/dashboard/analytics">Open reporting</Link>
     </header>
