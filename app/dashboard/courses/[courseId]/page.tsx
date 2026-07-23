@@ -1267,7 +1267,11 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                     onChange={(event) => editSection(section.id, event.target.value)}
                     onBlur={() => saveSection(section)}
                   />
-                  <small>{sectionLessons.length} lesson{sectionLessons.length === 1 ? "" : "s"} · {issueCount ? `${issueCount} quality fix${issueCount === 1 ? "" : "es"}` : "quality ready"}</small>
+                  <small className={sectionLessons.length ? "" : "needs-work"}>
+                    {sectionLessons.length
+                      ? `${sectionLessons.length} lesson${sectionLessons.length === 1 ? "" : "s"} · ${issueCount ? `${issueCount} quality fix${issueCount === 1 ? "" : "es"}` : "quality ready"}`
+                      : "Empty section · add a lesson"}
+                  </small>
                 </label>
                 <div>
                   <button aria-label="Move section up" title="Move section up" disabled={sectionIndex === 0} onClick={() => moveSection(section.id, -1)}>&uarr;</button>

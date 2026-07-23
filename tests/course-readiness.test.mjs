@@ -49,3 +49,14 @@ test("accepts a joined media asset or supported protected media key", () => {
   assert.ok(!joined.blockers.some((issue) => issue.id === "lesson-1-media"));
   assert.ok(!protectedKey.blockers.some((issue) => issue.id === "lesson-1-media"));
 });
+
+test("blocks publishing when a named curriculum section has no lessons", () => {
+  const course = courseWithLesson();
+  course.sections.push({ id: "section-2", title: "Missing module" });
+
+  const readiness = getCourseReadiness(course);
+
+  assert.ok(readiness.blockers.some((issue) => issue.id === "section-2-empty"));
+  assert.equal(readiness.label, "Not ready to publish");
+  assert.ok(readiness.score < 100);
+});

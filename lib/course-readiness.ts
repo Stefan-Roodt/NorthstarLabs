@@ -324,6 +324,17 @@ export function getCourseReadiness(course: ReadinessCourse) {
 
   for (const section of course.sections) {
     const sectionLessons = course.lessons.filter((lesson) => lesson.sectionId === section.id);
+    if (!sectionLessons.length) {
+      possible += 3;
+      issues.push({
+        id: `${section.id}-empty`,
+        level: "blocker",
+        title: `${section.title || "This section"} has no lessons`,
+        detail: "Add at least one useful learning activity or remove the empty section before publishing.",
+        action: "Add a lesson",
+        tab: "lesson",
+      });
+    }
     if (!sectionLessons.length) continue;
     check(sectionLessons.some((lesson) => lesson.quiz), 1, {
       id: `${section.id}-assessment`,
