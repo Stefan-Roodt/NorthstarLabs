@@ -1531,6 +1531,9 @@ test("ships academy tutor discovery, direct contact, protected enquiries, and se
   assert.match(inquiriesApi, /Sign in to contact a tutor/);
   assert.match(inquiriesApi, /tutor\.inquiry_created/);
   assert.match(inquiriesApi, /learner_cancel/);
+  assert.match(inquiriesApi, /Choose an available appointment time before confirming/);
+  assert.match(inquiriesApi, /slot_id IS NULL/);
+  assert.match(inquiriesApi, /Someone else just booked that time/);
   assert.match(slotsApi, /slot\.status !== "open"/);
   assert.match(slotsApi, /overlaps an existing tutor slot/);
   assert.match(tutorDirectory, /Find a tutor who fits how you learn/);
@@ -1548,6 +1551,9 @@ test("ships academy tutor discovery, direct contact, protected enquiries, and se
   assert.match(tutorAdmin, /coach-workspace-nav/);
   assert.match(tutorAdmin, /workspaceView/);
   assert.match(tutorAdmin, /Set availability/);
+  assert.match(tutorAdmin, /Turn this enquiry into an appointment/);
+  assert.match(tutorAdmin, /Assign time & confirm/);
+  assert.doesNotMatch(tutorAdmin, />Mark booked</);
   assert.match(tutoring, /Every session\. One clear next step/);
   assert.match(tutoring, /Coaching journey/);
   assert.match(tutoring, /Find a coach/);
@@ -2105,11 +2111,10 @@ test("makes assessments teach with explanations, answer feedback, and guided ret
 });
 
 test("gives creators an honest, actionable learner-quality review", async () => {
-  const [editor, readinessSource, styles, courseApi] = await Promise.all([
+  const [editor, readinessSource, styles] = await Promise.all([
     readFile(new URL("../app/dashboard/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/course-readiness.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/builder.css", import.meta.url), "utf8"),
-    readFile(new URL("../app/api/courses/[courseId]/route.ts", import.meta.url), "utf8"),
   ]);
   const { getCourseReadiness } = await import("../lib/course-readiness.ts");
   const review = getCourseReadiness({

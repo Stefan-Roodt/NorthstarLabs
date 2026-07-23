@@ -153,8 +153,11 @@ function LessonTranscriptNarrator({
   const [rate, setRate] = useState(0.98);
   const text = narrationSource(transcript, lessonContent);
   useEffect(() => {
-    const saved = Number(window.localStorage.getItem("northstar:narration-rate"));
-    if ([0.85, 0.98, 1.15, 1.3].includes(saved)) setRate(saved);
+    const timer = window.setTimeout(() => {
+      const saved = Number(window.localStorage.getItem("northstar:narration-rate"));
+      if ([0.85, 0.98, 1.15, 1.3].includes(saved)) setRate(saved);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
   useEffect(() => {
     if (!isSupported) {

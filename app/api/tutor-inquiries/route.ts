@@ -393,8 +393,33 @@ export async function PATCH(request: Request) {
   const status = inquiryStatuses.has(String(body.status))
     ? String(body.status)
     : inquiry.status;
+  const requestedSlotId = cleanText(body.slotId, 100) || null;
   const creatorNote = cleanText(body.creatorNote, 1_000);
   const now = Date.now();
+  if (requestedSlotId && status !== "booked") {
+    return Response.json(
+      { error: "An appointment time can only be assigned while confirming a booking." },
+      { status: 400 },
+    );
+  }
+  if (requestedSlotId && inquiry.slotId && requestedSlotId !== inquiry.slotId) {
+    return Response.json(
+      { error: "This enquiry already has an appointment time." },
+      { status: 409 },
+    );
+  }
+  if (status === "booked" && !inquiry.slotId && !requestedSlotId) {
+    return Response.json(
+      { error: "Choose an available appointment time before confirming this booking." },
+      { status: 409 },
+    );
+  }
+  if (status === "completed" && !inquiry.slotId) {
+    return Response.json(
+      { error: "Schedule an appointment before marking the session completed." },
+      { status: 409 },
+    );
+  }
   if (status === "completed" && inquiry.status !== "booked" && inquiry.status !== "completed") {
     return Response.json(
       { error: "Confirm the booking before marking the session completed." },
@@ -407,7 +432,74 @@ export async function PATCH(request: Request) {
       { status: 409 },
     );
   }
-  if (inquiry.slotId && status === "booked") {
+  let activeSlot = inquiry.slotId
+    ? {
+      id: inquiry.slotId,
+      startsAt: inquiry.startsAt,
+      endsAt: inquiry.endsAt,
+      timezone: inquiry.timezone,
+      meetingDetails: inquiry.meetingDetails,
+      status: inquiry.slotStatus,
+    }
+    : null;
+  let assignedSlot = false;
+  if (!inquiry.slotId && requestedSlotId && status === "booked") {
+    const slot = await env.DB.prepare(
+      `SELECT id,starts_at AS startsAt,ends_at AS endsAt,timezone,
+        meeting_details AS meetingDetails,status
+       FROM tutor_slots
+       WHERE id=? AND tutor_id=? AND school_id=? AND status='open'
+         AND starts_at>?`,
+    ).bind(requestedSlotId, inquiry.tutorId, school.id, now).first<{
+      id: string;
+      startsAt: number;
+      endsAt: number;
+      timezone: string;
+      meetingDetails: string;
+      status: string;
+    }>();
+    if (!slot) {
+      return Response.json(
+        { error: "That appointment time is no longer available. Choose another slot." },
+        { status: 409 },
+      );
+    }
+    const booked = await env.DB.prepare(
+      `UPDATE tutor_slots SET status='booked',updated_at=?
+       WHERE id=? AND status='open' RETURNING id`,
+    ).bind(now, slot.id).first();
+    if (!booked) {
+      return Response.json(
+        { error: "Someone else just booked that time. Choose another slot." },
+        { status: 409 },
+      );
+    }
+    try {
+      const linked = await env.DB.prepare(
+        `UPDATE tutor_inquiries
+         SET slot_id=?,status='booked',creator_note=?,updated_at=?
+         WHERE id=? AND school_id=? AND slot_id IS NULL
+           AND status IN ('new','contacted','booked')
+         RETURNING id`,
+      ).bind(slot.id, creatorNote, now, inquiry.id, school.id).first();
+      if (!linked) {
+        await env.DB.prepare(
+          "UPDATE tutor_slots SET status='open',updated_at=? WHERE id=? AND status='booked'",
+        ).bind(Date.now(), slot.id).run();
+        return Response.json(
+          { error: "This enquiry changed while you were scheduling it. Refresh and try again." },
+          { status: 409 },
+        );
+      }
+    } catch (error) {
+      await env.DB.prepare(
+        "UPDATE tutor_slots SET status='open',updated_at=? WHERE id=? AND status='booked'",
+      ).bind(Date.now(), slot.id).run();
+      throw error;
+    }
+    activeSlot = { ...slot, status: "booked" };
+    assignedSlot = true;
+  } else if (inquiry.slotId && status === "booked") {
     const booked = await env.DB.prepare(
       `UPDATE tutor_slots SET status='booked',updated_at=?
        WHERE id=? AND status IN ('reserved','booked') RETURNING id`,
@@ -418,8 +510,13 @@ export async function PATCH(request: Request) {
         { status: 409 },
       );
     }
+    activeSlot = activeSlot ? { ...activeSlot, status: "booked" } : activeSlot;
   }
-  if (inquiry.slotId && ["declined", "closed"].includes(status) && inquiry.slotStatus === "reserved") {
+  if (
+    inquiry.slotId &&
+    ["declined", "closed"].includes(status) &&
+    ["reserved", "booked"].includes(inquiry.slotStatus || "")
+  ) {
     await env.DB.prepare(
       "UPDATE tutor_slots SET status=?,updated_at=? WHERE id=?",
     ).bind(Number(inquiry.startsAt || 0) > now ? "open" : "cancelled", now, inquiry.slotId).run();
@@ -429,10 +526,12 @@ export async function PATCH(request: Request) {
       "UPDATE tutor_slots SET status='completed',updated_at=? WHERE id=?",
     ).bind(now, inquiry.slotId).run();
   }
-  await env.DB.prepare(
-    "UPDATE tutor_inquiries SET status=?,creator_note=?,updated_at=? WHERE id=?",
-  ).bind(status, creatorNote, now, inquiry.id).run();
-  if (inquiry.slotId && ["booked", "declined"].includes(status)) {
+  if (!assignedSlot) {
+    await env.DB.prepare(
+      "UPDATE tutor_inquiries SET status=?,creator_note=?,updated_at=? WHERE id=?",
+    ).bind(status, creatorNote, now, inquiry.id).run();
+  }
+  if (activeSlot && ["booked", "declined", "closed"].includes(status)) {
     await queueEmail({
       schoolId: school.id,
       recipientUserId: inquiry.learnerId,
@@ -442,10 +541,10 @@ export async function PATCH(request: Request) {
         academy: inquiry.schoolName,
         tutor: inquiry.tutorName,
         status,
-        chosenTime: inquiry.startsAt
-          ? new Date(inquiry.startsAt).toLocaleString("en-ZA")
+        chosenTime: activeSlot.startsAt
+          ? new Date(activeSlot.startsAt).toLocaleString("en-ZA")
           : "the requested time",
-        meetingDetails: status === "booked" ? inquiry.meetingDetails : "",
+        meetingDetails: status === "booked" ? activeSlot.meetingDetails : "",
         primaryColor: inquiry.primaryColor,
         actionUrl: `${new URL(request.url).origin}/tutoring`,
       },
@@ -489,10 +588,16 @@ export async function PATCH(request: Request) {
     action: "tutor_inquiry.update",
     targetType: "tutor_inquiry",
     targetId: inquiry.id,
-    detail: { status, tutorName: inquiry.tutorName, slotId: inquiry.slotId },
+    detail: { status, tutorName: inquiry.tutorName, slotId: activeSlot?.id || null },
   });
   await emitIntegrationEvent(env.DB, school.id, `tutor.inquiry_${status}`, {
     inquiryId: inquiry.id,
+    slotId: activeSlot?.id || null,
   });
-  return Response.json({ saved: true, id: inquiry.id, status });
+  return Response.json({
+    saved: true,
+    id: inquiry.id,
+    status,
+    slotId: activeSlot?.id || null,
+  });
 }
