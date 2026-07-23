@@ -1447,7 +1447,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
           }}>
             <div className="lesson-meta-grid">
               <label>Lesson title<input required value={selected.title} onChange={(event) => editLesson({ title: event.target.value })} /></label>
-              <label>Lesson type<select value={selected.lessonType} onChange={(event) => editLesson({ lessonType: event.target.value })}><option value="text">Text lesson</option><option value="video">Video lesson</option><option value="audio">Audio lesson</option><option value="resource">Resource lesson</option><option value="quiz">Quiz lesson</option></select></label>
+              <label>Lesson type<select value={selected.lessonType} onChange={(event) => editLesson({ lessonType: event.target.value })}><option value="text">Text lesson</option><option value="video">Video lesson</option><option value="audio">Audio lesson</option><option value="interactive">Interactive lesson</option><option value="resource">Resource lesson</option><option value="quiz">Quiz lesson</option></select></label>
               <label>Estimated minutes<input type="number" min="0" max="1440" value={selected.durationMinutes || 0} onChange={(event) => editLesson({ durationMinutes: Number(event.target.value) })} /></label>
               {selected.videoKey?.startsWith("r2:")
                 ? <label>Existing secure upload<input readOnly value="Secure lesson video attached" /></label>
