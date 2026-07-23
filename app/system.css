@@ -437,6 +437,9 @@
 .learner-nav-mobile{display:none}
 .learner-coaching-strip{width:min(1240px,calc(100% - max(48px,14vw)));margin:30px auto 0;padding:27px 30px;display:grid;grid-template-columns:88px minmax(0,1fr) auto auto;gap:25px;align-items:center;border:1px solid var(--rule);border-radius:17px;background:#fffaf4;box-shadow:0 14px 40px #20233c0d}
 .learner-coaching-strip.active{border-color:#aeb9f3;background:linear-gradient(110deg,#fffaf4,#eef1ff)}
+.learner-coaching-strip.optional{margin-top:0;margin-bottom:78px;padding:20px 24px;grid-template-columns:62px minmax(0,1fr) auto;background:transparent;box-shadow:none}
+.learner-coaching-strip.optional .learner-coaching-mark{width:52px;height:52px;font-size:17px}
+.learner-coaching-strip.optional .learner-coaching-copy h2{font-size:25px}
 .learner-coaching-mark{width:72px;height:72px;display:grid;place-items:center;border-radius:50%;background:var(--ink);color:var(--acid);font:700 24px var(--font-display);letter-spacing:-.04em}
 .learner-coaching-copy h2{margin:6px 0 7px;font:700 clamp(24px,2.4vw,34px)/1 var(--font-display);letter-spacing:-.035em}
 .learner-coaching-copy>p:last-child{margin:0;color:var(--muted);font-size:10px;line-height:1.55}
@@ -570,3 +573,8 @@
 .marketplace-service-badge.bookable{background:#e5f6e8;color:#22743a}
 .marketplace-service-badge.enquiry_only{background:#eeeae5;color:#605950}
 .marketplace-service-badge.faculty_support{background:#e7eaff;color:var(--market-blue)}
+
+@media(max-width:620px){
+  .learner-coaching-strip.optional{margin-bottom:55px}
+  .learner-coaching-strip.optional .learner-coaching-actions{grid-template-columns:1fr}
+}

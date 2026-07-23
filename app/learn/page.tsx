@@ -43,6 +43,53 @@ type CoachingRequest = {
   updatedAt: number;
 };
 
+function LearnerCoachingStrip({
+  active,
+  reviewDueCount,
+  nextCoaching,
+  confirmedCount,
+  pendingCount,
+}: {
+  active: boolean;
+  reviewDueCount: number;
+  nextCoaching?: CoachingRequest;
+  confirmedCount: number;
+  pendingCount: number;
+}) {
+  return <section className={`learner-coaching-strip ${active ? "active" : "optional"}`}>
+    <div className="learner-coaching-mark" aria-hidden="true">1:1</div>
+    <div className="learner-coaching-copy">
+      <p className="sys-kicker">{active ? "MY COACHING" : "OPTIONAL HUMAN SUPPORT"}</p>
+      {reviewDueCount > 0
+        ? <>
+          <h2>{reviewDueCount === 1 ? "Your session is ready for review." : `${reviewDueCount} sessions are ready for review.`}</h2>
+          <p>Share protected feedback while the session is still fresh.</p>
+        </>
+        : nextCoaching
+          ? <>
+            <h2>{nextCoaching.status === "booked"
+              ? `Your session with ${nextCoaching.tutorName} is confirmed.`
+              : `${nextCoaching.tutorName} is reviewing your request.`}</h2>
+            <p>{nextCoaching.startsAt
+              ? `${new Date(nextCoaching.startsAt).toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long" })} at ${new Date(nextCoaching.startsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}.`
+              : `Your request through ${nextCoaching.schoolName} is safely recorded.`}</p>
+          </>
+          : <>
+            <h2>Need a human after the lesson?</h2>
+            <p>Coaching is optional. Browse relevant expertise, then send a private enquiry or request one of the times a coach has actually published.</p>
+          </>}
+    </div>
+    {active && <dl>
+      <div><dt>Confirmed</dt><dd>{confirmedCount}</dd></div>
+      <div><dt>Awaiting reply</dt><dd>{pendingCount}</dd></div>
+    </dl>}
+    <div className="learner-coaching-actions">
+      {active && <Link className="sys-primary" href="/tutoring">{reviewDueCount ? "Review session" : "Open my coaching"} {"\u2192"}</Link>}
+      <Link href="/tutors">{active ? "Find another coach" : "Explore coaching support"} {"\u2192"}</Link>
+    </div>
+  </section>;
+}
+
 export default function LearnerHome() {
   const [items, setItems] = useState<Enrolment[]>([]);
   const [products, setProducts] = useState<LearnerProduct[]>([]);
@@ -115,7 +162,7 @@ export default function LearnerHome() {
       <header>
         <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
       <nav>
-        <Link href="/courses">Explore modules</Link>
+        <Link href="/courses">Explore courses</Link>
         <Link href="/tutoring"><span className="learner-nav-desktop">My coaching</span><span className="learner-nav-mobile">Coaching</span></Link>
         <Link href="/live">My live classes</Link>
         <Link href="/community">My communities</Link>
@@ -152,38 +199,13 @@ export default function LearnerHome() {
       <Link className="sys-primary" href="/mastery">{mastery.ready > 0 ? "Start focused review" : "See my concept map"} {"\u2192"}</Link>
     </section>}
 
-    {!loading && <section className={`learner-coaching-strip ${activeCoaching.length || reviewDue.length ? "active" : ""}`}>
-      <div className="learner-coaching-mark" aria-hidden="true">1:1</div>
-      <div className="learner-coaching-copy">
-        <p className="sys-kicker">HUMAN HELP DESK</p>
-        {reviewDue.length > 0
-          ? <>
-            <h2>{reviewDue.length === 1 ? "Your session is ready for review." : `${reviewDue.length} sessions are ready for review.`}</h2>
-            <p>Share protected feedback while the session is still fresh.</p>
-          </>
-          : nextCoaching
-            ? <>
-              <h2>{nextCoaching.status === "booked"
-                ? `Your session with ${nextCoaching.tutorName} is confirmed.`
-                : `${nextCoaching.tutorName} is reviewing your request.`}</h2>
-              <p>{nextCoaching.startsAt
-                ? `${new Date(nextCoaching.startsAt).toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long" })} at ${new Date(nextCoaching.startsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}.`
-                : `Your request through ${nextCoaching.schoolName} is safely recorded.`}</p>
-            </>
-            : <>
-              <h2>Get personal help when a course is not enough.</h2>
-              <p>Compare real expertise, choose an available time, and keep the entire session journey in one place.</p>
-            </>}
-      </div>
-      {(activeCoaching.length > 0 || reviewDue.length > 0) && <dl>
-        <div><dt>Confirmed</dt><dd>{confirmedCoaching.length}</dd></div>
-        <div><dt>Awaiting reply</dt><dd>{pendingCoaching.length}</dd></div>
-      </dl>}
-      <div className="learner-coaching-actions">
-        {(activeCoaching.length > 0 || reviewDue.length > 0) && <Link className="sys-primary" href="/tutoring">{reviewDue.length ? "Review session" : "Open my coaching"} {"\u2192"}</Link>}
-        <Link href="/tutors">{activeCoaching.length || reviewDue.length ? "Find another coach" : "Find a coach"} {"\u2192"}</Link>
-      </div>
-    </section>}
+    {!loading && (activeCoaching.length > 0 || reviewDue.length > 0) && <LearnerCoachingStrip
+      active
+      confirmedCount={confirmedCoaching.length}
+      nextCoaching={nextCoaching}
+      pendingCount={pendingCoaching.length}
+      reviewDueCount={reviewDue.length}
+    />}
 
     {!loading && <section className="learner-next-wrap">
       {nextCourse ? <article className="learner-next-card">
@@ -293,5 +315,12 @@ export default function LearnerHome() {
         </div>
       </section>}
     </section>
+
+    {!loading && activeCoaching.length === 0 && reviewDue.length === 0 && <LearnerCoachingStrip
+      active={false}
+      confirmedCount={0}
+      pendingCount={0}
+      reviewDueCount={0}
+    />}
   </main>;
 }
