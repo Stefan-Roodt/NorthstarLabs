@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { LessonContent } from "../../../../lib/lesson-content";
+import type { LessonExperience } from "../../../../lib/lesson-experience";
+import { preferredSpeechVoice } from "../../../../lib/speech-voices";
+import { InteractiveLessonExperience } from "../../../learn/[courseId]/lesson-experience";
 
 type PreviewAsset = {
   id: string | null;
@@ -29,6 +32,7 @@ type PreviewData = {
     content: string;
     durationMinutes: number;
     transcript: string;
+    experience: LessonExperience | null;
     primaryAsset: PreviewAsset | null;
     questions: Array<{
       id: string;
@@ -70,6 +74,10 @@ function LessonTranscriptNarrator({
   const [voiceUri, setVoiceUri] = useState("");
   const [rate, setRate] = useState(0.98);
   const text = narrationSource(transcript, lessonContent);
+  useEffect(() => {
+    const saved = Number(window.localStorage.getItem("northstar:narration-rate"));
+    if ([0.85, 0.98, 1.15, 1.3].includes(saved)) setRate(saved);
+  }, []);
 
   useEffect(() => {
     if (!isSupported) {
@@ -80,8 +88,9 @@ function LessonTranscriptNarrator({
       setVoices(available);
       setVoicesLoaded(true);
       if (!voiceUri && available.length > 0) {
-        const selected = available.find((voice) => voice.lang?.toLowerCase().startsWith("en")) || available[0];
-        setVoiceUri(selected.voiceURI);
+        const saved = window.localStorage.getItem("northstar:narration-voice") || "";
+        const selected = preferredSpeechVoice(available, saved);
+        if (selected) setVoiceUri(selected.voiceURI);
       }
     };
     loadVoices();
@@ -134,13 +143,20 @@ function LessonTranscriptNarrator({
       </button>
       <label>
         <span>Voice</span>
-        <select value={voiceUri} onChange={(event) => setVoiceUri(event.target.value)}>
+        <select value={voiceUri} onChange={(event) => {
+          setVoiceUri(event.target.value);
+          window.localStorage.setItem("northstar:narration-voice", event.target.value);
+        }}>
           {voices.map((option) => <option key={option.voiceURI} value={option.voiceURI}>{option.name}</option>)}
         </select>
       </label>
       <label>
         <span>Speed</span>
-        <select value={String(rate)} onChange={(event) => setRate(Number(event.target.value))}>
+        <select value={String(rate)} onChange={(event) => {
+          const nextRate = Number(event.target.value);
+          setRate(nextRate);
+          window.localStorage.setItem("northstar:narration-rate", String(nextRate));
+        }}>
           <option value="0.85">0.85x</option>
           <option value="0.98">0.98x</option>
           <option value="1.15">1.15x</option>
@@ -245,7 +261,13 @@ export default function PublicLessonPreview({ params }: { params: Promise<{ cour
 
         <section className="public-preview-lesson">
           <p className="sys-kicker">THE ACTUAL LESSON</p>
-          <LessonContent content={preview.lesson.content} lessonTitle={preview.lesson.title} slideDeckMode />
+          {preview.lesson.experience && <InteractiveLessonExperience experience={preview.lesson.experience} />}
+          {preview.lesson.experience
+            ? <details className="lesson-reference-notes">
+                <summary>Open the source-backed reference notes</summary>
+                <LessonContent content={preview.lesson.content} lessonTitle={preview.lesson.title} slideDeckMode />
+              </details>
+            : <LessonContent content={preview.lesson.content} lessonTitle={preview.lesson.title} slideDeckMode />}
           <LessonTranscriptNarrator
             transcript={preview.lesson.transcript}
             lessonContent={preview.lesson.content}

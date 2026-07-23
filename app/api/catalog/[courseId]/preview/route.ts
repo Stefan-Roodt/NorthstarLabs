@@ -4,6 +4,10 @@ import {
   hashPlaybackToken,
   PLAYBACK_GRANT_TTL_MS,
 } from "../../../../../lib/media-stream";
+import {
+  deriveLessonExperience,
+  parseLessonExperience,
+} from "../../../../../lib/lesson-experience";
 
 function normalizeNarrationText(value: unknown, fallback: unknown) {
   const primary = typeof value === "string" ? value.trim() : "";
@@ -37,6 +41,7 @@ type PreviewRow = {
   content: string;
   durationMinutes: number;
   transcript: string;
+  experienceJson: string | null;
   primaryAssetId: string | null;
   primaryKey: string | null;
   videoKey: string | null;
@@ -120,6 +125,7 @@ export async function GET(
       c.price_cents AS priceCents,s.name AS schoolName,s.slug AS schoolSlug,
       l.id AS lessonId,l.title AS lessonTitle,l.lesson_type AS lessonType,
       l.content,l.duration_minutes AS durationMinutes,l.transcript,
+      l.experience_json AS experienceJson,
       l.primary_asset_id AS primaryAssetId,
       ma.key AS primaryKey,
       l.video_key AS videoKey,
@@ -170,6 +176,11 @@ export async function GET(
         content: row.content,
         durationMinutes: Number(row.durationMinutes || 0),
         transcript: normalizeNarrationText(row.transcript, row.content),
+        experience: parseLessonExperience(row.experienceJson) || deriveLessonExperience({
+            lessonTitle: row.lessonTitle,
+            content: row.content,
+            courseTitle: row.courseTitle,
+          }),
         primaryAsset,
         questions: questions.results.map((question) => ({
           id: question.id,

@@ -1,6 +1,9 @@
 import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../../lib/server-auth";
-import { parseLessonExperience } from "../../../../lib/lesson-experience";
+import {
+  deriveLessonExperience,
+  parseLessonExperience,
+} from "../../../../lib/lesson-experience";
 
 function normalizeNarrationText(value: unknown, fallback: unknown) {
   const primary = typeof value === "string" ? value.trim() : "";
@@ -256,7 +259,13 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
       ...publicLessonFields(lesson as Record<string, unknown>),
       content: includeDetail ? lesson.content : "",
       transcript: includeDetail ? normalizeNarrationText(lesson.transcript, lesson.content) : "",
-      experience: includeDetail ? parseLessonExperience(lesson.experienceJson) : null,
+      experience: includeDetail
+        ? parseLessonExperience(lesson.experienceJson) || deriveLessonExperience({
+            lessonTitle: String(lesson.title || ""),
+            content: String(lesson.content || ""),
+            courseTitle: access.title,
+          })
+        : null,
       detailLoaded: includeDetail,
       availableAt,
       locked,
