@@ -185,7 +185,7 @@ export function deriveLessonExperience({
   return {
     version: 1,
     eyebrow: "Guided lesson map",
-    title: `See how ${cleanTitle} fits together`,
+    title: `A guided map: ${cleanTitle}`,
     intro: outcome || `Follow the core ideas, evidence and practical meaning of this lesson${context}.`,
     scenes,
     activity: {
@@ -215,7 +215,7 @@ export function deriveLessonExperience({
           lowLabel: "Unsure",
           highLabel: "Ready to apply",
           weight: 1.3,
-          initial: 25,
+          initial: 30,
         },
       ],
       thresholds: [
