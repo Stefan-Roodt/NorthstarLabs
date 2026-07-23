@@ -3,6 +3,7 @@ import test from "node:test";
 import { strToU8, zipSync } from "fflate";
 import {
   extractDocxBytes,
+  extractDocxArchive,
   naturalDocumentSort,
   numberingConflicts,
   prepareDocumentSelection,
@@ -27,6 +28,25 @@ test("extracts headings, paragraphs and lists from WordprocessingML", () => {
 test("extracts editable Markdown from a DOCX package", () => {
   const archive = zipSync({ "word/document.xml": strToU8(wordXml) });
   assert.match(extractDocxBytes(archive), /Money lets people exchange value/);
+});
+
+test("reads Word and text-based modules from one migration ZIP", async () => {
+  const docx = zipSync({ "word/document.xml": strToU8(wordXml) });
+  const archive = zipSync({
+    "Module 1.2 Evolution.md": strToU8("# Module 1.2: Evolution\n\nMoney changes with institutions."),
+    "Module 1.1 Foundations.docx": docx,
+  });
+  const files = await extractDocxArchive(new File([archive], "course-pack.zip", {
+    type: "application/zip",
+  }));
+  assert.deepEqual(files.map((file) => file.name), [
+    "Module 1.1 Foundations.docx",
+    "Module 1.2 Evolution.md",
+  ]);
+  const selection = await prepareDocumentSelection([new File([archive], "course-pack.zip", {
+    type: "application/zip",
+  })]);
+  assert.match(selection.documents[1].text, /Money changes with institutions/);
 });
 
 test("uses natural module order and exposes missing sequence numbers", () => {
