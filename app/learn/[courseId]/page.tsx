@@ -91,6 +91,9 @@ function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / 1024 / 1024).toFixed(bytes > 10 * 1024 * 1024 ? 0 : 1)} MB`;
 }
+function sectionPanelId(sectionId: string) {
+  return `course-section-${sectionId.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+}
 function vttTime(totalSeconds: number) {
   const safe = Math.max(0, totalSeconds);
   const hours = Math.floor(safe / 3600);
@@ -540,6 +543,8 @@ export default function Learn({
   const [learnerMessage, setLearnerMessage] = useState("");
   const [orientationDismissed, setOrientationDismissed] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [curriculumOpen, setCurriculumOpen] = useState(false);
+  const [expandedSectionIds, setExpandedSectionIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [certificate, setCertificate] = useState<Certificate | null>(null);
   const [celebration, setCelebration] = useState<{
@@ -635,13 +640,15 @@ export default function Learn({
       const firstAvailable = loadedLessons.findIndex(
         (lesson) => !lesson.locked,
       );
-      setCurrent(
+      const nextCurrent =
         previousLesson >= 0
           ? previousLesson
           : startingLesson >= 0
             ? startingLesson
-            : Math.max(0, firstAvailable),
-      );
+            : Math.max(0, firstAvailable);
+      setCurrent(nextCurrent);
+      const activeSectionId = loadedLessons[nextCurrent]?.sectionId;
+      setExpandedSectionIds(activeSectionId ? [activeSectionId] : []);
       setCertificate(data.certificate || null);
       setLoaded(true);
     })();
@@ -688,6 +695,13 @@ export default function Learn({
       if (!available) return;
     }
     setCurrent(index);
+    setCurriculumOpen(false);
+    const sectionId = lessons[index]?.sectionId;
+    if (sectionId) {
+      setExpandedSectionIds((currentIds) =>
+        currentIds.includes(sectionId) ? currentIds : [...currentIds, sectionId],
+      );
+    }
     setAnswers([]);
     setQuizResult("");
     setQuizFeedback([]);
@@ -1147,7 +1161,7 @@ export default function Learn({
   }
   return (
     <main
-      className={`learn-page${focusMode ? " focus-mode" : ""}${effectiveLowBandwidth ? " low-bandwidth" : ""}`}
+      className={`learn-page${focusMode ? " focus-mode" : ""}${effectiveLowBandwidth ? " low-bandwidth" : ""}${curriculumOpen ? " curriculum-open" : ""}`}
       style={schoolStyle}
     >
       {" "}
@@ -1196,6 +1210,15 @@ export default function Learn({
             </small>
           </button>
         )}{" "}
+        <button
+          type="button"
+          className="mobile-curriculum-toggle"
+          aria-expanded={curriculumOpen}
+          aria-controls="learner-curriculum"
+          onClick={() => setCurriculumOpen((open) => !open)}
+        >
+          {curriculumOpen ? "Close contents" : "Course contents"}
+        </button>{" "}
         {preview ? (
           <Link href={`/dashboard/courses/${id}`}>Exit preview</Link>
         ) : (
@@ -1206,7 +1229,10 @@ export default function Learn({
             </button>{" "}
             <button
               aria-pressed={focusMode}
-              onClick={() => setFocusMode((currentMode) => !currentMode)}
+              onClick={() => {
+                setCurriculumOpen(false);
+                setFocusMode((currentMode) => !currentMode);
+              }}
             >
               {" "}
               {focusMode ? "Show curriculum" : "Focus mode"}{" "}
@@ -1309,9 +1335,21 @@ export default function Learn({
       )}{" "}
       <div className="learn-layout">
         {" "}
-        <aside data-tour="curriculum">
+        <aside id="learner-curriculum" data-tour="curriculum">
           {" "}
-          <p className="sys-kicker">{title}</p> <h2>Your curriculum</h2>{" "}
+          <div className="learner-curriculum-heading">
+            <div>
+              <p className="sys-kicker">{title}</p>
+              <h2>Your curriculum</h2>
+            </div>
+            <button
+              type="button"
+              className="curriculum-close"
+              onClick={() => setCurriculumOpen(false)}
+            >
+              Close
+            </button>
+          </div>{" "}
           <label className="course-search">
             {" "}
             <span>Search this course</span>{" "}
@@ -1335,61 +1373,111 @@ export default function Learn({
               {done}/{lessons.length} complete
             </span>{" "}
           </div>{" "}
+          {!preview && (
+            <nav className="curriculum-mobile-links" aria-label="Course shortcuts">
+              <Link href="/learn">My learning</Link>
+              {school?.showCommunity && (
+                <Link href={`/schools/${school.slug}/community`}>Community</Link>
+              )}
+            </nav>
+          )}{" "}
           {(sections.length
             ? sections
             : [{ id: "all", title: "Course content", position: 0 }]
-          ).map((section) => {
-            const sectionLessons = (
+          ).map((section, sectionIndex) => {
+            const allSectionLessons = (
               sections.length
                 ? lessons.filter((item) => item.sectionId === section.id)
                 : lessons
-            ).filter(
-              (item) =>
-                !normalizedSearch ||
-                `${item.title}${effectiveLowBandwidth ? "" : ` ${item.content} ${item.transcript}`}`
-                  .toLowerCase()
-                  .includes(normalizedSearch),
             );
+            const sectionTitleMatches = section.title
+              .toLowerCase()
+              .includes(normalizedSearch);
+            const sectionLessons = !normalizedSearch || sectionTitleMatches
+              ? allSectionLessons
+              : allSectionLessons.filter((item) =>
+                  `${item.title}${effectiveLowBandwidth ? "" : ` ${item.content} ${item.transcript}`}`
+                    .toLowerCase()
+                    .includes(normalizedSearch),
+                );
             if (!sectionLessons.length) return null;
+            const completedInSection = allSectionLessons.filter(
+              (item) => item.completed,
+            ).length;
+            const isExpanded =
+              Boolean(normalizedSearch) || expandedSectionIds.includes(section.id);
+            const panelId = sectionPanelId(section.id);
             return (
-              <div className="learner-section" key={section.id}>
+              <div
+                className={`learner-section${currentSection?.id === section.id ? " current" : ""}`}
+                key={section.id}
+              >
                 {" "}
-                <h3>{section.title}</h3>{" "}
-                {sectionLessons.map((item) => {
-                  const index = lessons.findIndex(
-                    (candidate) => candidate.id === item.id,
-                  );
-                  return (
-                    <button
-                      key={item.id}
-                      className={`${index === current ? "active" : item.completed ? "done" : ""}${item.locked && !preview ? " locked" : ""}`}
-                      disabled={item.locked && !preview}
-                      title={item.lockReason || undefined}
-                      onClick={() => void openLesson(index)}
-                    >
-                      {" "}
-                      <span>
-                        {item.locked && !preview
-                          ? "\u{1F512}"
-                          : item.completed && !preview
-                            ? "\u2713"
-                            : index + 1}
-                      </span>{" "}
-                      <span className="lesson-nav-title">
-                        {" "}
-                        {item.title}{" "}
-                        <small>
-                          {item.lockReason ||
-                            (item.durationMinutes
-                              ? `${item.durationMinutes} min`
-                              : item.quiz
-                                ? "Quiz required"
-                                : item.lessonType)}
-                        </small>{" "}
-                      </span>{" "}
-                    </button>
-                  );
-                })}{" "}
+                <button
+                  type="button"
+                  className="learner-section-toggle"
+                  aria-expanded={isExpanded}
+                  aria-controls={panelId}
+                  onClick={() =>
+                    setExpandedSectionIds((currentIds) =>
+                      currentIds.includes(section.id)
+                        ? currentIds.filter((id) => id !== section.id)
+                        : [...currentIds, section.id],
+                    )
+                  }
+                >
+                  <span className="learner-section-number">
+                    {String(sectionIndex + 1).padStart(2, "0")}
+                  </span>
+                  <span className="learner-section-copy">
+                    <strong>{section.title}</strong>
+                    <small>
+                      {completedInSection}/{allSectionLessons.length} complete
+                    </small>
+                  </span>
+                  <span className="learner-section-chevron" aria-hidden="true">
+                    {isExpanded ? "\u2212" : "+"}
+                  </span>
+                </button>{" "}
+                {isExpanded && (
+                  <div className="learner-section-lessons" id={panelId}>
+                    {sectionLessons.map((item) => {
+                      const index = lessons.findIndex(
+                        (candidate) => candidate.id === item.id,
+                      );
+                      return (
+                        <button
+                          key={item.id}
+                          className={`${index === current ? "active" : item.completed ? "done" : ""}${item.locked && !preview ? " locked" : ""}`}
+                          disabled={item.locked && !preview}
+                          title={item.lockReason || undefined}
+                          onClick={() => void openLesson(index)}
+                        >
+                          {" "}
+                          <span>
+                            {item.locked && !preview
+                              ? "\u{1F512}"
+                              : item.completed && !preview
+                                ? "\u2713"
+                                : index + 1}
+                          </span>{" "}
+                          <span className="lesson-nav-title">
+                            {" "}
+                            {item.title}{" "}
+                            <small>
+                              {item.lockReason ||
+                                (item.durationMinutes
+                                  ? `${item.durationMinutes} min`
+                                  : item.quiz
+                                    ? "Quiz required"
+                                    : item.lessonType)}
+                            </small>{" "}
+                          </span>{" "}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}{" "}
               </div>
             );
           })}{" "}

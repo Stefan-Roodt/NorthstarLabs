@@ -41,6 +41,7 @@ type CourseDetail = CatalogCourse & {
   updatedAt?: number;
   previewCount?: number;
   transcriptCount?: number;
+  accessibleLessonTextCount?: number;
   captionedVideoCount?: number;
   minimumPassingScore?: number;
   sections?: CourseSection[];
@@ -195,7 +196,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
     ? Math.max(1, Math.round(course.durationMinutes / 60))
     : null;
   const previewCount = Number(course.previewCount || 0);
-  const transcriptCount = Number(course.transcriptCount || 0);
+  const accessibleLessonTextCount = Number(course.accessibleLessonTextCount || 0);
   const captionedVideoCount = Number(course.captionedVideoCount || 0);
   const audience = splitTruth(course.truthAudience).length
     ? splitTruth(course.truthAudience)
@@ -310,7 +311,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
             <h3>Inspect the learning before joining.</h3>
             <dl>
               <div><dt>Public preview</dt><dd>{previewCount ? `${previewCount} lesson${previewCount === 1 ? "" : "s"}` : "Not yet available"}</dd></div>
-              <div><dt>Transcripts</dt><dd>{course.lessonCount ? `${transcriptCount}/${course.lessonCount} lessons` : "None"}</dd></div>
+              <div><dt>Accessible lesson text</dt><dd>{course.lessonCount ? `${accessibleLessonTextCount}/${course.lessonCount} lessons` : "None"}</dd></div>
               <div><dt>Captioned videos</dt><dd>{videoCount ? `${captionedVideoCount}/${videoCount}` : "No video required"}</dd></div>
               <div><dt>Last reviewed</dt><dd>{reviewedLabel}</dd></div>
             </dl>

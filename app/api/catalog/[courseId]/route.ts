@@ -30,6 +30,7 @@ type CourseRow = {
   updatedAt: number;
   previewCount: number;
   transcriptCount: number;
+  accessibleLessonTextCount: number;
   captionedVideoCount: number;
   minimumPassingScore: number | null;
 };
@@ -76,6 +77,8 @@ export async function GET(
         WHERE l.course_id=c.id) AS durationMinutes,
       (SELECT COUNT(*) FROM lessons l WHERE l.course_id=c.id AND l.is_preview=1) AS previewCount,
       (SELECT COUNT(*) FROM lessons l WHERE l.course_id=c.id AND length(trim(l.transcript))>=40) AS transcriptCount,
+      (SELECT COUNT(*) FROM lessons l WHERE l.course_id=c.id
+        AND (length(trim(l.content))>=40 OR length(trim(l.transcript))>=40)) AS accessibleLessonTextCount,
       (SELECT COUNT(*) FROM lessons l JOIN media_assets ma ON ma.id=l.primary_asset_id
         WHERE l.course_id=c.id AND ma.kind='video' AND length(trim(l.transcript))>=40) AS captionedVideoCount,
       (SELECT MIN(q.passing_score) FROM quizzes q JOIN lessons l ON l.id=q.lesson_id
@@ -154,6 +157,7 @@ export async function GET(
     durationMinutes: Number(course.durationMinutes || 0),
     previewCount: Number(course.previewCount || 0),
     transcriptCount: Number(course.transcriptCount || 0),
+    accessibleLessonTextCount: Number(course.accessibleLessonTextCount || 0),
     captionedVideoCount: Number(course.captionedVideoCount || 0),
     minimumPassingScore: course.minimumPassingScore === null ? null : Number(course.minimumPassingScore),
     sections: [...sections.values()],
