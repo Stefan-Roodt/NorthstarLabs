@@ -1274,8 +1274,12 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               aria-label="Search curriculum"
               value={curriculumQuery}
               onChange={(event) => {
-                setCurriculumQuery(event.target.value);
+                const nextQuery = event.target.value;
+                setCurriculumQuery(nextQuery);
                 setCurriculumSectionLimit(CURRICULUM_SECTION_BATCH);
+                if (!nextQuery.trim() && selected?.sectionId) {
+                  revealSection(selected.sectionId);
+                }
               }}
               placeholder={`Search ${course.lessons.length} lessons`}
             />
