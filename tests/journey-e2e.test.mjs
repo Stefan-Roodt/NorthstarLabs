@@ -790,6 +790,41 @@ test("publishes academy tutors and protects learner enquiry details", async () =
     "reserved",
   );
   db.exec(`
+    INSERT INTO tutor_slots
+      (id,tutor_id,school_id,created_by,starts_at,ends_at,timezone,
+       session_mode,meeting_details,status,created_at,updated_at)
+    VALUES
+      ('tutor-slot-assigned','tutor-profile','tutor-school','tutor-owner',
+       ${now + 172_800_000},${now + 176_400_000},'Africa/Johannesburg',
+       'online','https://meet.example/assigned','open',${now},${now});
+    INSERT INTO tutor_inquiries
+      (id,tutor_id,slot_id,school_id,learner_id,learner_name,learner_email,
+       subject,message,status,created_at,updated_at)
+    VALUES
+      ('tutor-general-inquiry','tutor-profile',NULL,'tutor-school','tutor-learner',
+       'Tutor Learner','tutor-learner@example.com','Geometry support',
+       'I need a coach to help me understand geometry.','contacted',${now},${now});
+    UPDATE tutor_slots SET status='booked'
+    WHERE id='tutor-slot-assigned' AND status='open';
+    UPDATE tutor_inquiries
+    SET slot_id='tutor-slot-assigned',status='booked'
+    WHERE id='tutor-general-inquiry' AND slot_id IS NULL
+      AND status IN ('new','contacted','booked');
+  `);
+  const assigned = db.prepare(`
+    SELECT ti.status,ti.slot_id AS slotId,ts.status AS slotStatus,
+      ts.starts_at AS startsAt,ts.meeting_details AS meetingDetails
+    FROM tutor_inquiries ti JOIN tutor_slots ts ON ts.id=ti.slot_id
+    WHERE ti.id='tutor-general-inquiry'
+  `).get();
+  assert.deepEqual({ ...assigned }, {
+    status: "booked",
+    slotId: "tutor-slot-assigned",
+    slotStatus: "booked",
+    startsAt: now + 172_800_000,
+    meetingDetails: "https://meet.example/assigned",
+  });
+  db.exec(`
     UPDATE tutor_slots SET status='booked' WHERE id='tutor-slot' AND status='reserved';
     UPDATE tutor_inquiries SET status='booked' WHERE id='tutor-inquiry';
   `);

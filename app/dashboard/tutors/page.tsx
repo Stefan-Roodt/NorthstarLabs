@@ -170,6 +170,22 @@ function list(value: string) {
   return value.split(",").map((item) => item.trim()).filter(Boolean);
 }
 
+function appointmentLabel(slot: TutorSlot) {
+  try {
+    const date = new Intl.DateTimeFormat("en-ZA", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: slot.timezone,
+    }).format(new Date(slot.startsAt));
+    return `${date} · ${slot.sessionMode.replaceAll("_", " ")} · ${slot.timezone}`;
+  } catch {
+    return `${new Date(slot.startsAt).toLocaleString("en-ZA")} · ${slot.sessionMode.replaceAll("_", " ")}`;
+  }
+}
+
 export default function TutorAdminPage() {
   const supabase = getSupabaseBrowser();
   const [pageLoadedAt] = useState(() => Date.now());
@@ -178,6 +194,7 @@ export default function TutorAdminPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [slots, setSlots] = useState<TutorSlot[]>([]);
   const [credentials, setCredentials] = useState<TutorCredential[]>([]);
+  const [inquirySlotIds, setInquirySlotIds] = useState<Record<string, string>>({});
   const [editingId, setEditingId] = useState("");
   const [draft, setDraft] = useState<TutorDraft>(emptyDraft);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -265,6 +282,14 @@ export default function TutorAdminPage() {
     () => inquiries.filter((inquiry) => inquiry.status === "new").length,
     [inquiries],
   );
+  const openSlotsByTutor = useMemo(() => {
+    const grouped = new Map<string, TutorSlot[]>();
+    for (const slot of slots) {
+      if (slot.status !== "open" || slot.startsAt <= pageLoadedAt) continue;
+      grouped.set(slot.tutorId, [...(grouped.get(slot.tutorId) || []), slot]);
+    }
+    return grouped;
+  }, [pageLoadedAt, slots]);
 
   function updateDraft<Key extends keyof TutorDraft>(key: Key, value: TutorDraft[Key]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -399,20 +424,40 @@ export default function TutorAdminPage() {
     form.submit();
   }
 
-  async function updateInquiry(inquiry: Inquiry, status: string) {
+  async function updateInquiry(inquiry: Inquiry, status: string, slotId = "") {
     setBusy(inquiry.id);
     const response = await authed("/api/tutor-inquiries", {
       method: "PATCH",
       body: JSON.stringify({
         id: inquiry.id,
         status,
+        ...(slotId ? { slotId } : {}),
         creatorNote: notes[inquiry.id] || "",
       }),
     });
     const result = await response.json();
-    setMessage(response.ok ? `Enquiry marked ${status}.` : result.error || "The enquiry could not be updated.");
+    setMessage(response.ok
+      ? status === "booked"
+        ? "Appointment confirmed. The learner can now see the time and joining details."
+        : `Enquiry marked ${status}.`
+      : result.error || "The enquiry could not be updated.");
+    if (response.ok && slotId) {
+      setInquirySlotIds((current) => {
+        const next = { ...current };
+        delete next[inquiry.id];
+        return next;
+      });
+    }
     await load();
     setBusy("");
+  }
+
+  function openAvailabilityFor(inquiry: Inquiry) {
+    setSlotTutorId(inquiry.tutorId);
+    setWorkspaceView("availability");
+    window.setTimeout(() => {
+      document.getElementById("availability")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
   }
 
   function chooseLearnerRating(inquiryId: string, rating: number) {
@@ -766,6 +811,38 @@ export default function TutorAdminPage() {
                 ? `${new Date(inquiry.startsAt).toLocaleString("en-ZA")} - ${inquiry.sessionMode?.replaceAll("_", " ")}`
                 : inquiry.preferredTimes || "Not supplied"}</dd></div>
             </dl>
+            {!inquiry.slotId && !["declined", "closed", "completed"].includes(inquiry.status) && <section className="tutor-inquiry-scheduler">
+              <div>
+                <p className="sys-kicker">NEXT STEP</p>
+                <h4>Turn this enquiry into an appointment</h4>
+                <p>Choose one of {inquiry.tutorName}&apos;s open times. NorthstarLabs will confirm it with the learner and reveal the joining details.</p>
+              </div>
+              {(openSlotsByTutor.get(inquiry.tutorId) || []).length ? <div className="tutor-inquiry-slot-picker">
+                <label>
+                  Appointment time
+                  <select
+                    value={inquirySlotIds[inquiry.id] || ""}
+                    onChange={(event) => setInquirySlotIds((current) => ({ ...current, [inquiry.id]: event.target.value }))}
+                  >
+                    <option value="">Choose an open time</option>
+                    {(openSlotsByTutor.get(inquiry.tutorId) || []).map((slot) =>
+                      <option key={slot.id} value={slot.id}>{appointmentLabel(slot)}</option>
+                    )}
+                  </select>
+                </label>
+                <button
+                  className="sys-primary"
+                  disabled={busy === inquiry.id || !inquirySlotIds[inquiry.id]}
+                  onClick={() => updateInquiry(inquiry, "booked", inquirySlotIds[inquiry.id])}
+                  type="button"
+                >
+                  {busy === inquiry.id ? "Confirming..." : "Assign time & confirm"}
+                </button>
+              </div> : <div className="tutor-inquiry-no-slots">
+                <p>No future appointment times are open for this coach yet.</p>
+                <button onClick={() => openAvailabilityFor(inquiry)} type="button">Add appointment times</button>
+              </div>}
+            </section>}
             {inquiry.startsAt && <p className="tutor-booking-note"><b>{inquiry.slotStatus === "booked" ? "Confirmed" : "Reserved while you decide"}:</b> {inquiry.timezone}{inquiry.status === "booked" && inquiry.meetingDetails ? ` - ${inquiry.meetingDetails}` : ""}</p>}
             {Number(inquiry.learnerRatingCount || 0) > 0 && <div className="learner-reputation-summary">
               <span>Private learner reputation</span>
@@ -798,8 +875,8 @@ export default function TutorAdminPage() {
               <a href={`mailto:${inquiry.learnerEmail}?subject=${encodeURIComponent(`Tutoring: ${inquiry.subject}`)}`}>Reply by email</a>
               {inquiry.phoneNumber && <a href={`tel:${inquiry.phoneNumber}`}>Call learner</a>}
               {inquiry.status === "new" && <button disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "contacted")}>Mark contacted</button>}
-              {!["booked", "declined", "closed"].includes(inquiry.status) && <button className="sys-primary" disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "booked")}>{inquiry.slotId ? "Confirm booking" : "Mark booked"}</button>}
-              {inquiry.status === "booked" && <button className="sys-primary" disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "completed")}>Mark session completed</button>}
+              {inquiry.slotId && !["booked", "declined", "closed"].includes(inquiry.status) && <button className="sys-primary" disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "booked")}>Confirm booking</button>}
+              {inquiry.status === "booked" && inquiry.slotId && <button className="sys-primary" disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "completed")}>Mark session completed</button>}
               {inquiry.slotId && !["booked", "declined", "closed"].includes(inquiry.status) && <button disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "declined")}>Decline time</button>}
               {!["closed", "declined", "completed"].includes(inquiry.status) && <button disabled={busy === inquiry.id} onClick={() => updateInquiry(inquiry, "closed")}>Close</button>}
             </div>
