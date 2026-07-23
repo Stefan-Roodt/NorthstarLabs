@@ -912,6 +912,23 @@ export const notificationPreferences = sqliteTable("notification_preferences", {
   uniqueIndex("notification_preferences_user_unique").on(table.userId),
 ]);
 
+export const inAppNotifications = sqliteTable("in_app_notifications", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  schoolId: text("school_id"),
+  templateKey: text("template_key").notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  actionLabel: text("action_label").notNull().default("Open"),
+  actionUrl: text("action_url").notNull().default("/"),
+  idempotencyKey: text("idempotency_key").notNull(),
+  readAt: integer("read_at"),
+  createdAt: integer("created_at").notNull(),
+}, (table) => [
+  uniqueIndex("in_app_notifications_idempotency_unique").on(table.idempotencyKey),
+  index("in_app_notifications_user_read_created_idx").on(table.userId, table.readAt, table.createdAt),
+]);
+
 export const reportSchedules = sqliteTable("report_schedules", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),

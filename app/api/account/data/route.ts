@@ -6,7 +6,7 @@ import { requireApiUser } from "../../../../lib/server-auth";
 import { recordSystemEvent, safeErrorMessage } from "../../../../lib/system-monitor";
 
 async function accountExport(userId: string) {
-  const [profile, schools, enrollments, progress, attempts, masteryConcepts, masteryPractice, certificates, posts, preferences, products, live, portfolio, portfolioSources, portfolioEvidence, lessonHelp, demandFollows] =
+  const [profile, schools, enrollments, progress, attempts, masteryConcepts, masteryPractice, certificates, posts, preferences, notifications, products, live, portfolio, portfolioSources, portfolioEvidence, lessonHelp, demandFollows] =
     await Promise.all([
       env.DB.prepare(
         `SELECT id,email,display_name AS displayName,role,onboarding_path AS onboardingPath,
@@ -74,6 +74,12 @@ async function accountExport(userId: string) {
          FROM notification_preferences WHERE user_id=?`,
       ).bind(userId).first(),
       env.DB.prepare(
+        `SELECT id,template_key AS templateKey,title,body,
+          action_label AS actionLabel,action_url AS actionUrl,
+          read_at AS readAt,created_at AS createdAt
+         FROM in_app_notifications WHERE user_id=? ORDER BY created_at DESC`,
+      ).bind(userId).all(),
+      env.DB.prepare(
         `SELECT pe.id,p.name AS productName,p.product_type AS productType,
           pe.source,pe.status,pe.starts_at AS startsAt,pe.expires_at AS expiresAt,
           pe.created_at AS createdAt
@@ -132,6 +138,7 @@ async function accountExport(userId: string) {
     certificates: certificates.results,
     communityPosts: posts.results,
     notificationPreferences: preferences,
+    notifications: notifications.results,
     productEntitlements: products.results,
     liveAttendance: live.results,
     learningPortfolio: portfolio,
@@ -268,6 +275,9 @@ export async function DELETE(request: Request) {
       ).bind(user.id),
       env.DB.prepare(
         "DELETE FROM notification_preferences WHERE user_id=?",
+      ).bind(user.id),
+      env.DB.prepare(
+        "DELETE FROM in_app_notifications WHERE user_id=?",
       ).bind(user.id),
       env.DB.prepare(
         "DELETE FROM memberships WHERE user_id=?",

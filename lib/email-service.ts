@@ -303,6 +303,27 @@ async function emailAllowed(userId: string | null | undefined, templateKey: Emai
 }
 
 export async function queueEmail(input: QueueEmailInput) {
+  const content = templateContent(input.templateKey, input.variables);
+  if (input.recipientUserId && input.templateKey !== "test") {
+    await env.DB.prepare(
+      `INSERT INTO in_app_notifications
+        (id,user_id,school_id,template_key,title,body,action_label,action_url,
+         idempotency_key,created_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(idempotency_key) DO NOTHING`,
+    ).bind(
+      crypto.randomUUID(),
+      input.recipientUserId,
+      input.schoolId || null,
+      input.templateKey,
+      content.heading,
+      `${content.intro} ${content.detail}`.trim(),
+      content.actionLabel,
+      safeUrl(content.actionUrl),
+      input.idempotencyKey,
+      Date.now(),
+    ).run();
+  }
   const existing = await env.DB.prepare(
     `SELECT id,status FROM email_messages WHERE idempotency_key=?`,
   ).bind(input.idempotencyKey).first<{ id: string; status: string }>();

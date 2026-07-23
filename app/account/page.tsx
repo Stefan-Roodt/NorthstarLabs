@@ -18,6 +18,16 @@ type NotificationPreferences = {
   creatorSummaries: number;
   productUpdates: number;
 };
+type InboxNotification = {
+  id: string;
+  templateKey: string;
+  title: string;
+  body: string;
+  actionLabel: string;
+  actionUrl: string;
+  readAt: number | null;
+  createdAt: number;
+};
 
 export default function AccountPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -28,6 +38,8 @@ export default function AccountPage() {
   const [providers, setProviders] = useState<string[]>([]);
   const [verifiedAt, setVerifiedAt] = useState("");
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
+  const [inbox, setInbox] = useState<InboxNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [message, setMessage] = useState("Loading your account...");
   const [busy, setBusy] = useState("");
   const supabase = getSupabaseBrowser();
@@ -63,7 +75,15 @@ export default function AccountPage() {
       const preferencesResponse = await fetch("/api/notifications", {
         headers: { authorization: `Bearer ${session.access_token}` },
       });
-      if (preferencesResponse.ok) setPreferences(await preferencesResponse.json());
+      if (preferencesResponse.ok) {
+        const notificationData = await preferencesResponse.json() as NotificationPreferences & {
+          inbox?: InboxNotification[];
+          unreadCount?: number;
+        };
+        setPreferences(notificationData);
+        setInbox(notificationData.inbox || []);
+        setUnreadCount(Number(notificationData.unreadCount || 0));
+      }
       setMessage("");
     })();
   }, [sessionToken, supabase]);
@@ -85,6 +105,45 @@ export default function AccountPage() {
       body: JSON.stringify({ [key]: enabled }),
     });
     setMessage(response.ok ? "Notification preferences saved." : "Preferences could not be saved.");
+  }
+
+  async function markNotificationRead(notification: InboxNotification) {
+    if (notification.readAt) return;
+    const response = await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${await sessionToken()}`,
+      },
+      body: JSON.stringify({ action: "mark_read", id: notification.id }),
+    });
+    if (!response.ok) {
+      setMessage("That notification could not be updated.");
+      return;
+    }
+    const now = Date.now();
+    setInbox((current) => current.map((item) =>
+      item.id === notification.id ? { ...item, readAt: now } : item
+    ));
+    setUnreadCount((current) => Math.max(0, current - 1));
+  }
+
+  async function markAllNotificationsRead() {
+    const response = await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${await sessionToken()}`,
+      },
+      body: JSON.stringify({ action: "mark_all_read" }),
+    });
+    if (!response.ok) {
+      setMessage("Notifications could not be updated.");
+      return;
+    }
+    const now = Date.now();
+    setInbox((current) => current.map((item) => ({ ...item, readAt: item.readAt || now })));
+    setUnreadCount(0);
   }
 
   async function saveProfile(event: FormEvent) {
@@ -257,6 +316,29 @@ export default function AccountPage() {
     </section>
     <section className="account-grid">
       {message && <div className="notice account-notice" role="status">{message}</div>}
+
+      <article className="panel account-card notification-inbox">
+        <div className="notification-inbox-heading">
+          <div>
+            <p className="sys-kicker">YOUR UPDATES</p>
+            <h2>Notifications {unreadCount ? `(${unreadCount} new)` : ""}</h2>
+          </div>
+          {unreadCount > 0 && <button type="button" onClick={markAllNotificationsRead}>Mark all read</button>}
+        </div>
+        {inbox.length ? <div className="notification-inbox-list">
+          {inbox.map((notification) => <article className={notification.readAt ? "read" : "unread"} key={notification.id}>
+            <div>
+              <span>{notification.readAt ? "READ" : "NEW"}</span>
+              <time>{new Date(notification.createdAt).toLocaleDateString("en-ZA")}</time>
+            </div>
+            <h3>{notification.title}</h3>
+            <p>{notification.body}</p>
+            <Link href={notification.actionUrl} onClick={() => { void markNotificationRead(notification); }}>
+              {notification.actionLabel} →
+            </Link>
+          </article>)}
+        </div> : <p className="notification-inbox-empty">Course, booking, certificate, educator and live-session updates will appear here—even when external email is unavailable.</p>}
+      </article>
 
       <article className="panel account-card">
         <div><p className="sys-kicker">PROFILE</p><h2>How people see you</h2></div>
