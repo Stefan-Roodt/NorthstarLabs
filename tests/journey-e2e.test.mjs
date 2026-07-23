@@ -290,10 +290,10 @@ test("seeds the complete three-part Crypto Mastery programme with its guided ori
     status: "draft",
     schoolSlug: "cognizen-consulting",
     sections: 95,
-    lessons: 718,
+    lessons: 724,
     interactiveLessons: 96,
-    quizzes: 33,
-    questions: 266,
+    quizzes: 95,
+    questions: 576,
     longest: 6,
   });
   const activities = db.prepare(`
