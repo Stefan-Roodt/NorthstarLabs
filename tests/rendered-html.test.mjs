@@ -2016,11 +2016,17 @@ test("keeps course context through registration and welcomes new enrolments into
   assert.match(login, /joiningCourseDetail\.title/);
   assert.match(login, /assessmentCount/);
   assert.match(enrolments, /newEnrollment: !existing/);
+  assert.match(enrolments, /AS nextLessonTitle/);
+  assert.match(enrolments, /ORDER BY e\.last_activity_at DESC/);
   assert.match(course, /newEnrollment \? "\?welcome=1"/);
   assert.match(course, /Continue learning/);
+  assert.match(course, /split\(\/\\r\?\\n\|\\\\n\|;\//);
   assert.match(course, /fetch\("\/api\/enrollments"/);
   assert.match(catalogue, /signedIn/);
   assert.match(catalogue, /My learning/);
+  const learnerHome = await readFile(new URL("../app/learn/page.tsx", import.meta.url), "utf8");
+  assert.match(learnerHome, /nextLessonTitle/);
+  assert.match(learnerHome, /Next lesson/);
   assert.match(learn, /YOU ARE ENROLLED/);
   assert.match(learn, /Start my first lesson/);
   assert.match(learn, /history\.replaceState/);
