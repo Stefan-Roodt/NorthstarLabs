@@ -7,34 +7,45 @@ const creatorSignupHref = "/login?mode=signup&role=creator&next=%2Fwelcome%3Fpat
 const paths = [
   {
     number: "01",
-    label: "ONE-TO-ONE HELP",
-    title: "Find your coach",
+    label: "LEARN AT YOUR PACE",
+    title: "Take a course",
     description:
-      "Tell us what you want to achieve. Compare relevant people by expertise, rate, availability, and verified-session reviews.",
+      "Choose a structured learning path, preview the syllabus, and keep your lessons, progress, assessments, and certificates together.",
+    href: "/courses",
+    action: "Browse courses",
+    detail: "Preview before you enrol",
+    tone: "learn",
+  },
+  {
+    number: "02",
+    label: "PERSONAL LEARNING HELP",
+    title: "Find a coach",
+    description:
+      "Compare coaches by expertise, rate, availability, credentials, and verified-session reviews. Searching is always free.",
     href: "/tutors",
-    action: "Find a coach",
+    action: "Compare coaches",
     detail: "Any topic - no fee to search",
     tone: "coach",
   },
   {
-    number: "02",
-    label: "LEARN AT YOUR PACE",
-    title: "Take a course",
+    number: "03",
+    label: "OFFER ONE-TO-ONE HELP",
+    title: "Become a coach",
     description:
-      "Start with a structured path, keep your progress in one place, and bring in a coach whenever you need personal help.",
-    href: "/courses",
-    action: "Browse courses",
-    detail: "New subjects can grow continuously",
-    tone: "learn",
+      "Create a professional profile, set your own rate and availability, receive enquiries, and build trust through completed-session reviews.",
+    href: coachSignupHref,
+    action: "Create coach profile",
+    detail: "Free listing - you control your rate",
+    tone: "coach",
   },
   {
-    number: "03",
-    label: "SHARE YOUR EXPERTISE",
-    title: "Coach or teach",
+    number: "04",
+    label: "BUILD AND TEACH",
+    title: "Open an academy",
     description:
-      "Offer one-to-one sessions, publish courses, run live learning, and build a trusted practice around what you know.",
+      "Create your branded learning space, import modules, publish courses, invite learners, and manage teaching from one workspace.",
     href: creatorSignupHref,
-    action: "Start earning",
+    action: "Build my academy",
     detail: "No credit card required",
     tone: "create",
   },
@@ -61,16 +72,16 @@ export default function Home() {
 
         <div className="decision-account">
           <Link href="/login?mode=login">Sign in</Link>
-          <Link href={learnerSignupHref}>Join free as Student</Link>
+          <Link href={learnerSignupHref}>Join free as a learner</Link>
         </div>
 
         <details className="decision-menu">
           <summary>Menu</summary>
           <div>
             <Link href="/courses">Take a course</Link>
-            <Link href={learnerSignupHref}>Join as Student</Link>
+            <Link href={learnerSignupHref}>Join as a learner</Link>
             <Link href={coachSignupHref}>Join as Coach/Tutor</Link>
-            <a href={creatorSignupHref}>Build an academy</a>
+            <Link href={creatorSignupHref}>Build an academy</Link>
             <Link href="/about">What Northstar does</Link>
             <Link href="/pricing">Pricing</Link>
             <Link href="/login?mode=login">Sign in</Link>
@@ -80,24 +91,24 @@ export default function Home() {
 
       <section className="decision-hero" aria-labelledby="home-title">
         <div className="decision-intro">
-          <p className="decision-kicker">REAL PEOPLE - REAL PROGRESS</p>
+          <p className="decision-kicker">COURSES THAT LEAD TO PROGRESS</p>
           <h1 id="home-title">
-            Whatever you want to learn, <em>find someone who can help.</em>
+            Learn with a clear path. <em>Get human help when you need it.</em>
           </h1>
           <p>
-            NorthstarLabs brings one-to-one coaching, structured courses, and useful communities together across the topics people
-            care about. Start with your goal-not a maze of products.
+            NorthstarLabs brings structured courses, practical assessments, useful communities, and optional one-to-one coaching
+            together. Start learning immediately, or choose the professional path that fits your work.
           </p>
           <div className="decision-trust" aria-label="Why it is easy to start">
-            <span><b>Any</b> useful topic</span>
-            <span><b>Human</b> one-to-one support</span>
-            <span><b>One</b> place to keep progressing</span>
+            <span><b>Preview</b> before enrolling</span>
+            <span><b>Human</b> help when needed</span>
+            <span><b>One</b> place for your progress</span>
           </div>
         </div>
 
         <div className="decision-paths" aria-label="Choose your NorthstarLabs path">
           {paths.map((path) => (
-            <a className={`decision-path ${path.tone}`} href={path.href} key={path.number}>
+            <Link className={`decision-path ${path.tone}`} href={path.href} key={path.number}>
               <span className="decision-path-number">{path.number}</span>
               <div>
                 <p>{path.label}</p>
@@ -108,7 +119,7 @@ export default function Home() {
                 <small>{path.detail}</small>
                 <b>{path.action}</b>
               </footer>
-            </a>
+            </Link>
           ))}
         </div>
       </section>
@@ -119,11 +130,11 @@ export default function Home() {
           <h2 id="topics-title">One platform. Thousands of possible goals.</h2>
         </div>
         <div className="decision-topic-list">
-          {popularTopics.map((topic) => <Link href={`/tutors?q=${encodeURIComponent(topic)}`} key={topic}>{topic}<span> more</span></Link>)}
+          {popularTopics.map((topic) => <Link href={`/courses?query=${encodeURIComponent(topic)}`} key={topic}>{topic}<span> explore</span></Link>)}
         </div>
         <Link className="decision-topic-request" href="/demand">
           <span>Can&apos;t find it?</span>
-          <b>Request any topic and let Northstar look for the right coach</b>
+          <b>Request a topic and let Northstar look for the right course or expert</b>
         </Link>
       </section>
 
