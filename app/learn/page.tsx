@@ -28,13 +28,26 @@ type LearnerProduct = {
   includesCommunity: number;
   expiresAt: number | null;
 };
+type CoachingRequest = {
+  id: string;
+  status: string;
+  tutorName: string;
+  schoolName: string;
+  startsAt: number | null;
+  endsAt: number | null;
+  meetingDetails: string | null;
+  reviewId: string | null;
+  updatedAt: number;
+};
 
 export default function LearnerHome() {
   const [items, setItems] = useState<Enrolment[]>([]);
   const [products, setProducts] = useState<LearnerProduct[]>([]);
+  const [coaching, setCoaching] = useState<CoachingRequest[]>([]);
   const [profile, setProfile] = useState<LearnerProfile | null>(null);
   const [mastery, setMastery] = useState<MasterySummary>({ ready: 0, strengthening: 0, mastered: 0, total: 0 });
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
   const supabase = getSupabaseBrowser();
   const { enabled: lowBandwidth, toggle: toggleLowBandwidth } = useLowBandwidthMode();
 
@@ -47,11 +60,12 @@ export default function LearnerHome() {
         return;
       }
       const headers = { authorization: `Bearer ${session.access_token}` };
-      const [coursesResponse, productsResponse, profileResponse, masteryResponse] = await Promise.all([
+      const [coursesResponse, productsResponse, profileResponse, masteryResponse, coachingResponse] = await Promise.all([
         fetch("/api/enrollments", { headers }),
         fetch("/api/products/claim", { headers }),
         fetch("/api/profile", { headers }),
         fetch("/api/mastery?summary=1", { headers }),
+        fetch("/api/tutor-inquiries?view=learner", { headers }),
       ]);
       if (coursesResponse.ok) setItems(await coursesResponse.json());
       if (productsResponse.ok) {
@@ -63,6 +77,11 @@ export default function LearnerHome() {
         const result = await masteryResponse.json() as { summary: MasterySummary };
         setMastery(result.summary);
       }
+      if (coachingResponse.ok) {
+        const result = await coachingResponse.json() as { inquiries: CoachingRequest[] };
+        setCoaching(result.inquiries);
+      }
+      setCurrentTime(Date.now());
       setLoading(false);
     })();
   }, [supabase]);
@@ -79,12 +98,22 @@ export default function LearnerHome() {
   const nextCourse = [...inProgress].sort((a, b) => b.progress - a.progress)[0] || notStarted[0];
   const upcomingLive = products.reduce((sum, product) => sum + Number(product.upcomingSessions || 0), 0);
   const firstName = (profile?.displayName || profile?.email?.split("@")[0] || "").trim().split(/\s+/)[0];
+  const activeCoaching = coaching.filter((request) =>
+    ["new", "contacted", "booked"].includes(request.status) &&
+    (!request.startsAt || request.startsAt > currentTime)
+  );
+  const confirmedCoaching = activeCoaching.filter((request) => request.status === "booked");
+  const pendingCoaching = activeCoaching.filter((request) => request.status !== "booked");
+  const reviewDue = coaching.filter((request) => request.status === "completed" && !request.reviewId);
+  const nextCoaching = [...activeCoaching]
+    .sort((a, b) => (a.startsAt || Number.MAX_SAFE_INTEGER) - (b.startsAt || Number.MAX_SAFE_INTEGER))[0];
 
   return <main className="learner-home">
       <header>
         <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
       <nav>
         <Link href="/courses">Explore modules</Link>
+        <Link href="/tutoring">My coaching</Link>
         <Link href="/live">My live classes</Link>
         <Link href="/community">My communities</Link>
         <Link href="/mastery">Mastery</Link>
@@ -118,6 +147,39 @@ export default function LearnerHome() {
       </div>
       <dl><div><dt>Ready</dt><dd>{mastery.ready}</dd></div><div><dt>Strengthening</dt><dd>{mastery.strengthening}</dd></div><div><dt>Mastered</dt><dd>{mastery.mastered}</dd></div></dl>
       <Link className="sys-primary" href="/mastery">{mastery.ready > 0 ? "Start focused review" : "See my concept map"} {"\u2192"}</Link>
+    </section>}
+
+    {!loading && <section className={`learner-coaching-strip ${activeCoaching.length || reviewDue.length ? "active" : ""}`}>
+      <div className="learner-coaching-mark" aria-hidden="true">1:1</div>
+      <div className="learner-coaching-copy">
+        <p className="sys-kicker">HUMAN HELP DESK</p>
+        {reviewDue.length > 0
+          ? <>
+            <h2>{reviewDue.length === 1 ? "Your session is ready for review." : `${reviewDue.length} sessions are ready for review.`}</h2>
+            <p>Share protected feedback while the session is still fresh.</p>
+          </>
+          : nextCoaching
+            ? <>
+              <h2>{nextCoaching.status === "booked"
+                ? `Your session with ${nextCoaching.tutorName} is confirmed.`
+                : `${nextCoaching.tutorName} is reviewing your request.`}</h2>
+              <p>{nextCoaching.startsAt
+                ? `${new Date(nextCoaching.startsAt).toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long" })} at ${new Date(nextCoaching.startsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}.`
+                : `Your request through ${nextCoaching.schoolName} is safely recorded.`}</p>
+            </>
+            : <>
+              <h2>Get personal help when a course is not enough.</h2>
+              <p>Compare real expertise, choose an available time, and keep the entire session journey in one place.</p>
+            </>}
+      </div>
+      {(activeCoaching.length > 0 || reviewDue.length > 0) && <dl>
+        <div><dt>Confirmed</dt><dd>{confirmedCoaching.length}</dd></div>
+        <div><dt>Awaiting reply</dt><dd>{pendingCoaching.length}</dd></div>
+      </dl>}
+      <div className="learner-coaching-actions">
+        {(activeCoaching.length > 0 || reviewDue.length > 0) && <Link className="sys-primary" href="/tutoring">{reviewDue.length ? "Review session" : "Open my coaching"} {"\u2192"}</Link>}
+        <Link href="/tutors">{activeCoaching.length || reviewDue.length ? "Find another coach" : "Find a coach"} {"\u2192"}</Link>
+      </div>
     </section>}
 
     {!loading && <section className="learner-next-wrap">

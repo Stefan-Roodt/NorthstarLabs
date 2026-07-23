@@ -211,7 +211,7 @@ export default function TutorDetailPage({ params }: {
           {tutor.location && <div><dt>Location</dt><dd>{tutor.location}</dd></div>}
           {tutor.availability && <div><dt>Availability</dt><dd>{tutor.availability}</dd></div>}
         </dl>
-        <a className="tutor-primary-action" href="#enquire">Send a private enquiry</a>
+        <a className="tutor-primary-action" href="#enquire">{data.slots.length ? "Choose an appointment" : "Ask about a session"}</a>
         {tutor.showDirectContact && <div className="tutor-direct-actions">
           {tutor.phoneNumber && <a href={`tel:${tutor.phoneNumber}`}>Call tutor</a>}
           {tutor.whatsappNumber && <a href={whatsappLink(tutor.whatsappNumber)} target="_blank" rel="noreferrer">WhatsApp</a>}
@@ -245,10 +245,11 @@ export default function TutorDetailPage({ params }: {
       </article>
 
       <form className="tutor-enquiry-form" id="enquire" onSubmit={enquire}>
-        <p className="sys-kicker">MAKE CONTACT</p>
-        <h2>Tell {tutor.displayName.split(/\s+/)[0]} what you need.</h2>
-        <p>Your details are sent privately to the tutor and academy team.</p>
+        <p className="sys-kicker">{data.slots.length ? "CHOOSE A TIME" : "REQUEST A SESSION"}</p>
+        <h2>{data.slots.length ? `Book time with ${tutor.displayName}.` : `Ask ${tutor.displayName} about a session.`}</h2>
+        <p>Your request goes privately to the coach and academy. You can track every update in My coaching.</p>
         {notice && <div className="notice" role="status">{notice}</div>}
+        {notice.startsWith("Your ") && <Link className="tutor-track-request" href="/tutoring">Open My coaching {"\u2192"}</Link>}
         <fieldset className="tutor-slot-picker">
           <legend>Choose an available appointment</legend>
           {data.slots.length ? <div>
@@ -271,8 +272,8 @@ export default function TutorDetailPage({ params }: {
           <label>How should the tutor reply?<select value={contactPreference} onChange={(event) => setContactPreference(event.target.value)}><option value="email">Email</option><option value="phone">Phone call</option><option value="whatsapp">WhatsApp</option></select></label>
           <label>Phone number{contactPreference === "email" && " (optional)"}<input required={contactPreference !== "email"} type="tel" value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} placeholder="+264 81 000 0000" /></label>
         </div>
-        <button className="tutor-primary-action" disabled={busy}>{busy ? "Sending request..." : selectedSlotId ? "Request appointment" : "Send enquiry"}</button>
-        <small>By sending this enquiry, you agree that the tutor and academy may contact you about this request.</small>
+        <button className="tutor-primary-action" disabled={busy}>{busy ? "Sending request..." : selectedSlotId ? "Request this appointment" : "Send session request"}</button>
+        <small>By sending this request, you agree that the tutor and academy may contact you about this session.</small>
       </form>
     </section>
 

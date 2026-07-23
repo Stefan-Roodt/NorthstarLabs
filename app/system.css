@@ -423,3 +423,39 @@
 .control-system-grid nav a:hover{border-color:var(--blue);background:var(--blue);color:white}
 @media(max-width:1000px){.control-hero{grid-template-columns:1fr}.control-hero>aside{min-height:260px}.control-snapshot{grid-template-columns:1fr 1fr}.control-main-grid{grid-template-columns:1fr}.control-system-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:650px){.control-top{padding:14px 18px;grid-template-columns:1fr auto}.control-top>div:first-of-type{display:none}.control-top>div:last-child a{display:none}.control-hero,.control-body{width:calc(100% - 36px)}.control-hero>div{padding:48px 22px}.control-hero h2{font-size:51px}.control-hero>aside{padding:35px 24px}.control-snapshot{grid-template-columns:1fr}.control-snapshot>a{min-height:175px}.control-main-grid>.panel{padding:22px 18px}.control-action-list>a{grid-template-columns:1fr auto;gap:9px}.control-action-list>a>span{grid-column:1/-1}.control-action-list p{max-width:250px}.control-system-grid{grid-template-columns:1fr}.control-system-grid>article{min-height:245px;padding:24px}}
+
+/* Connected coaching journey */
+.learner-home>header nav{gap:16px}
+.learner-coaching-strip{width:min(1240px,calc(100% - max(48px,14vw)));margin:30px auto 0;padding:27px 30px;display:grid;grid-template-columns:88px minmax(0,1fr) auto auto;gap:25px;align-items:center;border:1px solid var(--rule);border-radius:17px;background:#fffaf4;box-shadow:0 14px 40px #20233c0d}
+.learner-coaching-strip.active{border-color:#aeb9f3;background:linear-gradient(110deg,#fffaf4,#eef1ff)}
+.learner-coaching-mark{width:72px;height:72px;display:grid;place-items:center;border-radius:50%;background:var(--ink);color:var(--acid);font:700 24px var(--font-display);letter-spacing:-.04em}
+.learner-coaching-copy h2{margin:6px 0 7px;font:700 clamp(24px,2.4vw,34px)/1 var(--font-display);letter-spacing:-.035em}
+.learner-coaching-copy>p:last-child{margin:0;color:var(--muted);font-size:10px;line-height:1.55}
+.learner-coaching-strip dl{display:grid;grid-template-columns:repeat(2,85px);gap:7px;margin:0}
+.learner-coaching-strip dl>div{padding:12px;border:1px solid var(--rule);border-radius:9px;background:#ffffffa8}
+.learner-coaching-strip dt{color:var(--muted);font-size:7px;text-transform:uppercase;letter-spacing:.06em}
+.learner-coaching-strip dd{margin:5px 0 0;font:700 26px var(--font-display)}
+.learner-coaching-actions{display:grid;gap:8px;justify-items:stretch;min-width:155px}
+.learner-coaching-actions a{padding:10px 12px;border:1px solid var(--rule);border-radius:8px;background:white;color:var(--blue);font-size:9px;font-weight:900;text-align:center;white-space:nowrap}
+.learner-coaching-actions a.sys-primary{background:var(--blue);border-color:var(--blue);color:white}
+.tutoring-journey{margin:0 0 52px;display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--ink);border-left:1px solid var(--ink)}
+.tutoring-journey>div{min-height:110px;padding:20px;display:grid;grid-template-columns:36px 1fr;grid-template-rows:auto auto;column-gap:12px;border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);background:#fffaf4}
+.tutoring-journey span{grid-row:1/3;width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:var(--blue);color:white;font-size:9px;font-weight:900}
+.tutoring-journey b{align-self:end;font:700 15px var(--font-display)}
+.tutoring-journey small{align-self:start;margin-top:4px;color:var(--muted);font-size:8px;line-height:1.4}
+.tutor-track-request{display:inline-block;margin:0 0 16px;padding:9px 11px;border:1px solid var(--blue);border-radius:7px;color:var(--blue);font-size:9px;font-weight:900}
+@media(max-width:1050px){
+  .learner-coaching-strip{grid-template-columns:72px minmax(0,1fr) auto}
+  .learner-coaching-strip dl{display:none}
+  .learner-home>header nav{gap:11px}
+}
+@media(max-width:720px){
+  .learner-home>header nav a:nth-child(2){display:inline}
+  .learner-home>header nav a:nth-child(1),.learner-home>header nav a:nth-child(4),.learner-home>header nav a:nth-child(5),.learner-home>header nav a:nth-child(6){display:none}
+  .learner-coaching-strip{width:calc(100% - 28px);margin-top:16px;padding:22px 18px;grid-template-columns:54px 1fr;gap:15px}
+  .learner-coaching-mark{width:52px;height:52px;font-size:18px}
+  .learner-coaching-actions{grid-column:1/-1;grid-template-columns:1fr 1fr;min-width:0}
+  .learner-coaching-actions a{white-space:normal}
+  .tutoring-journey{grid-template-columns:1fr;margin-bottom:38px}
+  .tutoring-journey>div{min-height:84px}
+}
