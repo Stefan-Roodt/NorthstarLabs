@@ -90,6 +90,9 @@ type Course = {
   certificateTitle: string;
   certificateAccent: string;
   certificateValidDays: number;
+  pendingSourceFiles?: number;
+  importProjectId?: string | null;
+  importProjectTitle?: string | null;
   sections: Section[];
   lessons: Lesson[];
   media: Asset[];
@@ -715,7 +718,9 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       setMessage(result.error || "Course could not be saved.");
       return;
     }
-    setCourse((current) => current ? { ...current, status } : current);
+    setCourse((current) => current
+      ? { ...current, status, pendingSourceFiles: status === "published" ? 0 : current.pendingSourceFiles }
+      : current);
     setMessage(status === "published" ? "Course published - learners can enrol" : status === "draft" && course.status === "published" ? "Course unpublished" : "Course saved");
   }
 
@@ -1271,6 +1276,14 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
           <div className="editor-heading">
             <div><p className="sys-kicker">COURSE SETTINGS</p><h1>Describe and publish your course.</h1></div>
           </div>
+          {!!course.pendingSourceFiles && <section className="builder-import-blocker" role="alert">
+            <div>
+              <p className="sys-kicker">IMPORT NOT YET VERIFIED</p>
+              <h2>{course.pendingSourceFiles} source file{course.pendingSourceFiles === 1 ? "" : "s"} still need to be attached.</h2>
+              <p>The course draft is safe, but it cannot be published until every imported module has its original source file.</p>
+            </div>
+            <Link href="/dashboard/import">Finish file upload</Link>
+          </section>}
           <label>Course title<input value={course.title} onChange={(event) => setCourse({ ...course, title: event.target.value })} /></label>
           <label>Course description<textarea value={course.description} onChange={(event) => setCourse({ ...course, description: event.target.value })} placeholder="Explain the result learners can expect and who the course is for." /></label>
           <label>Price in South African rand<input type="number" min="0" step="1" value={course.priceCents / 100} onChange={(event) => setCourse({ ...course, priceCents: Math.max(0, Math.round(Number(event.target.value || 0) * 100)) })} /></label>

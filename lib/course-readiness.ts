@@ -39,6 +39,7 @@ type ReadinessCourse = {
   title: string;
   description: string;
   certificateTitle: string;
+  pendingSourceFiles?: number;
   sections: ReadinessSection[];
   lessons: ReadinessLesson[];
 };
@@ -60,6 +61,7 @@ export type CourseReadinessPayload = {
   title: string;
   description: string;
   certificateTitle: string;
+  pendingSourceFiles?: number;
   sections: ReadinessSection[];
   lessons: ReadinessLesson[];
 };
@@ -97,6 +99,14 @@ export function getCourseReadiness(course: ReadinessCourse) {
     title: "Explain the learning promise",
     detail: "State who the course is for and what useful result they should expect.",
     action: "Fix description",
+    tab: "settings",
+  });
+  check(!course.pendingSourceFiles, 3, {
+    id: "course-import-files",
+    level: "blocker",
+    title: "Finish attaching the imported source files",
+    detail: `${course.pendingSourceFiles || 0} source file${course.pendingSourceFiles === 1 ? "" : "s"} still need to be attached to their modules before this course can be published.`,
+    action: "Finish file upload",
     tab: "settings",
   });
   if (course.description.trim().length >= 20) {
