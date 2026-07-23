@@ -1003,6 +1003,8 @@ test("ships a free inspect-first academy and course migration studio", async () 
     readFile(new URL("../app/legal/privacy/page.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(page, /Move in without starting over/);
+  assert.match(page, /NorthstarLabs \/ \{academy\.name\} \/ Import/);
+  assert.match(page, /\/dashboard\?area=courses/);
   assert.match(page, /natural filename order/);
   assert.match(page, /Nothing was published/);
   assert.match(page, /Create private drafts/);
@@ -1069,6 +1071,10 @@ test("ships a structured course editor, reusable media library, and safe learner
   assert.match(courseApi, /publishing checklist first/i);
   assert.match(courseApi, /Complete the publishing checklist first/);
   assert.match(courseApi, /blockers\.map/);
+  assert.match(courseApi, /s\.name AS schoolName,s\.slug AS schoolSlug/);
+  assert.match(courseApi, /JOIN schools s ON s\.id=c\.school_id/);
+  assert.match(builder, /NorthstarLabs \/ \{course\.schoolName\} \/ Course editor/);
+  assert.match(builder, /\/dashboard\?area=courses/);
   assert.match(builder, /Autosave pending/);
   assert.match(builder, /Academy media library/);
   assert.match(builder, /draggable/);

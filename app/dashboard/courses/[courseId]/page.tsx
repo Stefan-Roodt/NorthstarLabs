@@ -73,6 +73,8 @@ type Section = {
 type Course = {
   id: string;
   schoolId: string;
+  schoolName: string;
+  schoolSlug: string;
   title: string;
   description: string;
   status: string;
@@ -1156,7 +1158,10 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
 
   return <main className="builder-page builder-page-expanded">
     <header className="builder-top">
-      <Link href="/dashboard">&larr; Creator workspace</Link>
+      <div className="builder-context">
+        <Link href="/dashboard?area=courses">&larr; {course.schoolName} courses</Link>
+        <span>NorthstarLabs / {course.schoolName} / Course editor</span>
+      </div>
       <div>
         <input
           aria-label="Course title"
