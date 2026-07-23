@@ -69,6 +69,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
   const [enrolling, setEnrolling] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [enrolled, setEnrolled] = useState(false);
+  const [expandedModuleIds, setExpandedModuleIds] = useState<Set<string>>(new Set());
   const autoEnrolAttempted = useRef(false);
 
   useEffect(() => {
@@ -82,8 +83,14 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
         if (!response.ok) throw new Error("Course not found.");
         return response.json() as Promise<CourseDetail>;
       })
-      .then(setCourse)
-      .catch(() => setCourse(getStarterCourse(id) || null))
+      .then((nextCourse) => {
+        setCourse(nextCourse);
+        setExpandedModuleIds(new Set(nextCourse.sections?.[0] ? [nextCourse.sections[0].id] : []));
+      })
+      .catch(() => {
+        setCourse(getStarterCourse(id) || null);
+        setExpandedModuleIds(new Set());
+      })
       .finally(() => setLoaded(true));
   }, [id]);
 
@@ -324,7 +331,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
       <section className="course-details">
         <div className="course-outcomes">
           <p className="sys-kicker">WHAT YOU WILL LEAVE WITH</p>
-          <h2>Useful progress-not more information.</h2>
+          <h2>Useful progress—not more information.</h2>
           <p>{course.description}</p>
           <ul>
             {(starter?.outcomes || [
@@ -356,22 +363,39 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
             <h2>See exactly what you will learn.</h2>
           </div>
           <p>
-            {course.sectionCount || curriculum.length || 1} modules - {course.lessonCount} lessons
-            {assessmentCount ? ` - ${assessmentCount} assessments` : ""}
+            <b>
+              {course.sectionCount || curriculum.length || 1} modules - {course.lessonCount} lessons
+              {assessmentCount ? ` - ${assessmentCount} assessments` : ""}
+            </b>
+            <span>Open a module to inspect every lesson. The first module is ready below.</span>
           </p>
         </div>
         {hasRealCurriculum
           ? <div className="course-module-list">
               {curriculum.map((section, sectionIndex) => (
-                <article className="course-module" key={section.id}>
-                  <header>
+                <details
+                  className="course-module"
+                  key={section.id}
+                  open={expandedModuleIds.has(section.id)}
+                  onToggle={(event) => {
+                    const shouldOpen = event.currentTarget.open;
+                    setExpandedModuleIds((current) => {
+                      if (current.has(section.id) === shouldOpen) return current;
+                      const next = new Set(current);
+                      if (shouldOpen) next.add(section.id);
+                      else next.delete(section.id);
+                      return next;
+                    });
+                  }}
+                >
+                  <summary>
                     <span>{String(sectionIndex + 1).padStart(2, "0")}</span>
                     <div>
                       <small>MODULE {sectionIndex + 1}</small>
                       <h3>{section.title}</h3>
                     </div>
                     <b>{section.lessons.length} lessons</b>
-                  </header>
+                  </summary>
                   <ol>
                     {section.lessons.map((lesson) => (
                       <li key={lesson.id}>
@@ -384,7 +408,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
                       </li>
                     ))}
                   </ol>
-                </article>
+                </details>
               ))}
             </div>
           : <div className="curriculum-list">
