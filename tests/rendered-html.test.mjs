@@ -23,6 +23,14 @@ test("self-hosts production fonts without leaking local workspace paths", async 
   assert.doesNotMatch(styles, /file:\/\/\/|[A-Z]:\/Users\//);
 });
 
+test("keeps the public homepage authentication-light until an OAuth callback arrives", async () => {
+  const callback = await readFile(new URL("../app/auth-callback-redirect.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(callback, /^import .*supabase-client/m);
+  assert.match(callback, /void import\("\.\.\/lib\/supabase-client"\)/);
+  assert.match(callback, /if \(!isOAuthReturn\) return/);
+  assert.match(callback, /unsubscribe\(\)/);
+});
+
 test("publishes complete terms and privacy pages", async () => {
   const [terms, privacy] = await Promise.all([
     readFile(new URL("../app/legal/terms/page.tsx", import.meta.url), "utf8"),
