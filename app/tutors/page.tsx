@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { coachListingWeight } from "../../lib/coach-listing-plans";
+import { tutorServiceLabel, tutorServiceMode } from "../../lib/tutor-service-mode";
 import { useSignedIn } from "../../lib/use-signed-in";
 import { LearningRequestForm } from "../learning-request-form";
 
@@ -61,7 +62,7 @@ function sessionLabel(mode: string) {
 function priceLabel(tutor: MarketplaceTutor) {
   return tutor.priceCents
     ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}/hour`
-    : "Ask for price";
+    : "Rate on enquiry";
 }
 
 export default function TutorMarketplacePage() {
@@ -127,6 +128,9 @@ export default function TutorMarketplacePage() {
         return aPrice - bPrice;
       }
       if (sort === "recommended") {
+        const availability = Number(tutorServiceMode(b) === "bookable")
+          - Number(tutorServiceMode(a) === "bookable");
+        if (availability) return availability;
         const placement = coachListingWeight(a.listingTier) - coachListingWeight(b.listingTier);
         if (placement) return placement;
         const verification = Number(b.verified) - Number(a.verified);
@@ -144,6 +148,8 @@ export default function TutorMarketplacePage() {
     .map((id) => tutors.find((tutor) => tutor.id === id))
     .filter((tutor): tutor is MarketplaceTutor => Boolean(tutor));
   const selectedTopic = subject !== "all" ? subject : query.trim();
+  const bookable = filtered.filter((tutor) => tutorServiceMode(tutor) === "bookable");
+  const enquiryOnly = filtered.filter((tutor) => tutorServiceMode(tutor) !== "bookable");
 
   function toggleCompare(tutor: MarketplaceTutor) {
     setComparedIds((current) => {
@@ -212,7 +218,7 @@ export default function TutorMarketplacePage() {
       <div>
         <p className="sys-kicker">HUMAN HELP, WHEN A COURSE ISN&apos;T ENOUGH</p>
         <h1>Find the person who can get you <em>unstuck.</em></h1>
-        <p>Search the topic you want to investigate, compare real expertise and self-set hourly rates, then request a time without sharing your details publicly.</p>
+        <p>Search the topic you want to investigate, compare real expertise and self-set hourly rates, then choose a published time or send a private enquiry.</p>
         <div className="marketplace-search">
           <label htmlFor="tutor-search">What do you need help with?</label>
           <div><input id="tutor-search" value={query} onChange={(event) => { setQuery(event.target.value); setSubject("all"); }} placeholder="Try career change, Bitcoin, mathematics or leadership…" /><a href="#tutor-results">Find my coach</a></div>
@@ -227,7 +233,7 @@ export default function TutorMarketplacePage() {
     <section className="marketplace-trust" aria-label="Marketplace promises">
       <div><b>Compare clearly</b><span>Expertise, format and price</span></div>
       <div><b>Request safely</b><span>Your details stay private</span></div>
-      <div><b>Book confidently</b><span>A time is held until confirmed</span></div>
+      <div><b>See what is bookable</b><span>Published times are clearly identified</span></div>
     </section>
 
     <section className="marketplace-topics" aria-label="Browse coaching and tutoring topics">
@@ -270,11 +276,31 @@ export default function TutorMarketplacePage() {
           <div><p className="sys-kicker">YOUR MATCHES</p><h2>{loading ? "Finding people…" : selectedTopic ? `${filtered.length} ${filtered.length === 1 ? "match" : "matches"} for "${selectedTopic}"` : `${filtered.length} ${filtered.length === 1 ? "coach or tutor" : "coaches and tutors"} to consider`}</h2></div>
           <label>Sort by<select value={sort} onChange={(event) => setSort(event.target.value as SortMode)}><option value="recommended">Recommended</option><option value="available">Available soonest</option><option value="experience">Most experienced</option><option value="price">Lowest hourly rate</option></select></label>
         </header>
+        {!loading && filtered.length > 0 && <p className="marketplace-result-summary"><b>{bookable.length}</b> with published appointment {bookable.length === 1 ? "time" : "times"} <span aria-hidden="true">{"\u00B7"}</span> <b>{enquiryOnly.length}</b> available by private enquiry</p>}
         <p className="marketplace-placement-note">Every coach can be listed free. Northstar Verified professionals receive priority only for relevant searches; verification must be earned and is never purchased.</p>
         {notice && <p className="notice" role="status">{notice}</p>}
-        {!loading && filtered.length ? <div className="marketplace-grid">{filtered.map((tutor) =>
-          <article className={`marketplace-card tier-${tutor.listingTier || "listed"}`} key={tutor.id} style={{ borderTopColor: tutor.schoolPrimaryColor || "#3556d8" }}>
-            {tutor.listingTier === "verified" && tutor.verified && <span className="marketplace-paid-badge featured">VERIFIED PROFESSIONAL</span>}
+        {!loading && filtered.length ? <div className="marketplace-result-groups">{[
+          {
+            id: "bookable",
+            title: "Available to request now",
+            description: "These coaches have published appointment times. Your chosen time is held while the coach confirms.",
+            tutors: bookable,
+          },
+          {
+            id: "enquiry",
+            title: "Faculty and enquiry-only support",
+            description: "These profiles can receive a private enquiry, but they have not published bookable appointment times.",
+            tutors: enquiryOnly,
+          },
+        ].map((group) => group.tutors.length > 0 && <section className="marketplace-result-group" key={group.id} aria-labelledby={`marketplace-${group.id}-title`}>
+          <header><div><h3 id={`marketplace-${group.id}-title`}>{group.title}</h3><p>{group.description}</p></div><span>{group.tutors.length}</span></header>
+          <div className="marketplace-grid">{group.tutors.map((tutor) => {
+            const serviceMode = tutorServiceMode(tutor);
+            return <article className={`marketplace-card tier-${tutor.listingTier || "listed"} service-${serviceMode}`} key={tutor.id} style={{ borderTopColor: tutor.schoolPrimaryColor || "#3556d8" }}>
+            <div className="marketplace-card-badges">
+              <span className={`marketplace-service-badge ${serviceMode}`}>{tutorServiceLabel(serviceMode)}</span>
+              {tutor.listingTier === "verified" && tutor.verified && <span className="marketplace-paid-badge featured">VERIFIED PROFESSIONAL</span>}
+            </div>
             <div className="marketplace-card-person">
               {tutor.photoUrl ? <Image src={tutor.photoUrl} alt="" width={84} height={98} unoptimized /> : <span>{initials(tutor.displayName)}</span>}
               <div>
@@ -294,16 +320,17 @@ export default function TutorMarketplacePage() {
               <span aria-hidden="true">{tutor.availableSlotCount ? "\u25CF" : "\u25CB"}</span>
               <p><b>{tutor.availableSlotCount
                 ? `Next opening ${new Date(tutor.nextAvailableAt || 0).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" })}`
-                : "Ask about availability"}</b><small>{tutor.availableSlotCount ? `${tutor.availableSlotCount} requestable ${tutor.availableSlotCount === 1 ? "time" : "times"}` : tutor.availability || "Send a private enquiry"}</small></p>
+                : serviceMode === "faculty_support" ? "Faculty support by enquiry" : "No published times"}</b><small>{tutor.availableSlotCount ? `${tutor.availableSlotCount} requestable ${tutor.availableSlotCount === 1 ? "time" : "times"}` : tutor.availability || "Send a private enquiry and suggest a suitable time"}</small></p>
             </div>
             <div className="marketplace-card-actions">
-              <Link href={`/schools/${tutor.schoolSlug}/tutors/${tutor.slug}`}>{tutor.availableSlotCount ? "Choose a time" : "View profile & contact"}</Link>
+              <Link href={`/schools/${tutor.schoolSlug}/tutors/${tutor.slug}`}>{serviceMode === "bookable" ? "View times & request" : serviceMode === "faculty_support" ? "View faculty support" : "View profile & enquire"}</Link>
               <button aria-pressed={comparedIds.includes(tutor.id)} onClick={() => toggleCompare(tutor)}>
                 {comparedIds.includes(tutor.id) ? "✓ Comparing" : "+ Compare"}
               </button>
             </div>
-          </article>
-        )}</div> : !loading && <article className="marketplace-empty">
+          </article>;
+          })}</div>
+        </section>)}</div> : !loading && <article className="marketplace-empty">
           <span aria-hidden="true">&#128269;</span><div><h2>{selectedTopic ? `No ${selectedTopic} coach is published yet.` : "No coaches are published yet."}</h2><p>{selectedTopic
             ? `Your ${selectedTopic} selection worked. NorthstarLabs does not currently have a published profile offering that topic, so we will not show you an unrelated coach.`
             : "Published coach and tutor profiles will appear here as soon as they are available."}</p><div className="marketplace-empty-actions"><button onClick={clearFilters}>Show all available coaches</button><a href="#request-a-match">Ask Northstar to find it</a><Link href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach">Offer this topic</Link></div></div>
@@ -332,8 +359,8 @@ export default function TutorMarketplacePage() {
         <b>Learner proof</b>{compared.map((tutor) => <span key={`reviews-${tutor.id}`}>{tutor.reviewCount ? `${tutor.averageRating} * from ${tutor.reviewCount}` : "No verified reviews yet"}</span>)}
         <b>Format</b>{compared.map((tutor) => <span key={`mode-${tutor.id}`}>{sessionLabel(tutor.sessionMode)}</span>)}
         <b>Price</b>{compared.map((tutor) => <span key={`price-${tutor.id}`}>{priceLabel(tutor)}</span>)}
-        <b>Availability</b>{compared.map((tutor) => <span key={`availability-${tutor.id}`}>{tutor.availableSlotCount ? `${tutor.availableSlotCount} open times` : "Ask directly"}</span>)}
-        <i aria-hidden="true" />{compared.map((tutor) => <Link key={`action-${tutor.id}`} href={`/schools/${tutor.schoolSlug}/tutors/${tutor.slug}`}>Choose {tutor.displayName.split(" ")[0]}</Link>)}
+        <b>Availability</b>{compared.map((tutor) => <span key={`availability-${tutor.id}`}>{tutor.availableSlotCount ? `${tutor.availableSlotCount} published times` : tutorServiceMode(tutor) === "faculty_support" ? "Faculty enquiry only" : "No published times"}</span>)}
+        <i aria-hidden="true" />{compared.map((tutor) => <Link key={`action-${tutor.id}`} href={`/schools/${tutor.schoolSlug}/tutors/${tutor.slug}`}>View {tutor.displayName.split(" ")[0]}</Link>)}
       </div>
     </section>}
 

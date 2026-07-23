@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type CSSProperties, FormEvent, useEffect, useState } from "react";
 import { getSupabaseBrowser } from "../../../../../lib/supabase-client";
+import { tutorServiceMode } from "../../../../../lib/tutor-service-mode";
 import { useSignedIn } from "../../../../../lib/use-signed-in";
 
 type PublicTutor = {
@@ -238,6 +239,12 @@ export default function TutorDetailPage({ params }: {
 
   if (!data) return <main className="system-loading"><div><b>NorthstarLabs</b><p>{notice || "Opening tutor profile..."}</p>{notice && <Link href={`/schools/${path.slug}/tutors`}>Back to tutors</Link>}</div></main>;
   const tutor = data.tutors[0];
+  const serviceMode = tutorServiceMode({
+    displayName: tutor.displayName,
+    availableSlotCount: data.slots.length,
+  });
+  const isBookable = serviceMode === "bookable";
+  const isFacultySupport = serviceMode === "faculty_support";
   const style = {
     "--school-primary": data.school.primaryColor,
     "--school-accent": data.school.accentColor,
@@ -273,28 +280,32 @@ export default function TutorDetailPage({ params }: {
         <div><p className="sys-kicker">{tutor.verified ? tutor.verifiedCredentialCount > 0 ? `\u2713 VERIFIED - ${tutor.verifiedCredentialCount} APPROVED ${tutor.verifiedCredentialCount === 1 ? "CREDENTIAL" : "CREDENTIALS"}` : "\u2713 VERIFIED PROFILE" : `COACH OR TUTOR AT ${data.school.name.toUpperCase()}`}</p><h1>{tutor.displayName}</h1><p>{tutor.headline}</p>{tutor.reviewCount > 0 && <div className="tutor-profile-rating"><b>{tutor.averageRating} {"\u2605"}</b><span>{tutor.reviewCount} verified-session {tutor.reviewCount === 1 ? "review" : "reviews"}</span></div>}</div>
       </div>
       <aside className="tutor-book-card">
-        <small>ONE-TO-ONE SESSION</small>
-        <strong>{tutor.priceCents ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}` : "Ask for price"}</strong>
+        <small>{isBookable ? "PUBLISHED APPOINTMENTS" : isFacultySupport ? "COURSE FACULTY SUPPORT" : "PRIVATE COACHING ENQUIRY"}</small>
+        <strong>{tutor.priceCents ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}` : "Rate on request"}</strong>
         {tutor.priceCents > 0 && <span>per {tutor.priceUnit}</span>}
         <dl>
           <div><dt>Format</dt><dd>{tutor.sessionMode.replaceAll("_", " ")}</dd></div>
           {tutor.location && <div><dt>Location</dt><dd>{tutor.location}</dd></div>}
           {tutor.availability && <div><dt>Availability</dt><dd>{tutor.availability}</dd></div>}
         </dl>
-        <a className="tutor-primary-action" href="#enquire">{data.slots.length ? "Choose an appointment" : "Ask about a session"}</a>
+        <a className="tutor-primary-action" href="#enquire">{isBookable ? "Choose an appointment" : isFacultySupport ? "Ask the faculty" : "Send a private enquiry"}</a>
         {tutor.showDirectContact && <div className="tutor-direct-actions">
           {tutor.phoneNumber && <a href={`tel:${tutor.phoneNumber}`}>Call tutor</a>}
           {tutor.whatsappNumber && <a href={whatsappLink(tutor.whatsappNumber)} target="_blank" rel="noreferrer">WhatsApp</a>}
           {tutor.bookingUrl && <a href={tutor.bookingUrl} target="_blank" rel="noreferrer">Open calendar</a>}
         </div>}
-        <p>Session details and payment are agreed directly with the tutor.</p>
+        <p>{isBookable
+          ? "Your chosen time is requested through NorthstarLabs. Session details and payment are agreed directly with the coach."
+          : isFacultySupport
+            ? "This is an academy faculty contact, not a published one-to-one appointment. The faculty will explain what support is available."
+            : "No appointment times are published. Send an enquiry to agree availability, session details and payment directly."}</p>
       </aside>
     </section>
 
     <section className="tutor-profile-body">
       <article>
-        <p className="sys-kicker">ABOUT YOUR TUTOR</p>
-        <h2>Personal help, shaped around your goal.</h2>
+        <p className="sys-kicker">{isFacultySupport ? "ABOUT THE FACULTY" : "ABOUT YOUR COACH OR TUTOR"}</p>
+        <h2>{isFacultySupport ? "Subject support from the people behind the learning." : "Personal help, shaped around your goal."}</h2>
         <p className="tutor-bio">{tutor.bio || `${tutor.displayName} offers one-to-one support through ${data.school.name}.`}</p>
         <div className="tutor-profile-subjects">{tutor.subjects.map((item) => <span key={item}>{item}</span>)}</div>
         <dl className="tutor-profile-facts">
@@ -315,9 +326,9 @@ export default function TutorDetailPage({ params }: {
       </article>
 
       <form className="tutor-enquiry-form" id="enquire" onSubmit={enquire}>
-        <p className="sys-kicker">{data.slots.length ? "CHOOSE A TIME" : "REQUEST A SESSION"}</p>
-        <h2>{data.slots.length ? `Book time with ${tutor.displayName}.` : `Ask ${tutor.displayName} about a session.`}</h2>
-        <p>Your request goes privately to the coach and academy. You can track every update in My coaching.</p>
+        <p className="sys-kicker">{isBookable ? "CHOOSE A TIME" : isFacultySupport ? "ASK THE FACULTY" : "SEND AN ENQUIRY"}</p>
+        <h2>{isBookable ? `Request time with ${tutor.displayName}.` : isFacultySupport ? `Ask ${tutor.displayName} for subject support.` : `Ask ${tutor.displayName} about working together.`}</h2>
+        <p>Your request goes privately to the {isFacultySupport ? "faculty and academy" : "coach and academy"}. You can track every update in My coaching.</p>
         {!signedIn && <aside className="tutor-auth-handoff">
           <b>Write your request before creating an account.</b>
           <span>If you need to sign in, NorthstarLabs will save this form in this browser and bring it back exactly where you left it.</span>
@@ -336,7 +347,9 @@ export default function TutorDetailPage({ params }: {
               <b>{new Date(slot.startsAt).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" })}</b>
               <span>{new Date(slot.startsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })} - {slot.sessionMode.replaceAll("_", " ")}</span>
             </button>)}
-          </div> : <p>No published times right now. Send a general enquiry and suggest what works for you.</p>}
+          </div> : <p>{isFacultySupport
+            ? "This faculty team has not published one-to-one appointment times. Describe the support you need and the academy will explain the appropriate next step."
+            : "No appointment times are published right now. Send a general enquiry and suggest what works for you."}</p>}
           {selectedSlotId && <button className="tutor-slot-clear" type="button" onClick={() => setSelectedSlotId("")}>Choose timing later instead</button>}
         </fieldset>
         <label>What do you need help with?<input required minLength={2} maxLength={160} value={subject} onChange={(event) => setSubject(event.target.value)} placeholder={tutor.subjects.length ? `e.g. Help me understand ${tutor.subjects[0]}` : "e.g. Prepare for an important decision or assessment"} /></label>
@@ -352,7 +365,7 @@ export default function TutorDetailPage({ params }: {
             ? "Continue to sign in & send"
             : selectedSlotId
               ? "Request this appointment"
-              : "Send session request"}</button>
+              : isFacultySupport ? "Send faculty enquiry" : "Send coaching enquiry"}</button>
         <small>By sending this request, you agree that the tutor and academy may contact you about this session.</small>
       </form>
     </section>
