@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { getSupabaseBrowser } from "../lib/supabase-client";
 
 const destinationKey = "northstar:post-auth-destination";
 
@@ -20,30 +19,41 @@ export function AuthCallbackRedirect() {
     const isOAuthReturn = location.hash.includes("access_token=") || location.hash.includes("error_description=");
     if (!isOAuthReturn) return;
 
-    const supabase = getSupabaseBrowser();
-    const destination = safeDestination(sessionStorage.getItem(destinationKey));
     const clearSensitiveFragment = () => history.replaceState(null, "", `${location.pathname}${location.search}`);
-    if (!supabase) {
-      clearSensitiveFragment();
-      return;
-    }
+    let cancelled = false;
+    let unsubscribe: () => void = () => undefined;
 
-    let redirected = false;
-    const finish = () => {
-      if (redirected) return;
-      redirected = true;
-      sessionStorage.removeItem(destinationKey);
-      clearSensitiveFragment();
-      location.replace(destination);
+    void import("../lib/supabase-client").then(({ getSupabaseBrowser }) => {
+      if (cancelled) return;
+      const supabase = getSupabaseBrowser();
+      const destination = safeDestination(sessionStorage.getItem(destinationKey));
+      if (!supabase) {
+        clearSensitiveFragment();
+        return;
+      }
+
+      let redirected = false;
+      const finish = () => {
+        if (redirected || cancelled) return;
+        redirected = true;
+        sessionStorage.removeItem(destinationKey);
+        clearSensitiveFragment();
+        location.replace(destination);
+      };
+
+      const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session) finish();
+      });
+      unsubscribe = () => listener.subscription.unsubscribe();
+      void supabase.auth.getSession().then(({ data }) => {
+        if (data.session) finish();
+      });
+    }).catch(clearSensitiveFragment);
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
     };
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) finish();
-    });
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) finish();
-    });
-    return () => listener.subscription.unsubscribe();
   }, []);
 
   return null;
