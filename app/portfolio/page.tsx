@@ -166,10 +166,15 @@ export default function PortfolioStudio() {
   const live = data?.portfolio.visibility === "published";
   const shareUrl = typeof location === "undefined" || !data ? "" : `${location.origin}${data.sharePath}`;
 
+  async function signOut() {
+    await supabase?.auth.signOut();
+    location.href = "/";
+  }
+
   return <main className="portfolio-studio">
     <header className="portfolio-topbar">
-      <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
-      <nav><Link href="/learn">My learning</Link><Link href="/account">Account</Link></nav>
+      <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
+      <nav><Link href="/learn">My learning</Link><Link href="/account">Account settings</Link><button onClick={signOut}>Sign out</button></nav>
     </header>
 
     <section className="portfolio-studio-hero">
@@ -215,13 +220,13 @@ export default function PortfolioStudio() {
               {data.certificates.map((item) => <label className="portfolio-source" key={item.sourceId}>
                 <input type="checkbox" checked={Boolean(item.visible && item.valid)} disabled={busy !== "" || !item.valid} onChange={(event) => toggleSource("certificate", item, event.target.checked)} />
                 <span className="portfolio-source-icon">✓</span>
-                <div><small>VERIFIED CERTIFICATE · {item.issuerName}</small><b>{item.title}</b><p>{item.courseTitle}</p><em>{new Date(item.achievedAt).toLocaleDateString("en-ZA")}{!item.valid ? " · not currently valid" : ""}</em></div>
+                <div><small>VERIFIED CERTIFICATE - {item.issuerName}</small><b>{item.title}</b><p>{item.courseTitle}</p><em>{new Date(item.achievedAt).toLocaleDateString("en-ZA")}{!item.valid ? " - not currently valid" : ""}</em></div>
                 <strong>{item.visible && item.valid ? "VISIBLE" : item.valid ? "PRIVATE" : "UNAVAILABLE"}</strong>
               </label>)}
               {data.assessments.map((item) => <div className="portfolio-source assessment" key={item.sourceId}>
                 <input aria-label={`Show ${item.title}`} type="checkbox" checked={Boolean(item.visible)} disabled={busy !== ""} onChange={(event) => toggleSource("assessment", item, event.target.checked)} />
                 <span className="portfolio-source-icon">%</span>
-                <div><small>RECORDED ASSESSMENT · {item.issuerName}</small><b>{item.title}</b><p>{item.courseTitle} · {item.lessonTitle}</p><em>Passed · best recorded result {item.bestScore}%</em></div>
+                <div><small>RECORDED ASSESSMENT - {item.issuerName}</small><b>{item.title}</b><p>{item.courseTitle} - {item.lessonTitle}</p><em>Passed - best recorded result {item.bestScore}%</em></div>
                 <label className="score-choice"><input type="checkbox" checked={Boolean(item.showScore)} disabled={!item.visible || busy !== ""} onChange={(event) => toggleSource("assessment", item, true, event.target.checked)} /> Show score</label>
               </div>)}
               {!data.certificates.length && !data.assessments.length && <div className="portfolio-empty-source"><b>Your verified evidence will appear automatically.</b><p>Complete a course certificate or pass an assessment; then return here and choose whether to share it.</p><Link href="/learn">Continue learning →</Link></div>}
@@ -253,9 +258,9 @@ export default function PortfolioStudio() {
           <p className="sys-kicker">WHAT VIEWERS CAN TRUST</p>
           <h2>Three honest proof levels.</h2>
           <dl>
-            <div><dt>01 · Verified</dt><dd>Certificate identity and status are checked against the issuing academy’s live record.</dd></div>
-            <div><dt>02 · Recorded</dt><dd>Assessment completion comes from Northstar’s saved attempts. You decide whether to reveal the score.</dd></div>
-            <div><dt>03 · Submitted</dt><dd>Your projects and links remain visibly learner-submitted until an academy verification workflow is added.</dd></div>
+            <div><dt>01 - Verified</dt><dd>Certificate identity and status are checked against the issuing academy&apos;s live record.</dd></div>
+            <div><dt>02 - Recorded</dt><dd>Assessment completion comes from Northstar&apos;s saved attempts. You decide whether to reveal the score.</dd></div>
+            <div><dt>03 - Submitted</dt><dd>Your projects and links remain visibly learner-submitted until an academy verification workflow is added.</dd></div>
           </dl>
           <p>Your email, private notes, answer choices and incomplete work are never shown.</p>
         </aside>

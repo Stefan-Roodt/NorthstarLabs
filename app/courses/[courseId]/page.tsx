@@ -84,7 +84,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
   const enrol = useCallback(async () => {
     if (enrolling) return;
     setEnrolling(true);
-    setMessage("Joining your course…");
+    setMessage("Joining your course...");
     const supabase = getSupabaseBrowser();
     const session = (await supabase?.auth.getSession())?.data.session;
     if (!session) {
@@ -135,7 +135,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
     return () => window.clearTimeout(timeout);
   }, [course, enrol, loaded]);
 
-  if (!loaded) return <main className="system-loading"><p>Preparing course details…</p></main>;
+  if (!loaded) return <main className="system-loading"><p>Preparing course details...</p></main>;
   if (!course) return (
     <main className="system-loading">
       <div>
@@ -176,7 +176,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
   return (
     <main className="course-sales course-sales-expanded">
       <header>
-        <Link className="system-brand" href={course.schoolSlug ? `/schools/${course.schoolSlug}` : "/"}>✦ {course.schoolName || "NORTHSTARLABS"}</Link>
+        <Link className="system-brand" href={course.schoolSlug ? `/schools/${course.schoolSlug}` : "/"}>* {course.schoolName || "NORTHSTARLABS"}</Link>
         <nav>
           <a href={course.schoolSlug ? `/schools/${course.schoolSlug}` : "/courses"}>{course.schoolSlug ? "Academy" : "All courses"}</a>
           <a href={`/login?next=${encodeURIComponent(`/courses/${id}`)}`}>Sign in</a>
@@ -185,7 +185,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
 
       <section className="course-sales-hero">
         <div>
-          <p className="sys-kicker">{starter?.category || "PRACTICAL COURSE"} · {course.lessonCount} LESSONS</p>
+          <p className="sys-kicker">{starter?.category || "PRACTICAL COURSE"} - {course.lessonCount} LESSONS</p>
           <h1>{course.title}</h1>
           <p>{starter?.promise || course.description || "A practical learning experience designed to move you from knowing to doing."}</p>
           <div className="course-byline">
@@ -205,10 +205,10 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
           <p className="sys-kicker">START LEARNING TODAY</p>
           <h2>{course.priceCents ? `R${(course.priceCents / 100).toFixed(0)}` : "Free"}</h2>
           <button className="sys-primary" disabled={enrolling} onClick={enrol}>
-            {enrolling ? "Joining course…" : course.priceCents ? "Continue to checkout" : "Enrol for free →"}
+            {enrolling ? "Joining course..." : course.priceCents ? "Continue to checkout" : "Enrol for free"}
           </button>
           {previewCount > 0 && <Link className="course-preview-action" href={`/courses/${id}/preview`}>
-            Preview a real lesson — no sign-up
+            Preview a real lesson - no sign-up
           </Link>}
           {message && <p className="form-message" role="status">{message}</p>}
           <ul>
@@ -273,7 +273,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
               <div><dt>Last reviewed</dt><dd>{reviewedLabel}</dd></div>
             </dl>
             <p>{course.truthSourceStandard || "Academy-authored material. Review the faculty, curriculum and assessment standard shown on this page."}</p>
-            {previewCount > 0 && <Link href={`/courses/${id}/preview`}>Open the public lesson preview →</Link>}
+            {previewCount > 0 && <Link href={`/courses/${id}/preview`}>Open the public lesson preview</Link>}
           </article>
         </div>
       </section>
@@ -281,14 +281,14 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
       <section className="course-details">
         <div className="course-outcomes">
           <p className="sys-kicker">WHAT YOU WILL LEAVE WITH</p>
-          <h2>Useful progress—not more information.</h2>
+          <h2>Useful progress-not more information.</h2>
           <p>{course.description}</p>
           <ul>
             {(starter?.outcomes || [
               "A clear understanding of the core ideas",
               "Practical actions you can apply immediately",
               "A record of your learning progress",
-            ]).map((outcome) => <li key={outcome}><span>✓</span>{outcome}</li>)}
+            ]).map((outcome) => <li key={outcome}><span>[OK]</span>{outcome}</li>)}
           </ul>
         </div>
 
@@ -313,8 +313,8 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
             <h2>See exactly what you will learn.</h2>
           </div>
           <p>
-            {course.sectionCount || curriculum.length || 1} modules · {course.lessonCount} lessons
-            {assessmentCount ? ` · ${assessmentCount} assessments` : ""}
+            {course.sectionCount || curriculum.length || 1} modules - {course.lessonCount} lessons
+            {assessmentCount ? ` - ${assessmentCount} assessments` : ""}
           </p>
         </div>
         {hasRealCurriculum
@@ -335,7 +335,7 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
                         <span>{lesson.title}</span>
                         <small>
                           {lessonLabel(lesson)}
-                          {lesson.durationMinutes ? ` · ${lesson.durationMinutes} min` : ""}
+                          {lesson.durationMinutes ? ` - ${lesson.durationMinutes} min` : ""}
                           {lesson.isPreview && <b className="public-preview-badge">PUBLIC PREVIEW</b>}
                         </small>
                       </li>
@@ -372,11 +372,11 @@ export default function CoursePage({ params }: { params: Promise<{ courseId: str
         <p className="sys-kicker">YOUR NEXT USEFUL STEP</p>
         <h2>Start the course. Build as you learn.</h2>
         <p>{course.priceCents ? "Sign in to continue to secure checkout." : "No credit card required for this course."}</p>
-        <button className="sys-primary" disabled={enrolling} onClick={enrol}>{enrolling ? "Joining course…" : course.priceCents ? "Continue to checkout" : "Enrol for free →"}</button>
+        <button className="sys-primary" disabled={enrolling} onClick={enrol}>{enrolling ? "Joining course..." : course.priceCents ? "Continue to checkout" : "Enrol for free"}</button>
       </section>
 
       <footer className="catalog-footer">
-        <Link className="system-brand" href={course.schoolSlug ? `/schools/${course.schoolSlug}` : "/"}>✦ {course.schoolName || "NORTHSTARLABS"}</Link>
+        <Link className="system-brand" href={course.schoolSlug ? `/schools/${course.schoolSlug}` : "/"}>* {course.schoolName || "NORTHSTARLABS"}</Link>
         <nav><a href={course.schoolSlug ? `/schools/${course.schoolSlug}` : "/courses"}>Courses</a><a href="/legal/terms">Terms</a><a href="/legal/privacy">Privacy</a></nav>
       </footer>
     </main>

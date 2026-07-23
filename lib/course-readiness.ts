@@ -1,4 +1,4 @@
-import { getLessonGuide } from "./lesson-guide.ts";
+import { getLessonGuide } from "./lesson-guide";
 
 type ReadinessQuestion = {
   prompt: string;
@@ -52,6 +52,16 @@ export type CourseReadinessIssue = {
   tab: "settings" | "lesson" | "media";
   lessonId?: string;
   lessonTitle?: string;
+};
+
+export type CourseReadiness = ReturnType<typeof getCourseReadiness>;
+
+export type CourseReadinessPayload = {
+  title: string;
+  description: string;
+  certificateTitle: string;
+  sections: ReadinessSection[];
+  lessons: ReadinessLesson[];
 };
 
 function wordCount(value: string) {

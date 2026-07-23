@@ -76,7 +76,7 @@ export default async function SearchLandingPage({
   return <main className="search-landing">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
     <header className="search-nav">
-      <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+      <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
       <nav>
         <Link href="/solutions">Explore</Link>
         <Link href="/courses">Courses</Link>
@@ -150,7 +150,7 @@ export default async function SearchLandingPage({
     <section className="search-cta"><p className="sys-kicker">LEARN. ASK. PROGRESS.</p><h2>Start with the outcome—not the product category.</h2><div><Link className="button" href="/find">Find my best next step →</Link><Link href="/#request-help">Ask NorthstarLabs to find something →</Link></div></section>
 
     <footer className="search-footer">
-      <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+      <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
       <p>Courses for the path. Human coaching for the roadblocks.</p>
       <nav><Link href="/about">About</Link><Link href="/solutions">Solutions</Link><Link href="/courses">Courses</Link><Link href="/tutors">Coaches</Link><Link href="/legal/terms">Terms</Link><Link href="/legal/privacy">Privacy</Link></nav>
     </footer>

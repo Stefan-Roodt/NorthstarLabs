@@ -67,7 +67,7 @@ export default function ResetPassword() {
   }
 
   return <main className="auth-page">
-    <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+    <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
     <section className="auth-card compact-auth-card">
       <p className="sys-kicker">SECURE PASSWORD</p>
       <h1>Choose a new password.</h1>

@@ -88,7 +88,7 @@ export default function ImportStudioPage() {
   const [plan, setPlan] = useState<CourseImportPlan | null>(null);
   const [preview, setPreview] = useState<ImportProject | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
-  const [message, setMessage] = useState("Loading Migration Studio…");
+  const [message, setMessage] = useState("Loading Migration Studio.");
   const [warnings, setWarnings] = useState<string[]>([]);
   const [busy, setBusy] = useState("");
   const [uploadProgress, setUploadProgress] = useState<string[]>([]);
@@ -148,7 +148,7 @@ export default function ImportStudioPage() {
     const selected = Array.from(event.target.files || []);
     invalidatePreview();
     setBusy("documents");
-    setMessage(selected.length ? "Reading the document sequence locallyâ€¦" : "");
+    setMessage(selected.length ? "Reading the document sequence locally..." : "");
     try {
       const prepared = await prepareDocumentSelection(selected);
       setDocuments(prepared.documents);
@@ -273,7 +273,7 @@ export default function ImportStudioPage() {
     for (const mapping of importResult.documents) {
       const file = byClientId.get(mapping.clientId);
       if (!file) continue;
-      progress.push(`Uploading ${file.name}…`);
+      progress.push(`Uploading ${file.name}.`);
       setUploadProgress([...progress]);
       const uploadResponse = await authed(
         `/api/uploads?courseId=${encodeURIComponent(mapping.courseId)}&filename=${encodeURIComponent(file.name)}`,
@@ -354,21 +354,21 @@ export default function ImportStudioPage() {
     setMessage("");
   }
 
-  if (!academy) return <main className="system-loading"><div><b>✦ NORTHSTARLABS</b><p>{message}</p></div></main>;
+  if (!academy) return <main className="system-loading"><div><b>NorthstarLabs</b><p>{message}</p></div></main>;
 
   return <main className="import-page">
     <header className="import-topbar">
-      <Link href="/dashboard">← Creator workspace</Link>
+      <Link href="/dashboard">Creator workspace</Link>
       <b>Northstar Migration Studio</b>
-      <span>Free · private drafts first</span>
+      <span>Free - private drafts first</span>
     </header>
 
     <section className="import-hero">
       <div>
         <p className="sys-kicker">BRING THE WORK YOU HAVE ALREADY DONE</p>
         <h1>Move in without starting over.</h1>
-        <p>Bring course structures, ordered documents, learner lists and existing media references into <b>{academy.name}</b>. Inspect every mapping first. Northstar creates editable private drafts—never surprise publications.</p>
-        <div className="import-hero-promise"><span>1</span> Upload or paste <i>→</i><span>2</span> Inspect the map <i>→</i><span>3</span> Create private drafts</div>
+        <p>Bring course structures, ordered documents, learner lists and existing media references into <b>{academy.name}</b>. Inspect every mapping first. Northstar creates editable private drafts-never surprise publications.</p>
+        <div className="import-hero-promise"><span>1</span> Upload or paste <i>then</i><span>2</span> Inspect the map <i>then</i><span>3</span> Create private drafts</div>
       </div>
       <aside>
         <small>FIRST MIGRATION</small>
@@ -390,7 +390,7 @@ export default function ImportStudioPage() {
           <p className="sys-kicker">COURSE STRUCTURE</p><h3>Course export or curriculum file</h3>
           <p>CSV, TSV, JSON, Markdown or text. Common course/module/lesson fields are detected automatically.</p>
           <label className="import-file-label"><input type="file" accept=".csv,.tsv,.json,.md,.markdown,.txt" onChange={(event) => { setCourseFile(event.target.files?.[0] || null); invalidatePreview(); }} /><span>{courseFile ? courseFile.name : "Choose structure file"}</span><b>Browse</b></label>
-          <label className="import-outline-label">Or paste an outline<textarea rows={7} value={outline} onChange={(event) => { setOutline(event.target.value); invalidatePreview(); }} placeholder={`# Course title\n## Module 1\n### Lesson 1\nTeaching notes…`} /></label>
+          <label className="import-outline-label">Or paste an outline<textarea rows={7} value={outline} onChange={(event) => { setOutline(event.target.value); invalidatePreview(); }} placeholder={`# Course title\n## Module 1\n### Lesson 1\nTeaching notes.`} /></label>
         </article>
 
         <article className="import-input-card documents">
@@ -403,7 +403,7 @@ export default function ImportStudioPage() {
           {documentNumberingConflicts.length > 0 && <div className="import-sequence-alert"><b>Filename and document disagree</b>{documentNumberingConflicts.map((conflict) => <span key={conflict.filename}>{conflict.filename}: filename {conflict.filenameNumber}, internal heading {conflict.internalNumber}. The internal heading will be used and flagged for review.</span>)}</div>}
           {excludedDocumentCopies.length > 0 && <div className="import-sequence-alert"><b>Exact copies removed</b><span>{excludedDocumentCopies.join(", ")}</span></div>}
           {documents.length > 0 && <ol className="document-sequence">
-            {documents.map(({ file, text }, index) => <li key={`${file.name}-${file.lastModified}-${index}`}><span>{index + 1}</span><div><b>{file.name}</b><small>{(file.size / 1024).toFixed(0)} KB · {text ? `${text.trim().split(/\s+/).length.toLocaleString()} words extracted` : "protected attachment"}</small></div><button type="button" disabled={index === 0} onClick={() => moveDocument(index, -1)} aria-label={`Move ${file.name} up`}>↑</button><button type="button" disabled={index === documents.length - 1} onClick={() => moveDocument(index, 1)} aria-label={`Move ${file.name} down`}>↓</button><button type="button" onClick={() => { setDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index)); invalidatePreview(); }} aria-label={`Remove ${file.name}`}>×</button></li>)}
+            {documents.map(({ file, text }, index) => <li key={`${file.name}-${file.lastModified}-${index}`}><span>{index + 1}</span><div><b>{file.name}</b><small>{(file.size / 1024).toFixed(0)} KB | {text ? `${text.trim().split(/\s+/).length.toLocaleString()} words extracted` : "protected attachment"}</small></div><button type="button" disabled={index === 0} onClick={() => moveDocument(index, -1)} aria-label={`Move ${file.name} up`}>up</button><button type="button" disabled={index === documents.length - 1} onClick={() => moveDocument(index, 1)} aria-label={`Move ${file.name} down`}>down</button><button type="button" onClick={() => { setDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index)); invalidatePreview(); }} aria-label={`Remove ${file.name}`}>remove</button></li>)}
           </ol>}
         </article>
 
@@ -435,7 +435,7 @@ export default function ImportStudioPage() {
       </section>
 
       <label className="import-rights"><input type="checkbox" checked={rightsConfirmed} onChange={(event) => { setRightsConfirmed(event.target.checked); if (!event.target.checked) invalidatePreview(); }} /><span><b>I own, licensed, or have permission to migrate these materials and learner records.</b><small>Northstar does not turn access to a source into permission to copy it. Remove data you do not need before importing.</small></span></label>
-      <button className="import-inspect-button" type="button" disabled={!rightsConfirmed || busy === "inspect"} onClick={() => void buildPlan()}>{busy === "inspect" ? "Inspecting structure…" : "Inspect before importing →"}</button>
+      <button className="import-inspect-button" type="button" disabled={!rightsConfirmed || busy === "inspect"} onClick={() => void buildPlan()}>{busy === "inspect" ? "Inspecting structure." : "Inspect before importing"}</button>
 
       {message && <div className="import-message" role="status">{message}</div>}
 
@@ -453,20 +453,20 @@ export default function ImportStudioPage() {
         <div className="import-course-previews">
           {plan.courses.map((course) => <article key={course.clientId}>
             <header><span>DRAFT</span><div><h3>{course.title}</h3><p>{course.description || "No course description was supplied."}</p></div><b>{course.sections.length} modules</b></header>
-            <ol>{course.sections.map((section, sectionIndex) => <li key={section.clientId}><span>{String(sectionIndex + 1).padStart(2, "0")}</span><div><b>{section.title}</b><small>{section.lessons.map((lesson) => lesson.title).join(" · ")}</small></div><strong>{section.lessons.length} lesson{section.lessons.length === 1 ? "" : "s"}</strong></li>)}</ol>
+            <ol>{course.sections.map((section, sectionIndex) => <li key={section.clientId}><span>{String(sectionIndex + 1).padStart(2, "0")}</span><div><b>{section.title}</b><small>{section.lessons.map((lesson) => lesson.title).join(" | ")}</small></div><strong>{section.lessons.length} lesson{section.lessons.length === 1 ? "" : "s"}</strong></li>)}</ol>
           </article>)}
           {!plan.courses.length && <article className="learner-only-preview"><h3>Learner invitation list only</h3><p>{plan.learners.length} valid learner records are ready. Match course titles carefully before choosing to send invitations.</p></article>}
         </div>
         {plan.learners.length > 0 && <label className="import-invite-choice"><input type="checkbox" checked={sendInvitations} onChange={(event) => setSendInvitations(event.target.checked)} /><span><b>Create and queue {plan.learners.length} secure learner invitation{plan.learners.length === 1 ? "" : "s"}</b><small>Leave this off to import course drafts without contacting learners. Invitations expire after seven days.</small></span></label>}
         <div className="import-final-check">
-          <div><b>Safe by default</b><p>Every course stays private and editable. Existing courses are not overwritten. Duplicate titles receive an “imported draft” label.</p></div>
-          <button type="button" className="sys-primary" onClick={() => void createDrafts()} disabled={busy === "import" || preview.status === "imported"}>{busy === "import" ? "Creating private drafts…" : preview.status === "imported" ? "Drafts created" : "Create private drafts →"}</button>
+          <div><b>Safe by default</b><p>Every course stays private and editable. Existing courses are not overwritten. Duplicate titles receive an &quot;imported draft&quot; label.</p></div>
+          <button type="button" className="sys-primary" onClick={() => void createDrafts()} disabled={busy === "import" || preview.status === "imported"}>{busy === "import" ? "Creating private drafts." : preview.status === "imported" ? "Drafts created" : "Create private drafts"}</button>
         </div>
       </section>}
 
       {result && <section className="import-complete">
-        <p className="sys-kicker">MIGRATION COMPLETE · NOTHING PUBLISHED</p><h2>Your work is now editable in Northstar.</h2>
-        <div>{result.courses.map((course) => <Link href={course.editorUrl} key={course.id}><span>COURSE DRAFT</span><b>{course.title}</b><small>Open, review and finish the learner experience →</small></Link>)}</div>
+        <p className="sys-kicker">MIGRATION COMPLETE | NOTHING PUBLISHED</p><h2>Your work is now editable in Northstar.</h2>
+        <div>{result.courses.map((course) => <Link href={course.editorUrl} key={course.id}><span>COURSE DRAFT</span><b>{course.title}</b><small>Open, review and finish the learner experience</small></Link>)}</div>
         {uploadProgress.length > 0 && <ul>{uploadProgress.map((item) => <li key={item}>{item}</li>)}</ul>}
         <button type="button" onClick={resetWorkspace}>Start another migration</button>
       </section>}
@@ -474,7 +474,10 @@ export default function ImportStudioPage() {
 
     {projects.length > 0 && <section className="import-history">
       <div><p className="sys-kicker">MIGRATION HISTORY</p><h2>A clear record of what moved.</h2></div>
-      <div>{projects.map((project) => <article key={project.id}><span className={project.status}>{project.status}</span><div><b>{project.title}</b><small>{project.summary.courses} courses · {project.summary.lessons} lessons · {project.summary.learners} learners</small></div><time>{new Date(project.updatedAt || project.createdAt).toLocaleDateString("en-ZA", { dateStyle: "medium" })}</time>{project.result?.courses?.[0] && <Link href={project.result.courses[0].editorUrl}>Open draft →</Link>}</article>)}</div>
+      <div>{projects.map((project) => <article key={project.id}><span className={project.status}>{project.status}</span><div><b>{project.title}</b><small>{project.summary.courses} courses, {project.summary.lessons} lessons, {project.summary.learners} learners</small></div><time>{new Date(project.updatedAt || project.createdAt).toLocaleDateString("en-ZA", { dateStyle: "medium" })}</time>{project.result?.courses?.[0] && <Link href={project.result.courses[0].editorUrl}>Open draft</Link>}</article>)}</div>
     </section>}
   </main>;
 }
+
+
+

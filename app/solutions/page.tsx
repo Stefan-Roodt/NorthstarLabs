@@ -34,7 +34,7 @@ export default function SolutionsPage() {
   return <main className="search-hub">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
     <header className="search-nav">
-      <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+      <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
       <nav>
         <Link href="/courses">Courses</Link>
         <Link href="/tutors">Coaches</Link>
@@ -71,7 +71,7 @@ export default function SolutionsPage() {
     </section>
 
     <footer className="search-footer">
-      <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+      <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
       <p>Courses for the path. Human coaching for the roadblocks.</p>
       <nav><Link href="/about">About</Link><Link href="/courses">Courses</Link><Link href="/tutors">Coaches</Link><Link href="/legal/terms">Terms</Link><Link href="/legal/privacy">Privacy</Link></nav>
     </footer>

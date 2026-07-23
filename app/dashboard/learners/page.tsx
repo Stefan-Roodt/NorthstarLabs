@@ -282,7 +282,7 @@ export default function LearnerManagement() {
     </header>
     <section className="admin-body">
       <article className="panel manual-enrollment invitation-builder">
-        <div><p className="sys-kicker">SECURE INVITATIONS</p><h2>Invite people to {data.school.name}</h2><p>They can create an account or sign in from the same link—no pre-existing account required.</p></div>
+        <div><p className="sys-kicker">SECURE INVITATIONS</p><h2>Invite people to {data.school.name}</h2><p>They can create an account or sign in from the same link-no pre-existing account required.</p></div>
         <form onSubmit={createInvitation}>
           <input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email address" />
           <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value)}>
@@ -311,7 +311,7 @@ export default function LearnerManagement() {
         <div className="invitation-list">
           {invitations.filter((item) => item.status === "pending").map((item) => (
             <article className="panel invitation-row" key={item.id}>
-              <div><b>{item.email}</b><small>{item.role === "learner" ? "Learner" : item.role === "admin" ? "Academy admin" : "Instructor"}{item.courseTitle ? ` · ${item.courseTitle}` : ""}</small></div>
+              <div><b>{item.email}</b><small>{item.role === "learner" ? "Learner" : item.role === "admin" ? "Academy admin" : "Instructor"}{item.courseTitle ? ` - ${item.courseTitle}` : ""}</small></div>
               <span>Expires {new Date(item.expiresAt).toLocaleDateString("en-ZA")}</span>
               <div className="invitation-row-actions">
                 <button disabled={busy !== ""} onClick={() => renewInvitation(item)}>

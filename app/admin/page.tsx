@@ -390,7 +390,7 @@ export default function PlatformAdministration() {
 
   return <main className="platform-admin">
     <aside>
-      <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+      <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
       <p>PLATFORM ADMIN</p>
       <nav>{["Schools", "Users", "Requests", "Email", "Coach trust", "Reliability", "Audit"].map((item) =>
         <button className={tab === item ? "active" : ""} key={item} onClick={() => setTab(item)}>{item}</button>
@@ -412,7 +412,7 @@ export default function PlatformAdministration() {
           {data.schools.map((school) => <div className="platform-row" key={school.id}>
             <div><strong>{school.name}</strong><small>/{school.slug}</small></div>
             <span>{school.owner}</span>
-            <span>{school.courses} courses · {school.members} members</span>
+            <span>{school.courses} courses - {school.members} members</span>
             <span className={`delivery-status ${school.status}`}>{school.status}</span>
             <button disabled={busy === school.id} onClick={() => update("school", school.id, school.status === "active" ? "suspend" : "reactivate")}>{school.status === "active" ? "Suspend" : "Reactivate"}</button>
           </div>)}
@@ -439,8 +439,8 @@ export default function PlatformAdministration() {
         <section className="demand-admin-section">
           <header><div><p className="sys-kicker">PUBLIC DEMAND BOARD</p><h3>Turn private need into a visible, honest roadmap</h3><p>Moderate the public wording, explain decisions, and link a real course, coach, or live programme before marking anything available.</p></div><Link href="/demand">Open public board →</Link></header>
           <div className="demand-admin-list">{data.demandTopics.length ? data.demandTopics.map((item) => <article key={item.id}>
-            <header><div><span className={`delivery-status ${item.visibility}`}>{item.visibility}</span><span className={`delivery-status ${item.status}`}>{item.status}</span></div><div><b>{item.score} score</b><small>{item.supporters} supporting · {item.followers} following</small></div></header>
-            <p className="sys-kicker">{item.category.toUpperCase()} · {item.preferredFormat.toUpperCase()}</p><h4>{item.title}</h4><p>{item.summary}</p>
+            <header><div><span className={`delivery-status ${item.visibility}`}>{item.visibility}</span><span className={`delivery-status ${item.status}`}>{item.status}</span></div><div><b>{item.score} score</b><small>{item.supporters} supporting - {item.followers} following</small></div></header>
+            <p className="sys-kicker">{item.category.toUpperCase()} - {item.preferredFormat.toUpperCase()}</p><h4>{item.title}</h4><p>{item.summary}</p>
             <label>Public Northstar update<textarea maxLength={1_000} value={demandNotes[item.id] || ""} onChange={(event) => setDemandNotes((current) => ({ ...current, [item.id]: event.target.value }))} placeholder="Explain the decision, current research, or what must happen next." /></label>
             <label>Matched public URL<input maxLength={500} value={demandUrls[item.id] || ""} onChange={(event) => setDemandUrls((current) => ({ ...current, [item.id]: event.target.value }))} placeholder="/courses/... or https://..." /></label>
             <footer><small>Submitted {new Date(item.createdAt).toLocaleDateString("en-ZA")}</small><div>
@@ -458,7 +458,7 @@ export default function PlatformAdministration() {
         <div className="learning-request-admin-list">{data.learningRequests.length
           ? data.learningRequests.map((item) => <section key={item.id}>
             <header>
-              <div><p className="sys-kicker">{item.requestType.toUpperCase()} REQUEST</p><h3>{item.topic}</h3><span>{item.requesterName} · {item.requesterEmail} · from {item.source.replaceAll("-", " ")}</span></div>
+              <div><p className="sys-kicker">{item.requestType.toUpperCase()} REQUEST</p><h3>{item.topic}</h3><span>{item.requesterName} - {item.requesterEmail} - from {item.source.replaceAll("-", " ")}</span></div>
               <span className={`delivery-status ${item.status}`}>{item.status}</span>
             </header>
             <p>{item.detail}</p>
@@ -479,7 +479,7 @@ export default function PlatformAdministration() {
       {tab === "Email" && <article className="platform-panel">
         <div className="operations-heading"><div><p className="sys-kicker">PROVIDER & QUEUE</p><h2>{data.provider.configured ? `Sending from ${data.provider.sender}` : "Connect Resend to deliver queued messages"}</h2></div></div>
         <div className="delivery-list">{data.messages.map((item) => <div className="delivery-row" key={item.id}>
-          <div><b>{item.subject}</b><small>{item.schoolName || "Platform"} · {item.recipientEmail}</small></div>
+          <div><b>{item.subject}</b><small>{item.schoolName || "Platform"} - {item.recipientEmail}</small></div>
           <span className={`delivery-status ${item.status}`}>{item.status.replaceAll("_", " ")}</span>
           <small>{new Date(item.createdAt).toLocaleString("en-ZA", { dateStyle: "short", timeStyle: "short" })}</small>
           {item.status !== "sent" && <button disabled={busy === item.id} onClick={() => update("email", item.id, "retry")}>Retry</button>}
@@ -517,7 +517,7 @@ export default function PlatformAdministration() {
           <section className="tutor-review-moderation">
             <div className="operations-heading"><div><p className="sys-kicker">VERIFIED-SESSION REVIEWS</p><h2>Review moderation</h2><p>Reviews are tied to completed sessions. Hide only content that breaches platform standards; do not remove fair criticism.</p></div><span>{tutorTrust.reviews.filter((review) => review.status === "published").length} public</span></div>
             <div>{tutorTrust.reviews.length ? tutorTrust.reviews.map((review) => <article key={review.id}>
-              <header><div><b>{review.rating} ★ · {review.tutorName}</b><small>{review.schoolName} · {review.reviewerName} · {new Date(review.createdAt).toLocaleDateString("en-ZA")}</small></div><span className={`delivery-status ${review.status}`}>{review.status}</span></header>
+              <header><div><b>{review.rating} * - {review.tutorName}</b><small>{review.schoolName} - {review.reviewerName} - {new Date(review.createdAt).toLocaleDateString("en-ZA")}</small></div><span className={`delivery-status ${review.status}`}>{review.status}</span></header>
               <p>{review.comment || "Rating submitted without a written comment."}</p>
               <button disabled={busy === review.id} onClick={() => moderateTutorReview(review.id, review.status === "published" ? "hidden" : "published")}>{review.status === "published" ? "Hide review" : "Republish review"}</button>
             </article>) : <p>No completed-session reviews have been published yet.</p>}</div>
@@ -525,8 +525,8 @@ export default function PlatformAdministration() {
           <section className="tutor-review-moderation">
             <div className="operations-heading"><div><p className="sys-kicker">COACH-TO-LEARNER RATINGS</p><h2>Private reputation safeguards</h2><p>These ratings are never public. Moderate only abuse or demonstrably unfair feedback; private notes must not be shared with other coaches.</p></div><span>{tutorTrust.learnerRatings.length} submitted</span></div>
             <div>{tutorTrust.learnerRatings.length ? tutorTrust.learnerRatings.map((rating) => <article key={rating.id}>
-              <header><div><b>{rating.rating} ★ · {rating.learnerName}</b><small>{rating.schoolName} · Coach: {rating.tutorName} · Rated by {rating.ratedBy} · {new Date(rating.createdAt).toLocaleDateString("en-ZA")}</small></div><span className={`delivery-status ${rating.status}`}>{rating.status}</span></header>
-              {ratingTags(rating.tagsJson).length > 0 && <p>{ratingTags(rating.tagsJson).map((tag) => tag.replaceAll("_", " ")).join(" · ")}</p>}
+              <header><div><b>{rating.rating} * - {rating.learnerName}</b><small>{rating.schoolName} - Coach: {rating.tutorName} - Rated by {rating.ratedBy} - {new Date(rating.createdAt).toLocaleDateString("en-ZA")}</small></div><span className={`delivery-status ${rating.status}`}>{rating.status}</span></header>
+              {ratingTags(rating.tagsJson).length > 0 && <p>{ratingTags(rating.tagsJson).map((tag) => tag.replaceAll("_", " ")).join(" - ")}</p>}
               {rating.privateNote && <blockquote><b>Private academy note:</b> {rating.privateNote}</blockquote>}
               <button disabled={busy === rating.id} onClick={() => moderateLearnerRating(rating.id, rating.status === "hidden" ? "published" : "hidden")}>{rating.status === "hidden" ? "Restore rating" : "Remove from aggregate"}</button>
             </article>) : <p>No coach-to-learner ratings have been submitted yet.</p>}</div>
@@ -547,13 +547,13 @@ export default function PlatformAdministration() {
             <div><span>Open errors</span><strong>{reliability.metrics.openErrors || 0}</strong><small>{reliability.metrics.serverErrors24h || 0} server errors in 24 hours</small></div>
             <div><span>Last backup</span><strong className="metric-word">{reliability.metrics.lastBackupAt ? new Date(reliability.metrics.lastBackupAt).toLocaleDateString("en-ZA") : "None"}</strong><small>{reliability.configuration.automatedMaintenance ? "Automation key configured" : "Automation setup needed"}</small></div>
             <div><span>Stored media</span><strong className="metric-word">{formatBytes(reliability.metrics.storedBytes || 0)}</strong><small>{reliability.metrics.storedFiles || 0} files</small></div>
-            <div><span>Needs review</span><strong>{(reliability.metrics.pendingDataRequests || 0) + (reliability.metrics.openContentReports || 0)}</strong><small>{reliability.metrics.openContentReports || 0} content reports · {reliability.metrics.pendingDataRequests || 0} data requests</small></div>
+            <div><span>Needs review</span><strong>{(reliability.metrics.pendingDataRequests || 0) + (reliability.metrics.openContentReports || 0)}</strong><small>{reliability.metrics.openContentReports || 0} content reports - {reliability.metrics.pendingDataRequests || 0} data requests</small></div>
           </div>
 
           <section className="reliability-section">
             <div className="operations-heading"><div><p className="sys-kicker">BACKUP HISTORY</p><h2>Recoverable snapshots</h2></div></div>
             <div className="delivery-list">{reliability.backups.length ? reliability.backups.map((backup) => <div className="delivery-row" key={backup.id}>
-              <div><b>{new Date(backup.createdAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</b><small>{backup.rowCount} records · {formatBytes(backup.sizeBytes)}</small></div>
+              <div><b>{new Date(backup.createdAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</b><small>{backup.rowCount} records - {formatBytes(backup.sizeBytes)}</small></div>
               <span className={`delivery-status ${backup.status}`}>{backup.status}</span>
               <small>{backup.verifiedAt ? `Verified ${new Date(backup.verifiedAt).toLocaleDateString("en-ZA")}` : "Not yet verified"}</small>
               {backup.status === "completed" && <button disabled={Boolean(busy)} onClick={() => reliabilityAction("verify", { backupId: backup.id })}>Verify</button>}
@@ -564,7 +564,7 @@ export default function PlatformAdministration() {
           {!!reliability.contentReports.length && <section className="reliability-section">
             <div className="operations-heading"><div><p className="sys-kicker">CONTENT REPORTS</p><h2>Moderation queue</h2></div><span>{reliability.metrics.openContentReports || 0} open</span></div>
             <div className="content-report-list">{reliability.contentReports.map((report) => <div key={report.id}>
-              <div><strong>{report.schoolName} · {report.reason}</strong><small>Reported by {report.reporter} · posted by {report.author} · {new Date(report.createdAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</small><p>{report.postBody}</p>{report.detail && <em>Reporter note: {report.detail}</em>}</div>
+              <div><strong>{report.schoolName} - {report.reason}</strong><small>Reported by {report.reporter} - posted by {report.author} - {new Date(report.createdAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</small><p>{report.postBody}</p>{report.detail && <em>Reporter note: {report.detail}</em>}</div>
               <span className={`delivery-status ${report.status}`}>{report.status}</span>
               {report.status === "open" && <div><button disabled={Boolean(busy)} onClick={() => reliabilityAction("hide_reported_post", { reportId: report.id })}>Hide post</button><button disabled={Boolean(busy)} onClick={() => reliabilityAction("dismiss_report", { reportId: report.id })}>Dismiss</button></div>}
             </div>)}</div>
@@ -574,8 +574,8 @@ export default function PlatformAdministration() {
             <div className="operations-heading"><div><p className="sys-kicker">SYSTEM EVENTS</p><h2>Errors and operational alerts</h2></div></div>
             <div className="audit-list">{reliability.events.length ? reliability.events.map((event) => <div key={event.id}>
               <span className={`event-severity ${event.severity}`}>{event.severity}</span>
-              <p><b>{event.eventType}</b> · {event.message}</p>
-              <small>{event.route || event.source} · {new Date(event.createdAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}{event.requestId ? ` · ${event.requestId}` : ""}</small>
+              <p><b>{event.eventType}</b> - {event.message}</p>
+              <small>{event.route || event.source} - {new Date(event.createdAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}{event.requestId ? ` - ${event.requestId}` : ""}</small>
               {event.status === "open" && <button disabled={Boolean(busy)} onClick={() => reliabilityAction("resolve", { eventId: event.id })}>Resolve</button>}
             </div>) : <p>No system alerts have been recorded.</p>}</div>
           </section>
@@ -593,7 +593,7 @@ export default function PlatformAdministration() {
       </article>}
 
       {tab === "Audit" && <article className="platform-panel"><div className="audit-list">
-        {data.audit.map((item) => <div key={item.id}><span>{item.action}</span><p><b>{item.actor}</b> · {item.schoolName || "Platform"} · {item.targetType}</p><small>{new Date(item.createdAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</small></div>)}
+        {data.audit.map((item) => <div key={item.id}><span>{item.action}</span><p><b>{item.actor}</b> - {item.schoolName || "Platform"} - {item.targetType}</p><small>{new Date(item.createdAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</small></div>)}
       </div></article>}
     </section>
   </main>;

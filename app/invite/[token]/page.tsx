@@ -72,13 +72,13 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
   }
 
   if (!loaded) {
-    return <main className="system-loading"><p>Opening your invitation…</p></main>;
+    return <main className="system-loading"><p>Opening your invitation...</p></main>;
   }
   if (!invitation) {
     return (
       <main className="invite-page">
         <section className="invite-card">
-          <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+          <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
           <p className="sys-kicker">INVITATION UNAVAILABLE</p>
           <h1>We cannot open this invitation.</h1>
           <p>{message || "Ask the academy to send you a fresh invitation link."}</p>
@@ -92,8 +92,8 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
   return (
     <main className="invite-page">
       <section className="invite-card">
-        <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
-        <div className="invite-mark">✦</div>
+        <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
+        <div className="invite-mark">*</div>
         <p className="sys-kicker">{unavailable ? "INVITATION UPDATE" : "YOU ARE INVITED"}</p>
         <h1>{unavailable ? "This invitation is no longer available." : `Join ${invitation.schoolName}.`}</h1>
         <p className="invite-summary">
@@ -102,7 +102,7 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
               ? "The secure link has expired. Ask the academy to send a new invitation."
               : `This invitation has already been ${invitation.status}.`
             : invitation.courseTitle
-              ? `You have been invited as a ${invitation.roleLabel.toLowerCase()} with access to “${invitation.courseTitle}”.`
+              ? `You have been invited as a ${invitation.roleLabel.toLowerCase()} with access to "${invitation.courseTitle}".`
               : `You have been invited to join as a ${invitation.roleLabel.toLowerCase()}.`}
         </p>
 
@@ -119,12 +119,12 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
         {!unavailable && !accountEmail && (
           <div className="invite-actions">
             <Link className="sys-primary" href={`/login?mode=signup&next=${encodeURIComponent(`/invite/${token}`)}`}>
-              Create account and accept →
+              Create account and accept
             </Link>
             <Link className="invite-secondary" href={`/login?mode=login&next=${encodeURIComponent(`/invite/${token}`)}`}>
               I already have an account
             </Link>
-            <small>Free account · No credit card · Your invitation is kept while you join</small>
+            <small>Free account - No credit card - Your invitation is kept while you join</small>
           </div>
         )}
 
@@ -132,7 +132,7 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
           <div className="invite-actions">
             <p>Signed in as <b>{accountEmail}</b></p>
             <button className="sys-primary" disabled={busy} onClick={acceptInvitation}>
-              {busy ? "Accepting invitation…" : "Accept invitation →"}
+              {busy ? "Accepting invitation..." : "Accept invitation"}
             </button>
             <button className="invite-secondary" type="button" onClick={useAnotherAccount}>
               Use a different account

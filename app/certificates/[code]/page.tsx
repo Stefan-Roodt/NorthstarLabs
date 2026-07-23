@@ -38,7 +38,7 @@ export default function CertificatePage({ params }: { params: Promise<{ code: st
 
   return <main className="certificate-page">
     <div className="certificate-toolbar">
-      <Link href="/learn">← My learning</Link>
+      <Link href="/learn">Back to learning</Link>
       <div>
         <Link href="/portfolio">Add to proof portfolio</Link>
         <button onClick={() => window.print()}>Print</button>
@@ -50,9 +50,9 @@ export default function CertificatePage({ params }: { params: Promise<{ code: st
       style={{ "--certificate-accent": certificate.accentColor } as CSSProperties}
     >
       <div className={`certificate-status ${certificate.valid ? "valid" : "invalid"}`}>
-        {certificate.valid ? "Verified · active" : certificate.status === "active" ? "Expired" : certificate.status}
+        {certificate.valid ? "Verified - active" : certificate.status === "active" ? "Expired" : certificate.status}
       </div>
-      <div className="certificate-mark">✦</div>
+      <div className="certificate-mark">*</div>
       <p className="sys-kicker">{certificate.issuerName}</p>
       <h1>{certificate.certificateTitle}</h1>
       <p>This certifies that</p>
@@ -64,8 +64,8 @@ export default function CertificatePage({ params }: { params: Promise<{ code: st
         <div><span>Certificate ID</span><b>{certificate.code}</b></div>
         <div><span>Valid until</span><b>{certificate.expiresAt ? new Date(certificate.expiresAt).toLocaleDateString() : "No expiry"}</b></div>
       </footer>
-      <p className="certificate-verification">This public page verifies the certificate’s current status.</p>
-      {certificate.replacedByCode && <Link className="certificate-replacement" href={`/certificates/${certificate.replacedByCode}`}>View the replacement certificate →</Link>}
+      <p className="certificate-verification">This public page verifies the certificate&apos;s current status.</p>
+      {certificate.replacedByCode && <Link className="certificate-replacement" href={`/certificates/${certificate.replacedByCode}`}>View the replacement certificate</Link>}
     </article>
   </main>;
 }

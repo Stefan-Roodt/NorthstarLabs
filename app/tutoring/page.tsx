@@ -231,12 +231,12 @@ export default function TutoringPage() {
 
   return <main className="tutoring-page">
     <header className="tutoring-nav">
-      <Link className="system-brand" href="/learn">✦ NORTHSTARLABS</Link>
+      <Link className="system-brand" href="/learn">* NORTHSTARLABS</Link>
       <nav>
         <Link href="/learn">My learning</Link>
         <Link href="/tutors">Find a tutor</Link>
         <Link href="/courses">Explore courses</Link>
-        <Link href="/account">Account</Link>
+        <Link href="/account">Account settings</Link>
         <button onClick={signOut}>Sign out</button>
       </nav>
     </header>
@@ -263,10 +263,10 @@ export default function TutoringPage() {
               <p className="sys-kicker">PRIVATE LEARNER REPUTATION</p>
               <h2>{reputation.averageRating === null
                 ? "Your reliability history is taking shape."
-                : `${reputation.averageRating} ★ from verified sessions`}</h2>
+                : `${reputation.averageRating} * from verified sessions`}</h2>
               <p>{reputation.averageRating === null
                 ? `${reputation.ratingCount} of ${reputation.minimumRatings} ratings received. Your score stays hidden until enough sessions protect individual coach anonymity.`
-                : `${reputation.ratingCount} completed-session ratings. This aggregate is visible only to you and academy staff handling your request—never on a public profile.`}</p>
+                : `${reputation.ratingCount} completed-session ratings. This aggregate is visible only to you and academy staff handling your request-never on a public profile.`}</p>
             </div>
             {reputation.averageRating !== null && <strong>{reputation.averageRating}</strong>}
             {reputation.themes.length > 0 && <div>{reputation.themes.map((theme) =>
@@ -332,8 +332,8 @@ function TutoringCard({
       ? <div className="tutoring-time">
         <strong>{new Date(item.startsAt).toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long" })}</strong>
         <b>{new Date(item.startsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}
-          {item.endsAt ? `–${new Date(item.endsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}` : ""}</b>
-        <small>{item.sessionMode?.replaceAll("_", " ")} · {item.timezone}</small>
+          {item.endsAt ? `-${new Date(item.endsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}` : ""}</b>
+        <small>{item.sessionMode?.replaceAll("_", " ")} - {item.timezone}</small>
       </div>
       : <div className="tutoring-time tutoring-time-general"><strong>General tutoring enquiry</strong><small>{item.preferredTimes || "The academy will contact you to arrange a time."}</small></div>}
     <p>{copy.text}</p>
@@ -345,7 +345,7 @@ function TutoringCard({
       <p className="sys-kicker">VERIFIED SESSION RATING</p>
       <h4>How was your session?</h4>
       <div aria-label="Choose a rating">{[1, 2, 3, 4, 5].map((value) =>
-        <button aria-label={`${value} star${value === 1 ? "" : "s"}`} aria-pressed={rating === value} key={value} onClick={() => onRating(value)} type="button">★</button>
+        <button aria-label={`${value} star${value === 1 ? "" : "s"}`} aria-pressed={rating === value} key={value} onClick={() => onRating(value)} type="button">*</button>
       )}</div>
       {rating > 0 && <div className="rating-tag-picker" aria-label={needsReason ? "Choose at least one reason" : "Choose helpful highlights"}>
         {availableTags.map((tag) =>

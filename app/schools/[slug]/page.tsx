@@ -196,7 +196,7 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
         {school.websiteUrl && <a href={school.websiteUrl}>Website</a>}
         {signedIn ? <div className="school-account-actions">
           <Link href="/learn">My learning</Link>
-          <Link href="/account">Account</Link>
+          <Link href="/account">Account settings</Link>
           <button type="button" onClick={signOut}>Sign out</button>
         </div> : <Link className="school-sign-in" href={`/login?next=${encodeURIComponent(`/schools/${school.slug}`)}`}>Sign in</Link>}
       </nav>

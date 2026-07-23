@@ -122,9 +122,9 @@ function formatBytes(bytes: number) {
 }
 
 function assetIcon(kind: string) {
-  if (kind === "video") return "▶";
-  if (kind === "audio") return "♫";
-  if (kind === "image") return "▧";
+  if (kind === "video") return "?";
+  if (kind === "audio") return "?";
+  if (kind === "image") return "?";
   if (kind === "archive") return "ZIP";
   return "DOC";
 }
@@ -210,7 +210,7 @@ function drawCinematicFrame(
   context.fillStyle = "#d8ff57";
   context.font = "700 22px Arial, sans-serif";
   context.letterSpacing = "3px";
-  context.fillText(`NORTHSTARLABS  •  ${courseTitle.toUpperCase().slice(0, 52)}`, 0, 108);
+  context.fillText(`NORTHSTARLABS  .  ${courseTitle.toUpperCase().slice(0, 52)}`, 0, 108);
   context.letterSpacing = "0px";
 
   context.fillStyle = "#ffffff";
@@ -221,7 +221,7 @@ function drawCinematicFrame(
   const footerY = Math.min(610, 275 + titleLines.length * 78);
   context.fillStyle = "rgba(255,255,255,.72)";
   context.font = "600 24px Arial, sans-serif";
-  context.fillText(`LESSON ${String(lessonNumber).padStart(2, "0")}  •  LEARN WITH PURPOSE`, 0, footerY);
+  context.fillText(`LESSON ${String(lessonNumber).padStart(2, "0")}  .  LEARN WITH PURPOSE`, 0, footerY);
   context.restore();
 
   context.globalAlpha = 1;
@@ -231,14 +231,14 @@ function drawCinematicFrame(
   context.fillRect(left, height - 58, (width - left * 2) * progress, 5);
   context.fillStyle = "#ffffff";
   context.font = "700 18px Arial, sans-serif";
-  context.fillText("✦", width - left - 24, height - 79);
+  context.fillText("?", width - left - 24, height - 79);
 }
 
 export default function CourseBuilder({ params }: { params: Promise<{ courseId: string }> }) {
   const [courseId, setCourseId] = useState("");
   const [course, setCourse] = useState<Course | null>(null);
   const [selectedId, setSelectedId] = useState("");
-  const [message, setMessage] = useState("Loading course…");
+  const [message, setMessage] = useState("Loading course.");
   const [dirty, setDirty] = useState<{ id: string; revision: number } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -320,7 +320,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     quiet = false,
   ) => {
     if (!courseId) return false;
-    if (!quiet) setMessage("Saving lesson…");
+    if (!quiet) setMessage("Saving lesson.");
     const accessToken = await token();
     const lessonResponse = await fetch("/api/lessons", {
       method: "POST",
@@ -493,11 +493,11 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     setSelectedId(lesson.id);
     setWorkspaceTab("lesson");
     setDirty(null);
-    setMessage("New lesson started — add a title or material to save it");
+    setMessage("New lesson started - add a title or material to save it");
   }
 
   async function deleteLesson(lesson: Lesson) {
-    if (!course || !confirm(`Delete “${lesson.title}” and its learner progress?`)) return;
+    if (!course || !confirm(`Delete "${lesson.title}" and its learner progress?`)) return;
     if (!lesson.updatedAt) {
       const remaining = course.lessons.filter((item) => item.id !== lesson.id);
       setCourse({ ...course, lessons: remaining });
@@ -573,7 +573,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   }
 
   async function deleteSection(section: Section) {
-    if (!course || !confirm(`Delete “${section.title}”? Its lessons will move to another section.`)) return;
+    if (!course || !confirm(`Delete "${section.title}"? Its lessons will move to another section.`)) return;
     const response = await fetch(
       `/api/sections?courseId=${encodeURIComponent(course.id)}&sectionId=${encodeURIComponent(section.id)}`,
       { method: "DELETE", headers: { authorization: `Bearer ${await token()}` } },
@@ -680,7 +680,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     if (selected && dirty?.id === selected.id) {
       if (!await persistLesson(selected, dirty.revision)) return;
     }
-    setMessage(status === "published" ? "Checking and publishing…" : "Saving course…");
+    setMessage(status === "published" ? "Checking and publishing." : "Saving course.");
     const response = await fetch(`/api/courses/${encodeURIComponent(course.id)}`, {
       method: "PATCH",
       headers: {
@@ -716,7 +716,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       return;
     }
     setCourse((current) => current ? { ...current, status } : current);
-    setMessage(status === "published" ? "Course published — learners can enrol" : status === "draft" && course.status === "published" ? "Course unpublished" : "Course saved");
+    setMessage(status === "published" ? "Course published - learners can enrol" : status === "draft" && course.status === "published" ? "Course unpublished" : "Course saved");
   }
 
   async function deleteCourse() {
@@ -748,7 +748,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     if (!course) return null;
     setUploading(true);
     setUploadProgress(0);
-    setMessage(`Uploading ${file.name}…`);
+    setMessage(`Uploading ${file.name}.`);
     const accessToken = await token();
     const result = await new Promise<{ ok: boolean; asset?: Asset; error?: string }>((resolve) => {
       const xhr = new XMLHttpRequest();
@@ -828,7 +828,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       setMessage("Direct recording is not supported in this browser. Use Upload narration instead.");
       return;
     }
-    if (selected.primaryAsset && !confirm("Replace this lesson’s current primary media with the new narration?")) return;
+    if (selected.primaryAsset && !confirm("Replace this lesson's current primary media with the new narration?")) return;
     try {
       const lesson = selected;
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -884,7 +884,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
 
   function stopNarrationRecording() {
     if (narrationRecorder.current?.state !== "recording") return;
-    setMessage("Finishing and protecting your narration…");
+    setMessage("Finishing and protecting your narration.");
     narrationRecorder.current.stop();
   }
 
@@ -907,7 +907,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     let recorder: MediaRecorder | null = null;
     try {
       setMediaProduction("cinematic");
-      setMessage("Creating a six-second NorthStarLabs lesson intro in your browser…");
+      setMessage("Creating a six-second NorthStarLabs lesson intro in your browser.");
       canvas.width = 1280;
       canvas.height = 720;
       const context = canvas.getContext("2d");
@@ -953,7 +953,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   async function generateStudioNarration() {
     if (!course || !selected?.transcript.trim() || studioBusy) return;
     setStudioBusy(true);
-    setMessage("Creating AI-assisted narration…");
+    setMessage("Creating AI-assisted narration.");
     const accessToken = await token();
     const studioResponse = await fetch("/api/creator-studio", {
       headers: { authorization: `Bearer ${accessToken}` },
@@ -1082,7 +1082,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
 
   return <main className="builder-page builder-page-expanded">
     <header className="builder-top">
-      <Link href="/dashboard">← Creator workspace</Link>
+      <Link href="/dashboard">? Creator workspace</Link>
       <div>
         <input
           aria-label="Course title"
@@ -1090,7 +1090,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
           onChange={(event) => setCourse({ ...course, title: event.target.value })}
         />
         <span className={dirty ? "builder-save-state pending" : "builder-save-state"}>
-          {course.status} · {message}
+          {course.status} | {message}
         </span>
       </div>
       <div>
@@ -1113,7 +1113,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       <aside className="curriculum curriculum-expanded">
         <div className="curriculum-heading">
           <div><p className="sys-kicker">CURRICULUM</p><b>{course.lessons.length} lessons</b></div>
-          <button onClick={addSection}>＋ Section</button>
+          <button onClick={addSection}>+ Section</button>
         </div>
         <div className="curriculum-sections">
           {[...course.sections].sort((a, b) => a.position - b.position).map((section, sectionIndex) =>
@@ -1132,9 +1132,9 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                   onBlur={() => saveSection(section)}
                 />
                 <div>
-                  <button title="Move section up" disabled={sectionIndex === 0} onClick={() => moveSection(section.id, -1)}>↑</button>
-                  <button title="Move section down" disabled={sectionIndex === course.sections.length - 1} onClick={() => moveSection(section.id, 1)}>↓</button>
-                  <button title="Delete section" onClick={() => deleteSection(section)}>×</button>
+                  <button title="Move section up" disabled={sectionIndex === 0} onClick={() => moveSection(section.id, -1)}>?</button>
+                  <button title="Move section down" disabled={sectionIndex === course.sections.length - 1} onClick={() => moveSection(section.id, 1)}>?</button>
+                  <button title="Delete section" onClick={() => deleteSection(section)}>|</button>
                 </div>
               </header>
               <div className="curriculum-lessons">
@@ -1157,7 +1157,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                         <span>{assetIcon(lesson.primaryAsset?.kind || lesson.lessonType)}</span>
                         <div>
                           <b>{lesson.title}</b>
-                          <small>{lesson.lessonType}{lesson.quiz ? " · quiz" : ""}</small>
+                          <small>{lesson.lessonType}{lesson.quiz ? " | quiz" : ""}</small>
                           <em className={readiness?.lessonIssueCounts[lesson.id] ? "lesson-quality-signal needs-work" : "lesson-quality-signal"}>
                             {readiness?.lessonIssueCounts[lesson.id]
                               ? `${readiness.lessonIssueCounts[lesson.id]} quality fix${readiness.lessonIssueCounts[lesson.id] === 1 ? "" : "es"}`
@@ -1166,22 +1166,22 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                         </div>
                       </button>
                       <div className="lesson-order-controls">
-                        <button disabled={lessonIndex === 0} onClick={() => moveLesson(lesson.id, -1)}>↑</button>
-                        <button disabled={lessonIndex === siblings.length - 1} onClick={() => moveLesson(lesson.id, 1)}>↓</button>
+                        <button disabled={lessonIndex === 0} onClick={() => moveLesson(lesson.id, -1)}>?</button>
+                        <button disabled={lessonIndex === siblings.length - 1} onClick={() => moveLesson(lesson.id, 1)}>?</button>
                       </div>
                     </article>
                   )}
               </div>
               <div className="lesson-add-row">
-                <button onClick={() => addLesson(section.id, "text")}>＋ Text</button>
-                <button onClick={() => addLesson(section.id, "video")}>＋ Video</button>
-                <button onClick={() => addLesson(section.id, "quiz")}>＋ Quiz</button>
+                <button onClick={() => addLesson(section.id, "text")}>+ Text</button>
+                <button onClick={() => addLesson(section.id, "video")}>+ Video</button>
+                <button onClick={() => addLesson(section.id, "quiz")}>+ Quiz</button>
               </div>
             </section>
           )}
         </div>
         <button className="media-library-button" onClick={() => setWorkspaceTab("media")}>
-          <span>▦</span><div><b>Academy media library</b><small>{course.media.length} reusable files</small></div>
+          <span>?</span><div><b>Academy media library</b><small>{course.media.length} reusable files</small></div>
         </button>
       </aside>
 
@@ -1232,7 +1232,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                   <h3>{issue.title}</h3>
                   <p>{issue.detail}</p>
                 </div>
-                <button onClick={() => openQualityIssue(issue)}>{issue.action} →</button>
+                <button onClick={() => openQualityIssue(issue)}>{issue.action} ?</button>
               </article>)}
             </div>
           </section>}
@@ -1250,13 +1250,13 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                   <h3>{issue.title}</h3>
                   <p>{issue.detail}</p>
                 </div>
-                <button onClick={() => openQualityIssue(issue)}>{issue.action} →</button>
+                <button onClick={() => openQualityIssue(issue)}>{issue.action} ?</button>
               </article>)}
             </div>
           </section>}
 
           {!readiness.issues.length && <section className="quality-complete">
-            <span>✓</span>
+            <span>?</span>
             <div><p className="sys-kicker">QUALITY REVIEW COMPLETE</p><h2>The course is ready for a real learner.</h2><p>Preview the full journey once, then publish with confidence.</p></div>
             <Link className="sys-primary" href={`/learn/${course.id}?preview=1`}>Run final preview</Link>
           </section>}
@@ -1279,17 +1279,17 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               <div>
                 <p className="sys-kicker">COURSE TRUTH CARD</p>
                 <h2>Remove doubt before learners join.</h2>
-                <p>These facts appear publicly as “Before you commit”. Be specific, honest and useful.</p>
+                <p>These facts appear publicly as &quot;Before you commit&quot;. Be specific, honest and useful.</p>
               </div>
               <div className={course.lessons.some((lesson) => Boolean(lesson.isPreview)) ? "truth-preview-status ready" : "truth-preview-status"}>
                 <b>{course.lessons.filter((lesson) => Boolean(lesson.isPreview)).length}</b>
                 <span>public preview {course.lessons.filter((lesson) => Boolean(lesson.isPreview)).length === 1 ? "lesson" : "lessons"}</span>
-                <small>Mark a lesson “Free preview” in its lesson settings.</small>
+                <small>Mark a lesson &quot;Free preview&quot; in its lesson settings.</small>
               </div>
             </header>
             <div className="course-truth-grid">
               <label className="truth-wide">The promise
-                <textarea maxLength={1000} value={course.truthOutcome} onChange={(event) => setCourse({ ...course, truthOutcome: event.target.value })} placeholder="After this course, learners will be able to…" />
+                <textarea maxLength={1000} value={course.truthOutcome} onChange={(event) => setCourse({ ...course, truthOutcome: event.target.value })} placeholder="After this course, learners will be able to." />
                 <small>Describe a result a learner can recognise or demonstrate.</small>
               </label>
               <label>Who this is for
@@ -1300,7 +1300,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                 <textarea maxLength={1000} value={course.truthNotFor} onChange={(event) => setCourse({ ...course, truthNotFor: event.target.value })} placeholder="For example: people looking for investment advice or a shortcut." />
               </label>
               <label>Prerequisites
-                <textarea maxLength={1000} value={course.truthPrerequisites} onChange={(event) => setCourse({ ...course, truthPrerequisites: event.target.value })} placeholder="State the knowledge, tools or experience learners need—or say none." />
+                <textarea maxLength={1000} value={course.truthPrerequisites} onChange={(event) => setCourse({ ...course, truthPrerequisites: event.target.value })} placeholder="State the knowledge, tools or experience learners need-or say none." />
               </label>
               <label>Evidence learners produce
                 <textarea maxLength={1000} value={course.truthEvidence} onChange={(event) => setCourse({ ...course, truthEvidence: event.target.value })} placeholder="A completed plan, assessment, portfolio piece or practical output." />
@@ -1312,7 +1312,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                 <input maxLength={80} value={course.truthLevel} onChange={(event) => setCourse({ ...course, truthLevel: event.target.value })} placeholder="Beginner to intermediate" />
               </label>
               <label>Delivery
-                <input maxLength={120} value={course.truthDelivery} onChange={(event) => setCourse({ ...course, truthDelivery: event.target.value })} placeholder="Self-paced · video, text and assessments" />
+                <input maxLength={120} value={course.truthDelivery} onChange={(event) => setCourse({ ...course, truthDelivery: event.target.value })} placeholder="Self-paced | video, text and assessments" />
               </label>
               <label>Last human review
                 <input type="date" value={dateInputValue(course.truthReviewedAt)} onChange={(event) => setCourse({ ...course, truthReviewedAt: event.target.value ? new Date(`${event.target.value}T12:00:00`).getTime() : null })} />
@@ -1369,7 +1369,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
             </ul>
             {!!publishingErrors.length && <div className="publishing-errors">{publishingErrors.map((error) => <p key={error}>{error}</p>)}</div>}
             <button className="quality-review-cta" onClick={() => setWorkspaceTab("review")}>
-              Open the full learner-quality review <b>{readiness?.score || 0}%</b> →
+              Open the full learner-quality review <b>{readiness?.score || 0}%</b> ?
             </button>
           </div>
           <div className="editor-save-row">
@@ -1410,7 +1410,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               const isResource = selected?.resources.some((resource) => resource.assetId === asset.id);
               return <article className="media-card" key={asset.id}>
                 <div className={`media-card-icon ${asset.kind}`}>{assetIcon(asset.kind)}</div>
-                <div><b title={asset.filename}>{asset.filename}</b><small>{asset.kind} · {formatBytes(asset.sizeBytes)}</small></div>
+                <div><b title={asset.filename}>{asset.filename}</b><small>{asset.kind} | {formatBytes(asset.sizeBytes)}</small></div>
                 {asset.kind === "image" && <label>Image description<input value={asset.altText || ""} onChange={(event) => updateAsset(asset.id, { altText: event.target.value })} onBlur={() => saveAssetAlt(asset)} placeholder="Describe the image for learners" /></label>}
                 <div className="media-card-actions">
                   {selected && ["video", "audio", "image"].includes(asset.kind) && <button className={isPrimary ? "active" : ""} onClick={() => isPrimary ? editLesson({ primaryAssetId: null, primaryAsset: null }) : attachPrimary(asset)}>{isPrimary ? "Remove media" : "Use as media"}</button>}
@@ -1419,13 +1419,13 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                 </div>
               </article>;
             })}
-            {!filteredMedia.length && <div className="media-empty"><b>No {mediaFilter === "all" ? "" : mediaFilter} files yet.</b><p>Upload a file to add it to this academy’s reusable library.</p></div>}
+            {!filteredMedia.length && <div className="media-empty"><b>No {mediaFilter === "all" ? "" : mediaFilter} files yet.</b><p>Upload a file to add it to this academy&apos;s reusable library.</p></div>}
           </div>
         </div>}
 
         {workspaceTab === "lesson" && selected && <>
           <div className="editor-heading">
-            <div><p className="sys-kicker">LESSON EDITOR</p><h1>{selected.title}</h1><p>{dirty?.id === selected.id ? "Autosave pending…" : "Changes are saved automatically."}</p></div>
+            <div><p className="sys-kicker">LESSON EDITOR</p><h1>{selected.title}</h1><p>{dirty?.id === selected.id ? "Autosave pending." : "Changes are saved automatically."}</p></div>
             <button className="danger-plain" onClick={() => deleteLesson(selected)}>Delete lesson</button>
           </div>
           <form onSubmit={(event: FormEvent) => {
@@ -1453,7 +1453,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
             </section>
 
             <section className="primary-media-editor">
-              <div><p className="sys-kicker">PRIMARY MEDIA</p><h2>{selected.primaryAsset ? selected.primaryAsset.filename : selected.videoKey?.startsWith("r2:") ? "Existing lesson video" : "Add video, audio, or an image"}</h2><p>{selected.primaryAsset ? `${selected.primaryAsset.kind} · ${formatBytes(selected.primaryAsset.sizeBytes)}` : selected.videoKey?.startsWith("r2:") ? "This earlier upload remains securely attached. Upload it again only if you want it in the reusable library." : "Choose from your academy library or upload something new."}</p></div>
+              <div><p className="sys-kicker">PRIMARY MEDIA</p><h2>{selected.primaryAsset ? selected.primaryAsset.filename : selected.videoKey?.startsWith("r2:") ? "Existing lesson video" : "Add video, audio, or an image"}</h2><p>{selected.primaryAsset ? `${selected.primaryAsset.kind} | ${formatBytes(selected.primaryAsset.sizeBytes)}` : selected.videoKey?.startsWith("r2:") ? "This earlier upload remains securely attached. Upload it again only if you want it in the reusable library." : "Choose from your academy library or upload something new."}</p></div>
               <button type="button" onClick={() => setWorkspaceTab("media")}>{selected.primaryAsset ? "Change media" : "Open media library"}</button>
               {selected.primaryAsset && <button type="button" onClick={() => editLesson({ primaryAssetId: null, primaryAsset: null })}>Remove</button>}
               {!selected.primaryAsset && selected.videoKey?.startsWith("r2:") && <button type="button" onClick={() => editLesson({ videoKey: "" })}>Remove</button>}
@@ -1469,12 +1469,12 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                   <button type="button" onClick={() => applyFormat("## ", "", "Heading")}>Heading</button>
                   <button type="button" onClick={() => applyFormat("**", "**", "bold text")}><b>Bold</b></button>
                   <button type="button" onClick={() => applyFormat("*", "*", "italic text")}><i>Italic</i></button>
-                  <button type="button" onClick={() => applyFormat("- ", "", "List item")}>• List</button>
+                  <button type="button" onClick={() => applyFormat("- ", "", "List item")}>. List</button>
                   <button type="button" onClick={() => applyFormat("[", "](https://)", "link text")}>Link</button>
                   <button type="button" onClick={() => applyFormat("> ", "", "Helpful callout")}>Callout</button>
                 </div>
                 <textarea ref={contentEditor} className="content-editor" value={selected.content} onChange={(event) => editLesson({ content: event.target.value })} placeholder={"## What you will learn\n\nExplain the idea in plain language.\n\n- Add a practical step\n- Include an example\n\n> End with a useful prompt or action."} />
-              </> : <div className="builder-content-preview">{selected.content ? <LessonContent content={selected.content} /> : <p>Start writing to preview the learner experience.</p>}</div>}
+              </> : <div className="builder-content-preview">{selected.content ? <LessonContent content={selected.content} lessonTitle={selected.title || "Lesson"} slideDeckMode /> : <p>Start writing to preview the learner experience.</p>}</div>}
             </section>
 
             <label className="transcript-editor">Captions / transcript
@@ -1503,23 +1503,23 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                   <p>Use the transcript above as your script, or speak naturally. Northstar records, uploads and attaches the protected audio in one flow.</p>
                   <div className="media-production-status" aria-live="polite">
                     {mediaProduction === "recording" ? <><b>Recording live</b><span>{String(Math.floor(recordingSeconds / 60)).padStart(2, "0")}:{String(recordingSeconds % 60).padStart(2, "0")}</span></>
-                      : mediaProduction === "processing" ? <><b>Protecting audio</b><span>Please wait…</span></>
+                      : mediaProduction === "processing" ? <><b>Protecting audio</b><span>Please wait.</span></>
                       : <><b>Microphone or upload</b><span>No provider needed</span></>}
                   </div>
                   <div className="media-production-actions">
                     {mediaProduction === "recording"
-                      ? <button className="record-stop" type="button" onClick={stopNarrationRecording}>■ Stop & attach</button>
-                      : <button className="production-primary" type="button" disabled={Boolean(mediaProduction)} onClick={startNarrationRecording}>● Record narration</button>}
+                      ? <button className="record-stop" type="button" onClick={stopNarrationRecording}>? Stop & attach</button>
+                      : <button className="production-primary" type="button" disabled={Boolean(mediaProduction)} onClick={startNarrationRecording}>? Record narration</button>}
                     <button type="button" disabled={Boolean(mediaProduction)} onClick={() => narrationInput.current?.click()}>Upload audio</button>
                   </div>
-                  {selected.transcript.trim() && <button className="advanced-media-action" type="button" disabled={studioBusy || Boolean(mediaProduction)} onClick={generateStudioNarration}>{studioBusy ? "AI narrator is working…" : "Use a connected AI narrator →"}</button>}
+                  {selected.transcript.trim() && <button className="advanced-media-action" type="button" disabled={studioBusy || Boolean(mediaProduction)} onClick={generateStudioNarration}>{studioBusy ? "AI narrator is working." : "Use a connected AI narrator ?"}</button>}
                 </article>
 
                 <article className="caption-production-card">
                   <div className="caption-preview" aria-hidden="true">
                     <span>CC</span>
                     <p>{selected.transcript.trim()
-                      ? selected.transcript.trim().split(/\s+/).slice(0, 15).join(" ") + (selected.transcript.trim().split(/\s+/).length > 15 ? "…" : "")
+                      ? selected.transcript.trim().split(/\s+/).slice(0, 15).join(" ") + (selected.transcript.trim().split(/\s+/).length > 15 ? "." : "")
                       : "Add a reviewed transcript to create learner captions."}</p>
                   </div>
                   <p className="sys-kicker">CAPTIONS</p>
@@ -1536,21 +1536,21 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                 </article>
 
                 <article className="cinematic-production-card">
-                  <div className="cinematic-preview" aria-hidden="true"><span>✦ NORTHSTARLABS</span><b>{selected.title}</b><i /></div>
+                  <div className="cinematic-preview" aria-hidden="true"><span>? NORTHSTARLABS</span><b>{selected.title}</b><i /></div>
                   <p className="sys-kicker">CINEMATIC INTRO</p>
                   <h3>Generate a branded opening clip.</h3>
                   <p>Create a polished six-second 16:9 title animation that plays before the main lesson media. No model, credits or external key required.</p>
                   <div className="media-production-status" aria-live="polite">
-                    {mediaProduction === "cinematic" ? <><b>Rendering video</b><span>About 6 seconds…</span></>
+                    {mediaProduction === "cinematic" ? <><b>Rendering video</b><span>About 6 seconds.</span></>
                       : selected.introAsset ? <><b>Opening attached</b><span>Main media preserved</span></>
-                      : <><b>1280 × 720 WebM</b><span>Northstar branded</span></>}
+                      : <><b>1280 | 720 WebM</b><span>Northstar branded</span></>}
                   </div>
                   <div className="media-production-actions">
-                    <button className="production-primary" type="button" disabled={Boolean(mediaProduction)} onClick={createCinematicIntro}>{mediaProduction === "cinematic" ? "Creating intro…" : selected.introAsset ? "Replace branded intro" : "Create branded intro"}</button>
+                    <button className="production-primary" type="button" disabled={Boolean(mediaProduction)} onClick={createCinematicIntro}>{mediaProduction === "cinematic" ? "Creating intro." : selected.introAsset ? "Replace branded intro" : "Create branded intro"}</button>
                     <button type="button" disabled={Boolean(mediaProduction)} onClick={() => videoInput.current?.click()}>Upload main video</button>
                   </div>
                   {selected.introAsset && <button className="advanced-media-action" type="button" onClick={() => editLesson({ introAssetId: null, introAsset: null })}>Remove opening clip</button>}
-                  <Link className="advanced-media-action" href="/dashboard/integrations#creator-studio-providers">Advanced AI production options →</Link>
+                  <Link className="advanced-media-action" href="/dashboard/integrations#creator-studio-providers">Advanced AI production options ?</Link>
                 </article>
               </div>
               <footer><b>Nothing is published automatically.</b><span>Preview the complete sequence as a learner. The opening, main media and captions remain separate so one can never destroy another.</span></footer>
@@ -1565,7 +1565,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                   if (!file) return;
                   const lesson = selected;
                   const asset = await uploadFile(file);
-                  if (asset && (!lesson.primaryAsset || confirm("Replace this lesson’s current primary media with the uploaded narration?"))) {
+                  if (asset && (!lesson.primaryAsset || confirm("Replace this lesson's current primary media with the uploaded narration?"))) {
                     await attachProducedMedia(asset, lesson, "Narration uploaded, protected, and attached to this lesson.");
                   }
                 }}
@@ -1581,7 +1581,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                   if (!file) return;
                   const lesson = selected;
                   const asset = await uploadFile(file);
-                  if (asset && (!lesson.primaryAsset || confirm("Replace this lesson’s current primary media with the uploaded video?"))) {
+                  if (asset && (!lesson.primaryAsset || confirm("Replace this lesson's current primary media with the uploaded video?"))) {
                     await attachProducedMedia(asset, lesson, "Video uploaded, protected, and attached to this lesson.");
                   }
                 }}
@@ -1626,7 +1626,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                         onChange={(event) => editQuestion(questionIndex, { conceptLabel: event.target.value })}
                         placeholder="e.g. Bitcoin scarcity or constructive feedback"
                       />
-                      <small>This becomes the learnerâ€™s named revision concept after an incorrect answer.</small>
+                      <small>This becomes the learner&apos;s named revision concept after an incorrect answer.</small>
                     </label>
                     <label className="quiz-explanation-editor">
                       Why is the correct answer right?
@@ -1638,17 +1638,17 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                       />
                       <small>Shown after submission so the assessment teaches, not only scores.</small>
                     </label>
-                    <button type="button" onClick={() => editQuestion(questionIndex, { options: [...question.options, ""] })}>＋ Add answer</button>
+                    <button type="button" onClick={() => editQuestion(questionIndex, { options: [...question.options, ""] })}>+ Add answer</button>
                   </article>
                 )}
                 <div className="quiz-controls">
-                  <button type="button" onClick={() => editQuiz({ questions: [...selected.quiz!.questions, blankQuestion()] })}>＋ Add question</button>
+                  <button type="button" onClick={() => editQuiz({ questions: [...selected.quiz!.questions, blankQuestion()] })}>+ Add question</button>
                   <button type="button" onClick={() => editLesson({ quiz: null })}>Use complete button instead</button>
                 </div>
               </>}
             </fieldset>
             <div className="editor-save-row">
-              <span>{dirty?.id === selected.id ? "Waiting to autosave…" : "Saved"}</span>
+              <span>{dirty?.id === selected.id ? "Waiting to autosave." : "Saved"}</span>
               <button className="sys-primary">Save lesson now</button>
             </div>
           </form>
@@ -1658,9 +1658,10 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
           <p className="sys-kicker">START THE CURRICULUM</p>
           <h2>Add your first lesson.</h2>
           <p>Choose a section on the left and add a text, video, or quiz lesson.</p>
-          <button className="sys-primary" disabled={!course.sections[0]} onClick={() => course.sections[0] && addLesson(course.sections[0].id, "text")}>＋ Add first lesson</button>
+          <button className="sys-primary" disabled={!course.sections[0]} onClick={() => course.sections[0] && addLesson(course.sections[0].id, "text")}>+ Add first lesson</button>
         </div>}
       </section>
     </div>
   </main>;
 }
+

@@ -222,12 +222,17 @@ export default function IntegrationsPage() {
     setMessage("Signing secret copied.");
   }
 
+  async function signOut() {
+    await supabase?.auth.signOut();
+    location.href = "/dashboard";
+  }
+
   if (!data) return <main className="system-loading"><div><b>NorthStarLabs</b><p>{message}</p></div></main>;
 
   return <main className="integration-page">
     <header className="product-admin-top">
-      <Link className="system-brand" href="/dashboard">✦ NORTHSTARLABS</Link>
-      <nav><Link href="/dashboard/products">Products</Link><Link href="/dashboard/live">Live learning</Link><Link href="/account">Account</Link></nav>
+      <Link className="system-brand" href="/dashboard">* NORTHSTARLABS</Link>
+      <nav><Link href="/dashboard/products">Products</Link><Link href="/dashboard/live">Live learning</Link><Link href="/account">Account settings</Link><button onClick={signOut}>Sign out</button></nav>
     </header>
     <section className="integration-hero">
       <div><p className="sys-kicker">MOBILE & INTEGRATIONS</p><h1>Connect learning to the rest of the work.</h1><p>Calendar downloads, meeting links and installable mobile access work immediately. Signed webhooks connect NorthStarLabs events to automation tools, CRMs and your own systems.</p></div>
@@ -265,7 +270,7 @@ export default function IntegrationsPage() {
           </article>
 
           <article className="panel provider-connection-card">
-            <div className="provider-card-heading"><span>↯</span><div><p className="sys-kicker">NO-CODE AUTOMATION</p><h3>Zapier</h3></div>{providerStatus(data.integrations, "zapier")}</div>
+            <div className="provider-card-heading"><span>?</span><div><p className="sys-kicker">NO-CODE AUTOMATION</p><h3>Zapier</h3></div>{providerStatus(data.integrations, "zapier")}</div>
             <p>Paste a Webhooks by Zapier Catch Hook URL, choose events, and test the Zap before relying on it.</p>
             <label>Catch Hook URL<input type="url" value={zapierUrl} onChange={(event) => setZapierUrl(event.target.value)} placeholder="https://hooks.zapier.com/hooks/catch/..." /></label>
             <fieldset className="webhook-events compact"><legend>Send these events</legend>
@@ -318,7 +323,7 @@ export default function IntegrationsPage() {
         {data.integrations.filter((item) => item.provider === "webhook").length ? data.integrations.filter((item) => item.provider === "webhook").map((integration) => <article className="panel webhook-card" key={integration.id}>
           <div><span className={`status ${integration.status}`}>{integration.status}</span><h3>{integration.name}</h3><p>{integration.endpointUrl}</p></div>
           <ul>{integration.eventTypes.map((eventType) => <li key={eventType}>{eventType === "*" ? "All events" : eventLabels[eventType] || eventType}</li>)}</ul>
-          <small>{integration.lastDeliveryAt ? `Last delivery ${new Date(integration.lastDeliveryAt).toLocaleString("en-ZA")} · ${integration.lastDeliveryStatus}` : "No deliveries yet"}</small>
+          <small>{integration.lastDeliveryAt ? `Last delivery ${new Date(integration.lastDeliveryAt).toLocaleString("en-ZA")} - ${integration.lastDeliveryStatus}` : "No deliveries yet"}</small>
           <div><button disabled={busy === integration.id || integration.status !== "active"} onClick={() => testWebhook(integration)}>Send test</button><button disabled={busy === integration.id} onClick={() => updateStatus(integration)}>{integration.status === "active" ? "Pause" : "Activate"}</button><button className="danger-text" disabled={busy === integration.id} onClick={() => deleteWebhook(integration)}>Delete</button></div>
         </article>) : <article className="panel product-empty"><h3>No webhooks connected</h3><p>Add an endpoint to connect product and live-learning activity to another system.</p></article>}
       </section>

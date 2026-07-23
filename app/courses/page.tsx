@@ -44,7 +44,7 @@ export default function Catalog() {
   return (
     <main className="catalog-page">
       <header>
-        <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+        <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
         <nav>
           <Link href="/">Home</Link>
           <Link href="/tutors">Work with a coach</Link>
@@ -64,14 +64,14 @@ export default function Catalog() {
         </div>
         <label className="catalog-search">
           <span>What would you like to achieve?</span>
-          <div><input value={query} onChange={(event) => updateQuery(event.target.value)} placeholder="Search a topic, skill, project, or outcome" /><b aria-hidden="true">⌕</b></div>
+          <div><input value={query} onChange={(event) => updateQuery(event.target.value)} placeholder="Search a topic, skill, project, or outcome" /><b aria-hidden="true">?</b></div>
         </label>
       </section>
 
       <section className="catalog-intro">
         <div>
           <p className="sys-kicker">{keyword ? "GOAL-MATCHED RESULTS" : "STARTER COLLECTION"}</p>
-          <h2>{keyword ? `${filteredCourses.length} ${filteredCourses.length === 1 ? "course" : "courses"} for “${query.trim()}”` : "Choose your next useful step."}</h2>
+          <h2>{keyword ? `${filteredCourses.length} ${filteredCourses.length === 1 ? "course" : "courses"} for "${query.trim()}"` : "Choose your next useful step."}</h2>
         </div>
         <p>{keyword ? "Inspect the promise and structure before enrolling. If nothing fits, NorthstarLabs can look for a coach or a more relevant course." : "Each course is deliberately short, action-focused, and built inside the same learning experience your own students can use."}</p>
       </section>
@@ -89,7 +89,7 @@ export default function Catalog() {
               </div>
               <p className="sys-kicker">
                 {course.lessonCount} LESSONS
-                {starter?.duration ? ` · ${starter.duration.toUpperCase()}` : ""}
+                {starter?.duration ? ` - ${starter.duration.toUpperCase()}` : ""}
               </p>
               <h2>{course.title}</h2>
               <p>{course.description || "A focused course designed to help you make meaningful progress."}</p>
@@ -127,7 +127,7 @@ export default function Catalog() {
       </section>
 
       <footer className="catalog-footer">
-        <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+        <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
         <nav>
           <Link href="/">Platform</Link>
           <a href="/legal/terms">Terms</a>

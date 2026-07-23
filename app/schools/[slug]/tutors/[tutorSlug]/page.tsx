@@ -164,7 +164,7 @@ export default function TutorDetailPage({ params }: {
     setBusy(false);
   }
 
-  if (!data) return <main className="system-loading"><div><b>NorthStarLabs</b><p>{notice || "Opening tutor profile…"}</p>{notice && <Link href={`/schools/${path.slug}/tutors`}>Back to tutors</Link>}</div></main>;
+  if (!data) return <main className="system-loading"><div><b>NorthStarLabs</b><p>{notice || "Opening tutor profile..."}</p>{notice && <Link href={`/schools/${path.slug}/tutors`}>Back to tutors</Link>}</div></main>;
   const tutor = data.tutors[0];
   const style = {
     "--school-primary": data.school.primaryColor,
@@ -191,7 +191,7 @@ export default function TutorDetailPage({ params }: {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={tutor.photoUrl} alt="" />
         </> : <span>{tutor.displayName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span>}
-        <div><p className="sys-kicker">{tutor.verified ? tutor.verifiedCredentialCount > 0 ? `✓ VERIFIED · ${tutor.verifiedCredentialCount} APPROVED ${tutor.verifiedCredentialCount === 1 ? "CREDENTIAL" : "CREDENTIALS"}` : "✓ VERIFIED PROFILE" : `COACH OR TUTOR AT ${data.school.name.toUpperCase()}`}</p><h1>{tutor.displayName}</h1><p>{tutor.headline}</p>{tutor.reviewCount > 0 && <div className="tutor-profile-rating"><b>{tutor.averageRating} ★</b><span>{tutor.reviewCount} verified-session {tutor.reviewCount === 1 ? "review" : "reviews"}</span></div>}</div>
+        <div><p className="sys-kicker">{tutor.verified ? tutor.verifiedCredentialCount > 0 ? `[OK] VERIFIED - ${tutor.verifiedCredentialCount} APPROVED ${tutor.verifiedCredentialCount === 1 ? "CREDENTIAL" : "CREDENTIALS"}` : "[OK] VERIFIED PROFILE" : `COACH OR TUTOR AT ${data.school.name.toUpperCase()}`}</p><h1>{tutor.displayName}</h1><p>{tutor.headline}</p>{tutor.reviewCount > 0 && <div className="tutor-profile-rating"><b>{tutor.averageRating} *</b><span>{tutor.reviewCount} verified-session {tutor.reviewCount === 1 ? "review" : "reviews"}</span></div>}</div>
       </div>
       <aside className="tutor-book-card">
         <small>ONE-TO-ONE SESSION</small>
@@ -227,7 +227,7 @@ export default function TutorDetailPage({ params }: {
         <section className="tutor-review-section">
           <div><p className="sys-kicker">VERIFIED LEARNER PROOF</p><h2>{reviews.length ? "What learners experienced." : "Reviews will appear after completed sessions."}</h2><p>Only learners connected to a completed NorthstarLabs session can publish a review.</p></div>
           {reviews.length > 0 && <div>{reviews.map((review) => <article key={review.id}>
-            <header><strong>{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</strong><span>✓ VERIFIED SESSION</span></header>
+            <header><strong>{"*".repeat(review.rating)}{"*".repeat(5 - review.rating)}</strong><span>[OK] VERIFIED SESSION</span></header>
             {review.tags.length > 0 && <div className="tutor-review-tags">{review.tags.map((tag) => <span key={tag}>{reviewTagLabels[tag] || tag.replaceAll("_", " ")}</span>)}</div>}
             {review.comment && <blockquote>{review.comment}</blockquote>}
             <footer><b>{review.reviewerName}</b><time>{new Date(review.createdAt).toLocaleDateString("en-ZA", { month: "short", year: "numeric" })}</time></footer>
@@ -250,7 +250,7 @@ export default function TutorDetailPage({ params }: {
               type="button"
             >
               <b>{new Date(slot.startsAt).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" })}</b>
-              <span>{new Date(slot.startsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })} · {slot.sessionMode.replaceAll("_", " ")}</span>
+              <span>{new Date(slot.startsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })} - {slot.sessionMode.replaceAll("_", " ")}</span>
             </button>)}
           </div> : <p>No published times right now. Send a general enquiry and suggest what works for you.</p>}
           {selectedSlotId && <button className="tutor-slot-clear" type="button" onClick={() => setSelectedSlotId("")}>Choose timing later instead</button>}
@@ -262,13 +262,13 @@ export default function TutorDetailPage({ params }: {
           <label>How should the tutor reply?<select value={contactPreference} onChange={(event) => setContactPreference(event.target.value)}><option value="email">Email</option><option value="phone">Phone call</option><option value="whatsapp">WhatsApp</option></select></label>
           <label>Phone number{contactPreference === "email" && " (optional)"}<input required={contactPreference !== "email"} type="tel" value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} placeholder="+264 81 000 0000" /></label>
         </div>
-        <button className="tutor-primary-action" disabled={busy}>{busy ? "Sending request…" : selectedSlotId ? "Request appointment →" : "Send enquiry →"}</button>
+        <button className="tutor-primary-action" disabled={busy}>{busy ? "Sending request..." : selectedSlotId ? "Request appointment" : "Send enquiry"}</button>
         <small>By sending this enquiry, you agree that the tutor and academy may contact you about this request.</small>
       </form>
     </section>
 
     <footer className="tutor-public-footer">
-      <Link href={`/schools/${data.school.slug}/tutors`}>← Browse all tutors</Link>
+      <Link href={`/schools/${data.school.slug}/tutors`}>Back to all tutors</Link>
       <p>NorthstarLabs provides the connection; tutors remain responsible for their services and arrangements.</p>
       <small>Powered by <Link href="/">NorthStarLabs</Link></small>
     </footer>

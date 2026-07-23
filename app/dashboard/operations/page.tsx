@@ -171,7 +171,7 @@ export default function OperationsPage() {
         <div className="operations-heading"><div><p className="sys-kicker">DELIVERY LOG</p><h2>Every platform email</h2></div><span>{data.messages.length} recent messages</span></div>
         <div className="delivery-list">
           {data.messages.length ? data.messages.map((item) => <div className="delivery-row" key={item.id}>
-            <div><b>{item.subject}</b><small>{item.recipientEmail} · {item.scheduledAt && item.status === "scheduled" ? `scheduled for ${new Date(item.scheduledAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}` : new Date(item.createdAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</small></div>
+            <div><b>{item.subject}</b><small>{item.recipientEmail} - {item.scheduledAt && item.status === "scheduled" ? `scheduled for ${new Date(item.scheduledAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}` : new Date(item.createdAt).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}</small></div>
             <span className={`delivery-status ${item.status}`}>{item.status.replaceAll("_", " ")}</span>
             <small>{item.attemptCount} {item.attemptCount === 1 ? "attempt" : "attempts"}</small>
             {!["sent", "scheduled", "cancelled"].includes(item.status) && <button disabled={Boolean(busy)} onClick={() => act("retry", { messageId: item.id })}>Retry</button>}

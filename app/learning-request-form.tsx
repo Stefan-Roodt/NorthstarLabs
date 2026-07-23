@@ -84,7 +84,7 @@ export function LearningRequestForm({
     <label>
       Tell us what a good result would look like
       <textarea required minLength={20} maxLength={3000} value={detail} onChange={(event) => setDetail(event.target.value)} placeholder="Include your current level, what you want to achieve, preferred format, timing, budget, or anything else that would help us find a strong match." />
-      <small>{detail.length}/3000 · A little context helps us avoid sending you something irrelevant.</small>
+      <small>{detail.length}/3000 - A little context helps us avoid sending you something irrelevant.</small>
     </label>
     <div className="learning-request-row">
       <label>

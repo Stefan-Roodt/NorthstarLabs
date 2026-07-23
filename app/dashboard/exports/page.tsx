@@ -28,7 +28,7 @@ function readableSize(value: number) {
 }
 
 function readableDate(value: number | null) {
-  if (!value) return "—";
+  if (!value) return "-";
   return new Intl.DateTimeFormat("en-ZA", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -145,7 +145,7 @@ export default function AcademyExportsPage() {
     }
   }
 
-  if (!school) return <main className="system-loading"><div><b>✦ NORTHSTARLABS</b><p>{message}</p></div></main>;
+  if (!school) return <main className="system-loading"><div><b>* NORTHSTARLABS</b><p>{message}</p></div></main>;
 
   return <main className="freedom-page">
     <header className="freedom-topbar">
@@ -165,7 +165,7 @@ export default function AcademyExportsPage() {
     </section>
 
     <section className="freedom-workspace">
-      <div className="freedom-heading"><p className="sys-kicker">ONE DOWNLOAD · SIX COMPLETE AREAS</p><h2>Everything needed to move, audit or keep your own record.</h2></div>
+      <div className="freedom-heading"><p className="sys-kicker">ONE DOWNLOAD - SIX COMPLETE AREAS</p><h2>Everything needed to move, audit or keep your own record.</h2></div>
       <div className="freedom-coverage">
         <article><span>01</span><h3>Teaching</h3><p>Courses, modules, lessons, transcripts, quizzes, answers, certificates and Creator Studio source packs.</p></article>
         <article><span>02</span><h3>Learners</h3><p>Members, invitations without active tokens, enrolments, progress, assessment attempts and mastery records.</p></article>
@@ -198,7 +198,7 @@ export default function AcademyExportsPage() {
         {!exports.length && <p className="freedom-empty">No academy export has been prepared yet.</p>}
         {exports.map((item) => <article key={item.id}>
           <span className={`freedom-status ${item.status}`}>{item.status}</span>
-          <div><b>{item.filename}</b><small>{item.status === "completed" ? `${readableSize(item.sizeBytes)} · ${item.recordCount.toLocaleString()} records · ${item.originalFileCount.toLocaleString()} original files` : item.failureMessage || "Archive no longer stored"}</small><time>Created {readableDate(item.createdAt)}{item.expiresAt ? ` · available until ${readableDate(item.expiresAt)}` : ""}</time></div>
+          <div><b>{item.filename}</b><small>{item.status === "completed" ? `${readableSize(item.sizeBytes)} - ${item.recordCount.toLocaleString()} records - ${item.originalFileCount.toLocaleString()} original files` : item.failureMessage || "Archive no longer stored"}</small><time>Created {readableDate(item.createdAt)}{item.expiresAt ? ` - available until ${readableDate(item.expiresAt)}` : ""}</time></div>
           {item.status === "completed" && <button type="button" disabled={Boolean(busy)} onClick={() => downloadExport(item)}>{busy === item.id ? "Starting…" : "Download"}</button>}
           {!["deleted", "expired", "preparing"].includes(item.status) && <button className="quiet" type="button" disabled={Boolean(busy)} onClick={() => removeExport(item)}>{busy === `delete-${item.id}` ? "Removing…" : "Remove"}</button>}
         </article>)}

@@ -541,7 +541,7 @@ export default function TutorAdminPage() {
 
   return <main className="tutor-admin-page">
     <header className="product-admin-top">
-      <Link className="system-brand" href="/dashboard">✦ NORTHSTARLABS</Link>
+      <Link className="system-brand" href="/dashboard">* NORTHSTARLABS</Link>
       <nav>
         <Link href="/dashboard/products">Products</Link>
         <Link href="/dashboard/live">Live learning</Link>
@@ -618,7 +618,7 @@ export default function TutorAdminPage() {
         {data.tutors.length ? <div className="tutor-admin-card-grid">
           {data.tutors.map((tutor) => <article className="panel tutor-admin-card" key={tutor.id}>
             <div className="tutor-admin-card-top"><span>{tutor.displayName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span><i className={`status ${tutor.status}`}>{tutor.status}</i></div>
-            <p className="sys-kicker">{tutor.verified ? "✓ VERIFIED · " : ""}{(tutor.listingTier || "listed").toUpperCase()} PLAN</p>
+            <p className="sys-kicker">{tutor.verified ? "✓ VERIFIED - " : ""}{(tutor.listingTier || "listed").toUpperCase()} PLAN</p>
             <h3>{tutor.displayName}</h3>
             <p>{tutor.headline || "Add a clear professional headline before publishing."}</p>
             <div className="coach-completeness">
@@ -627,13 +627,13 @@ export default function TutorAdminPage() {
               {tutor.profileMissing?.[0] && <small>Next: {tutor.profileMissing[0]}</small>}
             </div>
             <div className="tutor-admin-tags">{tutor.subjects.slice(0, 4).map((subject) => <span key={subject}>{subject}</span>)}</div>
-            <dl><div><dt>Hourly rate</dt><dd>{tutor.priceCents ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}/hour` : "Not set"}</dd></div><div><dt>Learner proof</dt><dd>{tutor.reviewCount ? `${tutor.averageRating} ★ · ${tutor.reviewCount}` : "No reviews yet"}</dd></div></dl>
+            <dl><div><dt>Hourly rate</dt><dd>{tutor.priceCents ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}/hour` : "Not set"}</dd></div><div><dt>Learner proof</dt><dd>{tutor.reviewCount ? `${tutor.averageRating} * - ${tutor.reviewCount}` : "No reviews yet"}</dd></div></dl>
             {tutor.listingTier === "verified" && tutor.verified && <p className="coach-listing-status active"><b>Northstar Verified is active.</b> This profile receives priority in relevant searches while its verification remains valid.</p>}
             {tutor.listingTier !== "verified" && tutor.verified && <p className="coach-listing-status"><b>Verification approved.</b> Your free listing remains live. Activate R200/month professional exposure only if it is useful to you.</p>}
             {!tutor.verified && <p className="coach-listing-status"><b>Free listing.</b> Submit evidence below if you want to become eligible for Northstar Verified.</p>}
             <div className="tutor-admin-actions">
               <button onClick={() => editTutor(tutor)}>Edit</button>
-              {tutor.verified && tutor.listingTier !== "verified" && <button className="sys-primary" disabled={busy === `listing-${tutor.id}`} onClick={() => startVerifiedListing(tutor)}>{busy === `listing-${tutor.id}` ? "Opening PayFast…" : "Activate Verified · R200/month"}</button>}
+              {tutor.verified && tutor.listingTier !== "verified" && <button className="sys-primary" disabled={busy === `listing-${tutor.id}`} onClick={() => startVerifiedListing(tutor)}>{busy === `listing-${tutor.id}` ? "Opening PayFast…" : "Activate Verified - R200/month"}</button>}
               {!tutor.verified && <a href="#credentials">Earn verification</a>}
               {tutor.status !== "published" && <button className="sys-primary" disabled={busy === tutor.id} onClick={() => setStatus(tutor, "published")}>Publish</button>}
               {tutor.status === "published" && <Link href={`/schools/${data.school.slug}/tutors/${tutor.slug}`}>View public</Link>}
@@ -662,7 +662,7 @@ export default function TutorAdminPage() {
           <div className="coach-credential-list">
             {credentials.length ? credentials.map((credential) => <article className="panel" key={credential.id}>
               <header><div><p className="sys-kicker">{credential.tutorName.toUpperCase()}</p><h3>{credential.title}</h3></div><span className={`delivery-status ${credential.status}`}>{credential.status}</span></header>
-              <p>{credential.issuer}{credential.awardedYear ? ` · ${credential.awardedYear}` : ""}</p>
+              <p>{credential.issuer}{credential.awardedYear ? ` - ${credential.awardedYear}` : ""}</p>
               {credential.reviewerNote && <blockquote>{credential.reviewerNote}</blockquote>}
               <footer>
                 {credential.evidenceUrl && <a href={credential.evidenceUrl} target="_blank" rel="noreferrer">Open submitted evidence</a>}
@@ -711,10 +711,10 @@ export default function TutorAdminPage() {
           <div className="tutor-slot-list">
             {slots.length ? slots.map((slot) => <article className={`panel tutor-slot-card status-${slot.status}`} key={slot.id}>
               <div>
-                <p className="sys-kicker">{slot.status.toUpperCase()} · {slot.sessionMode.replaceAll("_", " ").toUpperCase()}</p>
+                <p className="sys-kicker">{slot.status.toUpperCase()} - {slot.sessionMode.replaceAll("_", " ").toUpperCase()}</p>
                 <h3>{new Date(slot.startsAt).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" })}</h3>
-                <strong>{new Date(slot.startsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}–{new Date(slot.endsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}</strong>
-                <small>{slot.tutorName} · {slot.timezone}</small>
+                <strong>{new Date(slot.startsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}-{new Date(slot.endsAt).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}</strong>
+                <small>{slot.tutorName} - {slot.timezone}</small>
                 {slot.learnerName && <p>Requested by <b>{slot.learnerName}</b></p>}
               </div>
               {slot.status === "open"
@@ -733,24 +733,24 @@ export default function TutorAdminPage() {
         {inquiries.length ? <div className="tutor-inquiry-list">
           {inquiries.map((inquiry) => <article className={`panel tutor-inquiry-card status-${inquiry.status}`} key={inquiry.id}>
             <header>
-              <div><p className="sys-kicker">{inquiry.status.toUpperCase()} · FOR {inquiry.tutorName.toUpperCase()}</p><h3>{inquiry.subject}</h3></div>
+              <div><p className="sys-kicker">{inquiry.status.toUpperCase()} - FOR {inquiry.tutorName.toUpperCase()}</p><h3>{inquiry.subject}</h3></div>
               <time>{new Date(inquiry.createdAt).toLocaleDateString("en-ZA", { day: "numeric", month: "short", year: "numeric" })}</time>
             </header>
             <blockquote>{inquiry.message}</blockquote>
             <dl>
               <div><dt>Learner</dt><dd>{inquiry.learnerName}</dd></div>
               <div><dt>Email</dt><dd><a href={`mailto:${inquiry.learnerEmail}`}>{inquiry.learnerEmail}</a></dd></div>
-              <div><dt>Preferred contact</dt><dd>{inquiry.contactPreference}{inquiry.phoneNumber ? ` · ${inquiry.phoneNumber}` : ""}</dd></div>
+              <div><dt>Preferred contact</dt><dd>{inquiry.contactPreference}{inquiry.phoneNumber ? ` - ${inquiry.phoneNumber}` : ""}</dd></div>
               <div><dt>{inquiry.startsAt ? "Requested appointment" : "Preferred times"}</dt><dd>{inquiry.startsAt
-                ? `${new Date(inquiry.startsAt).toLocaleString("en-ZA")} · ${inquiry.sessionMode?.replaceAll("_", " ")}`
+                ? `${new Date(inquiry.startsAt).toLocaleString("en-ZA")} - ${inquiry.sessionMode?.replaceAll("_", " ")}`
                 : inquiry.preferredTimes || "Not supplied"}</dd></div>
             </dl>
-            {inquiry.startsAt && <p className="tutor-booking-note"><b>{inquiry.slotStatus === "booked" ? "Confirmed" : "Reserved while you decide"}:</b> {inquiry.timezone}{inquiry.status === "booked" && inquiry.meetingDetails ? ` · ${inquiry.meetingDetails}` : ""}</p>}
+            {inquiry.startsAt && <p className="tutor-booking-note"><b>{inquiry.slotStatus === "booked" ? "Confirmed" : "Reserved while you decide"}:</b> {inquiry.timezone}{inquiry.status === "booked" && inquiry.meetingDetails ? ` - ${inquiry.meetingDetails}` : ""}</p>}
             {Number(inquiry.learnerRatingCount || 0) > 0 && <div className="learner-reputation-summary">
               <span>Private learner reputation</span>
               {inquiry.learnerAverageRating === null
                 ? <b>{inquiry.learnerRatingCount} of 3 verified ratings</b>
-                : <b>{inquiry.learnerAverageRating} ★ · {inquiry.learnerRatingCount} verified sessions</b>}
+                : <b>{inquiry.learnerAverageRating} * - {inquiry.learnerRatingCount} verified sessions</b>}
               <small>{inquiry.learnerAverageRating === null
                 ? "The score stays hidden until three ratings protect individual coach anonymity."
                 : "Use this as context, never as an automatic reason to reject a learner."}</small>
@@ -760,7 +760,7 @@ export default function TutorAdminPage() {
               <p className="sys-kicker">PRIVATE TWO-WAY RATING</p>
               <h4>How did {inquiry.learnerName} participate?</h4>
               <div className="coach-rating-stars" aria-label="Choose a learner rating">{[1, 2, 3, 4, 5].map((value) =>
-                <button aria-label={`${value} star${value === 1 ? "" : "s"}`} aria-pressed={learnerRatings[inquiry.id] === value} key={value} onClick={() => chooseLearnerRating(inquiry.id, value)} type="button">★</button>
+                <button aria-label={`${value} star${value === 1 ? "" : "s"}`} aria-pressed={learnerRatings[inquiry.id] === value} key={value} onClick={() => chooseLearnerRating(inquiry.id, value)} type="button">*</button>
               )}</div>
               {Number(learnerRatings[inquiry.id] || 0) > 0 && <div className="rating-tag-picker">
                 {(learnerRatings[inquiry.id] === 5 ? learnerPraiseTags : learnerImprovementTags).map((tag) =>

@@ -28,7 +28,7 @@ export default function ForgotPassword() {
   }
 
   return <main className="auth-page">
-    <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+    <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
     <section className="auth-card compact-auth-card">
       <p className="sys-kicker">ACCOUNT RECOVERY</p>
       <h1>Reset your password.</h1>

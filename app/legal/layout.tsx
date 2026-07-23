@@ -4,7 +4,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
   return (
     <main className="legal-page">
       <header className="legal-top">
-        <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+        <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
         <nav aria-label="Legal navigation">
           <Link href="/legal/terms">Terms of Service</Link>
           <Link href="/legal/privacy">Privacy Policy</Link>
@@ -13,7 +13,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
       </header>
       {children}
       <footer className="legal-footer">
-        <span>© 2026 Northstar Labs. All rights reserved.</span>
+        <span>(c) 2026 Northstar Labs. All rights reserved.</span>
         <nav>
           <Link href="/">Home</Link>
           <Link href="/legal/terms">Terms</Link>

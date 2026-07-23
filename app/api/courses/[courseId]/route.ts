@@ -3,6 +3,7 @@ import { requireApiUser } from "../../../../lib/server-auth";
 import { requireCourseStaffAccess } from "../../../../lib/school-access";
 import { writeAuditLog } from "../../../../lib/audit-log";
 import { deleteCourseSafely } from "../../../../lib/course-deletion";
+import { getCourseReadiness } from "../../../../lib/course-readiness";
 
 type QuizRow = {
   id: string;
@@ -31,30 +32,140 @@ type ResourceRow = {
   kind: string;
 };
 
-export async function GET(
-  request: Request,
-  context: { params: Promise<{ courseId: string }> },
-) {
-  const user = await requireApiUser(request);
-  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const { courseId } = await context.params;
-  const access = await requireCourseStaffAccess(user.id, courseId);
-  if (!access) return Response.json({ error: "Course not found" }, { status: 404 });
-  const course = await env.DB.prepare(
-    `SELECT id,school_id AS schoolId,title,description,status,
-      price_cents AS priceCents,enforce_lesson_order AS enforceLessonOrder,
-      truth_outcome AS truthOutcome,truth_audience AS truthAudience,
-      truth_not_for AS truthNotFor,truth_prerequisites AS truthPrerequisites,
-      truth_evidence AS truthEvidence,truth_source_standard AS truthSourceStandard,
-      truth_level AS truthLevel,truth_delivery AS truthDelivery,
-      truth_reviewed_at AS truthReviewedAt,
-      available_from AS availableFrom,certificate_title AS certificateTitle,
-      certificate_accent AS certificateAccent,
-      certificate_valid_days AS certificateValidDays,updated_at AS updatedAt
-     FROM courses WHERE id=?`,
-  ).bind(courseId).first<{ schoolId: string }>();
-  if (!course) return Response.json({ error: "Course not found" }, { status: 404 });
+type LessonReadinessCourseRow = {
+  id: string;
+  sectionId: string;
+  title: string;
+  lessonType: string;
+  content: string;
+  contentFormat: string | null;
+  videoKey: string | null;
+  primaryAssetId: string | null;
+  introAssetId: string | null;
+  durationMinutes: number;
+  isPreview: number;
+  availableAfterDays: number;
+  requiredWatchPercent: number;
+  transcript: string | null;
+  position: number;
+  updatedAt: number;
+  primaryFilename: string | null;
+  primaryContentType: string | null;
+  primarySizeBytes: number | null;
+  primaryKind: string | null;
+  primaryAltText: string | null;
+  primaryCreatedAt: number | null;
+  primaryUpdatedAt: number | null;
+  introFilename: string | null;
+  introContentType: string | null;
+  introSizeBytes: number | null;
+  introKind: string | null;
+  introAltText: string | null;
+  introCreatedAt: number | null;
+  introUpdatedAt: number | null;
+};
 
+type CourseReadinessSummary = {
+  score: number;
+  label: string;
+  issues: ReturnType<typeof getCourseReadiness>["issues"];
+  blockers: ReturnType<typeof getCourseReadiness>["blockers"];
+  improvements: ReturnType<typeof getCourseReadiness>["improvements"];
+  lessonIssueCounts: ReturnType<typeof getCourseReadiness>["lessonIssueCounts"];
+  earnedPoints: number;
+  totalPoints: number;
+};
+
+type CourseReadinessPayload = {
+  sections: Array<{
+    id: string;
+    title: string;
+    position: number;
+    createdAt: number | null;
+  }>;
+  lessons: Array<{
+    id: string;
+    sectionId: string;
+    title: string;
+    lessonType: string;
+    content: string;
+    videoKey?: string | null;
+    primaryAssetId?: string | null;
+    primaryAsset?: {
+      id: string;
+      filename: string | null;
+      contentType: string | null;
+      sizeBytes: number | null;
+      kind: string | null;
+      altText: string | null;
+      createdAt: number | null;
+      updatedAt: number | null;
+    } | null;
+    introAsset?: {
+      id: string;
+      filename: string | null;
+      contentType: string | null;
+      sizeBytes: number | null;
+      kind: string | null;
+      altText: string | null;
+      createdAt: number | null;
+      updatedAt: number | null;
+    } | null;
+    durationMinutes: number;
+    transcript: string;
+    resources: {
+      id: string;
+      lessonId: string;
+      assetId: string;
+      title: string;
+      position: number;
+      filename: string;
+      contentType: string;
+      sizeBytes: number;
+      kind: string;
+    }[];
+    quiz: {
+      id: string;
+      title: string;
+      passingScore: number;
+      maxAttempts: number;
+      questions: Array<{
+        id: string;
+        prompt: string;
+        options: string[];
+        correctIndex: number;
+        explanation: string;
+        conceptLabel: string;
+      }>;
+    } | null;
+  }>;
+};
+
+const parseQuizOptions = (optionsJson: string | null): string[] => {
+  if (!optionsJson) return [];
+  try {
+    const parsed = JSON.parse(optionsJson);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((option): option is string => typeof option === "string");
+  } catch {
+    return [];
+  }
+};
+
+type CourseReadinessPayloadWithMedia = CourseReadinessPayload & {
+  media: Array<Record<string, unknown>>;
+};
+
+type CourseReadinessMessage = {
+  error?: string;
+  errors?: string[];
+  readiness?: CourseReadinessSummary;
+};
+
+async function loadCourseLessonData(
+  courseId: string,
+  schoolId: string,
+): Promise<CourseReadinessPayloadWithMedia> {
   const [sectionRows, lessonRows, quizRows, resourceRows, mediaRows] = await Promise.all([
     env.DB.prepare(
       `SELECT id,title,position,created_at AS createdAt
@@ -82,7 +193,7 @@ export async function GET(
        LEFT JOIN media_assets ima ON ima.id=l.intro_asset_id
        WHERE l.course_id=?
        ORDER BY COALESCE(cs.position,0),l.position,l.id`,
-    ).bind(courseId).all(),
+    ).bind(courseId).all<LessonReadinessCourseRow>(),
     env.DB.prepare(
       `SELECT q.id,q.lesson_id AS lessonId,q.title,q.passing_score AS passingScore,
         q.max_attempts AS maxAttempts,
@@ -109,7 +220,7 @@ export async function GET(
         kind,alt_text AS altText,created_at AS createdAt,updated_at AS updatedAt
        FROM media_assets WHERE school_id=?
        ORDER BY created_at DESC LIMIT 200`,
-    ).bind(course.schoolId).all(),
+    ).bind(schoolId).all(),
   ]);
 
   const quizzes = new Map<string, {
@@ -136,11 +247,13 @@ export async function GET(
         questions: [],
       });
     }
-    if (row.questionId && row.prompt && row.optionsJson) {
+    if (row.questionId && row.prompt) {
+      const options = parseQuizOptions(row.optionsJson);
+      if (options.length === 0) continue;
       quizzes.get(row.lessonId)!.questions.push({
         id: row.questionId,
         prompt: row.prompt,
-        options: JSON.parse(row.optionsJson),
+        options,
         correctIndex: Number(row.correctIndex || 0),
         explanation: row.explanation || "",
         conceptLabel: row.conceptLabel || "",
@@ -153,12 +266,10 @@ export async function GET(
     resources.set(row.lessonId, [...(resources.get(row.lessonId) || []), row]);
   }
 
-  return Response.json({
-    ...course,
+  return {
     sections: sectionRows.results,
-    media: mediaRows.results,
     lessons: lessonRows.results.map((lesson) => {
-      const row = lesson as Record<string, unknown>;
+      const row = lesson as LessonReadinessCourseRow;
       const primaryAsset = row.primaryAssetId
         ? {
             id: row.primaryAssetId,
@@ -184,13 +295,94 @@ export async function GET(
           }
         : null;
       return {
-        ...lesson,
+        ...row,
         primaryAsset,
         introAsset,
-        resources: resources.get(String(row.id)) || [],
-        quiz: quizzes.get(String(row.id)) || null,
+        content: row.content || "",
+        transcript: row.transcript || "",
+        videoKey: row.videoKey || null,
+        durationMinutes: Number(row.durationMinutes || 0),
+        resources: resources.get(row.id) || [],
+        quiz: quizzes.get(row.id) || null,
       };
     }),
+    media: mediaRows.results,
+  };
+}
+
+function toReadinessPayload(course: {
+  title: string | null;
+  description: string | null;
+  certificateTitle: string | null;
+  sections: CourseReadinessPayload["sections"];
+  lessons: CourseReadinessPayload["lessons"];
+}) {
+  return getCourseReadiness({
+    title: String(course.title || ""),
+    description: String(course.description || ""),
+    certificateTitle: String(course.certificateTitle || ""),
+    sections: course.sections.map((section) => ({
+      id: section.id,
+      title: section.title,
+    })),
+    lessons: course.lessons.map((lesson) => ({
+      id: lesson.id,
+      sectionId: lesson.sectionId,
+      title: lesson.title,
+      lessonType: lesson.lessonType,
+      content: lesson.content,
+      videoKey: lesson.videoKey || undefined,
+      primaryAssetId: lesson.primaryAssetId,
+      primaryAsset: lesson.primaryAsset
+        ? {
+            id: lesson.primaryAsset.id,
+            filename: lesson.primaryAsset.filename,
+            contentType: lesson.primaryAsset.contentType,
+            sizeBytes: lesson.primaryAsset.sizeBytes,
+            kind: lesson.primaryAsset.kind || "",
+            altText: lesson.primaryAsset.altText,
+            createdAt: lesson.primaryAsset.createdAt,
+            updatedAt: lesson.primaryAsset.updatedAt,
+          }
+        : null,
+      durationMinutes: lesson.durationMinutes,
+      transcript: lesson.transcript,
+      resources: lesson.resources,
+      quiz: lesson.quiz,
+    })),
+  });
+}
+
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ courseId: string }> },
+) {
+  const user = await requireApiUser(request);
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const { courseId } = await context.params;
+  const access = await requireCourseStaffAccess(user.id, courseId);
+  if (!access) return Response.json({ error: "Course not found" }, { status: 404 });
+  const course = await env.DB.prepare(
+    `SELECT id,school_id AS schoolId,title,description,status,
+      price_cents AS priceCents,enforce_lesson_order AS enforceLessonOrder,
+      truth_outcome AS truthOutcome,truth_audience AS truthAudience,
+      truth_not_for AS truthNotFor,truth_prerequisites AS truthPrerequisites,
+      truth_evidence AS truthEvidence,truth_source_standard AS truthSourceStandard,
+      truth_level AS truthLevel,truth_delivery AS truthDelivery,
+      truth_reviewed_at AS truthReviewedAt,
+      available_from AS availableFrom,certificate_title AS certificateTitle,
+      certificate_accent AS certificateAccent,
+      certificate_valid_days AS certificateValidDays,updated_at AS updatedAt
+     FROM courses WHERE id=?`,
+    ).bind(courseId).first<{ schoolId: string }>();
+  if (!course) return Response.json({ error: "Course not found" }, { status: 404 });
+  const { media, sections, lessons } = await loadCourseLessonData(courseId, course.schoolId);
+
+  return Response.json({
+    ...course,
+    sections,
+    media,
+    lessons,
   });
 }
 
@@ -244,65 +436,34 @@ export async function PATCH(
     ? Math.round(body.truthReviewedAt)
     : null;
 
+  const courseRecord = await env.DB.prepare(
+    `SELECT title,description,certificate_title AS certificateTitle
+       FROM courses WHERE id=?`,
+  ).bind(courseId).first<{
+    title: string;
+    description: string;
+    certificateTitle: string | null;
+  }>();
+  if (!courseRecord) return Response.json({ error: "Course not found" }, { status: 404 });
+
   if (status === "published") {
-    const errors: string[] = [];
-    const lessonStats = await env.DB.prepare(
-      `SELECT COUNT(*) AS total,
-        SUM(CASE
-          WHEN trim(title)='' OR lower(trim(title))='untitled lesson' THEN 1
-          WHEN trim(content)='' AND primary_asset_id IS NULL AND video_key IS NULL
-            AND NOT EXISTS (
-              SELECT 1 FROM lesson_resources lr WHERE lr.lesson_id=lessons.id
-            ) THEN 1
-          ELSE 0
-        END) AS incomplete,
-        SUM(CASE
-          WHEN lesson_type IN ('video','audio') AND primary_asset_id IS NULL
-            AND (video_key IS NULL OR trim(video_key)='') THEN 1
-          ELSE 0
-        END) AS missingMedia,
-        SUM(CASE
-          WHEN lesson_type='quiz' AND NOT EXISTS (
-            SELECT 1 FROM quizzes q
-            JOIN quiz_questions qq ON qq.quiz_id=q.id
-            WHERE q.lesson_id=lessons.id
-          ) THEN 1
-          ELSE 0
-        END) AS missingQuiz
-       FROM lessons WHERE course_id=?`,
-    ).bind(courseId).first<{
-      total: number;
-      incomplete: number | null;
-      missingMedia: number | null;
-      missingQuiz: number | null;
-    }>();
-    const sectionStats = await env.DB.prepare(
-      `SELECT COUNT(*) AS total,
-        SUM(CASE WHEN trim(title)='' THEN 1 ELSE 0 END) AS incomplete
-       FROM course_sections WHERE course_id=?`,
-    ).bind(courseId).first<{ total: number; incomplete: number | null }>();
-    if ((title || "").length < 3) errors.push("Give the course a clear title.");
-    if ((description || "").length < 20) {
-      errors.push("Add a course description of at least 20 characters.");
-    }
-    if (!lessonStats?.total) errors.push("Add at least one lesson.");
-    if (!sectionStats?.total || Number(sectionStats.incomplete || 0) > 0) {
-      errors.push("Give every curriculum section a title.");
-    }
-    if (Number(lessonStats?.incomplete || 0) > 0) {
-      errors.push("Finish every lesson title and add content or media.");
-    }
-    if (Number(lessonStats?.missingMedia || 0) > 0) {
-      errors.push("Attach playable media to every video or audio lesson.");
-    }
-    if (Number(lessonStats?.missingQuiz || 0) > 0) {
-      errors.push("Add assessment questions to every quiz lesson.");
-    }
-    if (errors.length) {
-      return Response.json(
-        { error: "Complete the publishing checklist first.", errors },
-        { status: 422 },
-      );
+    const courseDetails = await loadCourseLessonData(courseId, existing.schoolId);
+    const readinessIssues = toReadinessPayload({
+      title: title ?? courseRecord?.title ?? "",
+      description: description ?? courseRecord?.description ?? "",
+      certificateTitle: certificateTitle || courseRecord?.certificateTitle || "",
+      sections: courseDetails.sections,
+      lessons: courseDetails.lessons,
+    });
+    const blockers = readinessIssues.blockers;
+    if (blockers.length) {
+      const errors = blockers.map((issue) => `${issue.title}: ${issue.action}`);
+      const response: CourseReadinessMessage = {
+        error: "Complete the publishing checklist first.",
+        errors,
+        readiness: readinessIssues,
+      };
+      return Response.json(response, { status: 422 });
     }
   }
 

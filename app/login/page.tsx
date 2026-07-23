@@ -22,19 +22,19 @@ const roleDetails: Record<OnboardingRole, {
 }> = {
   learner: {
     label: "Student",
-    title: "Start learning",
+    title: "Learn",
     description: "Go straight to the course marketplace and begin a practical learning path.",
     destination: "Choose your first course",
   },
   coach: {
-    label: "Coach or Tutor",
+    label: "Coach / Tutor",
     title: "Offer coaching",
     description: "Create a searchable profile, choose your hourly rate, and publish your available times.",
     destination: "Set up your coach profile",
   },
   creator: {
     label: "School owner",
-    title: "Build an academy",
+    title: "Build your academy",
     description: "Create your academy workspace, then publish your courses, learners, and coaching offer.",
     destination: "Name your academy",
   },
@@ -172,12 +172,15 @@ export default function LoginPage() {
   function resetJoiningRole() {
     setJoiningAs("");
     setMessage("");
-    history.replaceState(null, "", `/login?mode=signup&next=${encodeURIComponent("/welcome")}`);
+    const resetDestination = requestedDestination.startsWith("/welcome")
+      ? "/welcome"
+      : requestedDestination;
+    history.replaceState(null, "", `/login?mode=signup&next=${encodeURIComponent(resetDestination)}`);
   }
 
   return (
     <main className="auth-page auth-page-expanded">
-      <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+      <Link className="system-brand" href="/">NORTHSTARLABS</Link>
       <div className="auth-layout">
         <aside className="auth-promise">
           <p className="sys-kicker">{joiningCourse ? "YOUR COURSE IS READY" : activeRole === "creator" ? "CREATE YOUR ACADEMY" : activeRole === "coach" ? "SET UP YOUR COACH PROFILE" : activeRole === "learner" ? "START LEARNING" : "START FREE IN ABOUT 60 SECONDS"}</p>
@@ -185,26 +188,26 @@ export default function LoginPage() {
           <p>{joiningCourse
             ? "Create your free account and we will enrol you in the course automatically."
             : activeRole
-              ? `One free account. Then ${roleDetails[activeRole].destination.toLowerCase()}—without another role questionnaire.`
+              ? `One free account. Then ${roleDetails[activeRole].destination.toLowerCase()} - without another role questionnaire.`
               : "Choose one starting route. We will remember it through Google or email and take you to the right place."}</p>
           {joiningCourseDetail && <div className="auth-course-context">
             <span>YOU ARE JOINING</span>
             <b>{joiningCourseDetail.title}</b>
             <small>
-              {joiningCourseDetail.schoolName || "NorthstarLabs"} · {joiningCourseDetail.lessonCount} lessons
-              {joiningCourseDetail.assessmentCount ? ` · ${joiningCourseDetail.assessmentCount} assessments` : ""}
+              {joiningCourseDetail.schoolName || "NorthstarLabs"} | {joiningCourseDetail.lessonCount} lessons
+              {joiningCourseDetail.assessmentCount ? ` | ${joiningCourseDetail.assessmentCount} assessments` : ""}
             </small>
           </div>}
           <ul>
             <li><span>01</span><div><b>Choose your starting route</b><small>Learn, coach, or build an academy. This is not a permanent limitation.</small></div></li>
             <li><span>02</span><div><b>Create one free account</b><small>Google is fastest. Email also works. No card or sales call.</small></div></li>
-            <li><span>03</span><div><b>Arrive where the work begins</b><small>{activeRole ? roleDetails[activeRole].destination : "Courses, coach setup, or your academy workspace—never a generic dead end."}</small></div></li>
+            <li><span>03</span><div><b>Arrive where the work begins</b><small>{activeRole ? roleDetails[activeRole].destination : "Courses, coach setup, or your academy workspace - never a generic dead end."}</small></div></li>
           </ul>
-          <p className="auth-reassurance">Free starter access · No credit card · Switch paths anytime</p>
+          <p className="auth-reassurance">Free starter access | No credit card | Switch paths anytime</p>
         </aside>
 
         <section className="auth-card">
-          <Link className="auth-back" href="/">← Back to NorthstarLabs</Link>
+          <Link className="auth-back" href="/">Back to NorthstarLabs</Link>
           {needsRoleChoice ? <div className="auth-role-gateway">
             <p className="sys-kicker">CHOOSE YOUR FIRST DESTINATION</p>
             <h2>What do you want to do first?</h2>
@@ -213,12 +216,12 @@ export default function LoginPage() {
               {(Object.keys(roleDetails) as OnboardingRole[]).map((role, index) => <button type="button" key={role} onClick={() => chooseJoiningRole(role)}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 <div><small>{roleDetails[role].label}</small><b>{roleDetails[role].title}</b><p>{roleDetails[role].description}</p></div>
-                <strong>→</strong>
+                <strong>{'->'}</strong>
               </button>)}
             </div>
-            <button className="auth-existing" type="button" onClick={() => changeMode("login")}>I already have an account →</button>
+            <button className="auth-existing" type="button" onClick={() => changeMode("login")}>I already have an account</button>
           </div> : <>
-            <p className="sys-kicker">{mode === "signup" ? "FREE ACCOUNT · STEP 2 OF 3" : "WELCOME BACK"}</p>
+            <p className="sys-kicker">{mode === "signup" ? "FREE ACCOUNT | STEP 2 OF 3" : "WELCOME BACK"}</p>
             <h2>{mode === "signup" ? joiningCourseDetail ? "Create your account to start." : activeRole === "creator" ? "Create your academy account." : activeRole === "coach" ? "Create your coach account." : "Create your learner account." : "Sign in and continue."}</h2>
             <p>{mode === "signup"
               ? joiningCourse
@@ -236,8 +239,8 @@ export default function LoginPage() {
             </div>}
 
             <div className="auth-progress" aria-label="Registration progress">
-              <span className="done"><b>✓</b><small>Route chosen</small></span>
-              <span className={mode === "signup" ? "current" : "done"}><b>{mode === "signup" ? "2" : "✓"}</b><small>{mode === "signup" ? "Create account" : "Account ready"}</small></span>
+              <span className="done"><b>Done</b><small>Route chosen</small></span>
+              <span className={mode === "signup" ? "current" : "done"}><b>{mode === "signup" ? "2" : "Done"}</b><small>{mode === "signup" ? "Create account" : "Account ready"}</small></span>
               <span><b>3</b><small>{activeRole ? roleDetails[activeRole].destination : "Continue"}</small></span>
             </div>
 
@@ -262,7 +265,7 @@ export default function LoginPage() {
               </label>
               {mode === "login" && <a className="forgot-link" href="/forgot-password">Forgot your password?</a>}
               <button className="sys-primary" disabled={busy} type="submit">
-                {busy ? "Please wait…" : mode === "signup" ? joiningCourse ? "Create account and enrol →" : activeRole === "creator" ? "Create account, then name academy →" : activeRole === "coach" ? "Create account, then set up profile →" : "Create account and browse courses →" : "Sign in and continue →"}
+                {busy ? "Please wait..." : mode === "signup" ? joiningCourse ? "Create account and enrol" : activeRole === "creator" ? "Create account, then name academy" : activeRole === "coach" ? "Create account, then set up profile" : "Create account and browse courses" : "Sign in and continue"}
               </button>
             </form>
           </>}

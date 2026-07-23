@@ -173,13 +173,13 @@ export default function CreatorStudioPage() {
   return <main className="studio-shell">
     <header className="studio-topbar">
       <Link href="/dashboard">← Creator workspace</Link>
-      <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+      <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
       <span>{capabilities?.provider || "Checking provider…"}</span>
     </header>
 
     <section className="studio-hero">
       <div><p className="sys-kicker">NORTHSTAR CREATOR STUDIO</p><h1>Bring the expertise. Leave with a course draft.</h1></div>
-      <p>Add the outcome and material you are allowed to use. Northstar builds the structure, lessons and checks automatically—then keeps a human in control.</p>
+      <p>Add the outcome and material you are allowed to use. Northstar builds the structure, lessons and checks automatically-then keeps a human in control.</p>
     </section>
 
     <section className="studio-capabilities" aria-label="Creator Studio capabilities">
@@ -190,7 +190,7 @@ export default function CreatorStudioPage() {
     </section>
 
     <section className="studio-automation-flow" aria-label="Automated course-building workflow">
-      <header><p className="sys-kicker">ONE GUIDED RUN</p><h2>From source pack to editable course—without the blank-page problem.</h2></header>
+      <header><p className="sys-kicker">ONE GUIDED RUN</p><h2>From source pack to editable course-without the blank-page problem.</h2></header>
       <ol>
         <li><b>1</b><div><strong>Define the result</strong><span>Tell Northstar who the course serves and what learners must be able to do.</span></div></li>
         <li><b>2</b><div><strong>Add approved material</strong><span>Paste your notes or licensed text. The native builder keeps it inside Northstar.</span></div></li>
@@ -221,8 +221,8 @@ export default function CreatorStudioPage() {
               {selected.blueprint.sections.map((section, sectionIndex) => <article key={`${section.title}-${sectionIndex}`}>
                 <header><span>{String(sectionIndex + 1).padStart(2, "0")}</span><h3>{section.title}</h3></header>
                 {section.lessons.map((lesson, lessonIndex) => <div key={`${lesson.title}-${lessonIndex}`}>
-                  <b>{lesson.title}</b><small>{lesson.lessonType} · {lesson.durationMinutes} min</small>
-                  <p>{lesson.outcome}</p><em>{lesson.citations.join(" · ") || "Citation missing — fix before export"}</em>
+                  <b>{lesson.title}</b><small>{lesson.lessonType} - {lesson.durationMinutes} min</small>
+                  <p>{lesson.outcome}</p><em>{lesson.citations.join(" - ") || "Citation missing - fix before export"}</em>
                 </div>)}
               </article>)}
             </div>
@@ -234,7 +234,7 @@ export default function CreatorStudioPage() {
           <p className="studio-form-intro">One submission creates the governed source pack and builds the first structured draft automatically.</p>
           <div className="studio-form-row"><label>Working title<input required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Bitcoin decisions for business leaders"/></label><label>Lesson length<select value={lessonMinutes} onChange={(event) => setLessonMinutes(Number(event.target.value))}><option value={4}>4 minutes</option><option value={6}>6 minutes</option><option value={8}>8 minutes</option><option value={10}>10 minutes</option></select></label></div>
           <label>Who is this for?<textarea required value={audience} onChange={(event) => setAudience(event.target.value)} placeholder="Describe what learners already know, their context, and the decisions they face."/></label>
-          <label>What should they be able to do?<textarea required value={outcome} onChange={(event) => setOutcome(event.target.value)} placeholder="Use one observable, useful outcome—not a vague promise."/></label>
+          <label>What should they be able to do?<textarea required value={outcome} onChange={(event) => setOutcome(event.target.value)} placeholder="Use one observable, useful outcome-not a vague promise."/></label>
           <div className="studio-source-list"><div><p className="sys-kicker">APPROVED SOURCES</p><button type="button" onClick={() => setSources((current) => [...current, blankSource()])}>+ Add source</button></div>
             {sources.map((source, index) => <article key={index}>
               <header><b>[S{index + 1}]</b>{sources.length > 1 && <button type="button" onClick={() => setSources((current) => current.filter((_, sourceIndex) => sourceIndex !== index))}>Remove</button>}</header>

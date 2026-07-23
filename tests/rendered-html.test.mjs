@@ -761,7 +761,7 @@ test("opens Crypto Mastery with a narrated, interactive and downloadable orienta
   assert.match(generator, /Crypto Mastery Field Guide/);
   assert.match(generator, /Exercises never require you to buy an asset/);
   assert.match(migration, /Start here: Welcome to Crypto Mastery/);
-  assert.match(migration, /static:\/media\/faculty\/crypto-mastery-welcome\.mp4/);
+  assert.match(migration, /static:\/media\/faculty\/Crypto_Mastery_Pathway\.mp4/);
   assert.match(migration, /static:\/media\/course-resources\/crypto-mastery-field-guide\.pdf/);
   assert.match(migration, /cmf-start-here-quiz-q06/);
   assert.match(uploads, /\/media\/course-resources\//);

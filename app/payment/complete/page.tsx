@@ -67,7 +67,7 @@ export default function PaymentCompletePage() {
   const cancelled = order?.status === "cancelled" || message.startsWith("Checkout was cancelled");
   return <main className="payment-complete-page">
     <section>
-      <Link href="/">✦ NORTHSTARLABS</Link>
+      <Link href="/">* NORTHSTARLABS</Link>
       <p className="sys-kicker">SECURE PAYFAST CHECKOUT</p>
       <h1>{complete ? "You’re in." : cancelled ? "Checkout cancelled." : "Confirming payment."}</h1>
       <p>{message}</p>
