@@ -21,16 +21,8 @@ type Course = {
   lessonCount: number; mediaLessonCount: number; quizCount: number;
 };
 
-function initialDashboardTab() {
-  if (typeof window === "undefined") return "Overview";
-  const area = new URLSearchParams(window.location.search).get("area")?.toLowerCase();
-  const destination = ["overview", "courses", "learners", "community", "products", "live", "analytics"]
-    .find((item) => item === area);
-  return destination ? destination[0].toUpperCase() + destination.slice(1) : "Overview";
-}
-
 export default function Dashboard() {
-  const [tab, setTab] = useState(initialDashboardTab);
+  const [tab, setTab] = useState("Overview");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [title, setTitle] = useState("");
@@ -71,6 +63,16 @@ export default function Dashboard() {
     }
     loadWorkspace();
   }, [supabase]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const area = new URLSearchParams(window.location.search).get("area")?.toLowerCase();
+      const destination = ["overview", "courses", "learners", "community", "products", "live", "analytics"]
+        .find((item) => item === area);
+      if (destination) setTab(destination[0].toUpperCase() + destination.slice(1));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const learners = useMemo(() => courses.reduce((sum, course) => sum + Number(course.students || 0), 0), [courses]);
   const published = useMemo(() => courses.filter(course => course.status === "published").length, [courses]);
