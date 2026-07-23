@@ -7,12 +7,22 @@ import type {
   LessonExperience,
   MeterActivity,
 } from "../../../lib/lesson-experience";
+import { preferredSpeechVoice } from "../../../lib/speech-voices";
 
 function NarratedStory({ experience }: { experience: LessonExperience }) {
   const [sceneIndex, setSceneIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [narration, setNarration] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const scene = experience.scenes[sceneIndex];
+
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+    const loadVoices = () => setVoices(window.speechSynthesis.getVoices());
+    loadVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+  }, []);
 
   useEffect(() => {
     if (!playing) return;
@@ -27,10 +37,13 @@ function NarratedStory({ experience }: { experience: LessonExperience }) {
     if (!narration || !playing || !("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(`${scene.title}. ${scene.body}`);
+    const saved = window.localStorage.getItem("northstar:narration-voice") || "";
+    const selected = preferredSpeechVoice(voices, saved);
+    if (selected) utterance.voice = selected;
     utterance.rate = 0.98;
     window.speechSynthesis.speak(utterance);
     return () => window.speechSynthesis.cancel();
-  }, [narration, playing, scene]);
+  }, [narration, playing, scene, voices]);
 
   useEffect(() => () => {
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();

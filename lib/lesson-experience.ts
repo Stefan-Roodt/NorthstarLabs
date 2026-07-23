@@ -60,6 +60,12 @@ export type LessonExperience = {
 
 type UnknownRecord = Record<string, unknown>;
 
+type DerivedLessonExperienceInput = {
+  lessonTitle: string;
+  content: string;
+  courseTitle?: string;
+};
+
 function record(value: unknown): UnknownRecord {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as UnknownRecord
@@ -77,6 +83,164 @@ function number(value: unknown, fallback = 0) {
 
 function array(value: unknown, max: number) {
   return Array.isArray(value) ? value.slice(0, max) : [];
+}
+
+function plainMarkdown(value: string) {
+  return value
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[`*_>#]/g, "")
+    .replace(/^\s*(?:[-+]|\d+\.)\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function concise(value: string, maxWords = 48) {
+  const words = plainMarkdown(value).split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return words.join(" ");
+  return `${words.slice(0, maxWords).join(" ").replace(/[,:;]$/, "")}\u2026`;
+}
+
+function derivedSections(content: string) {
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  const sections: Array<{ title: string; body: string }> = [];
+  let currentTitle = "";
+  let currentBody: string[] = [];
+  const flush = () => {
+    const body = concise(currentBody.join(" "), 58);
+    if (currentTitle && body) sections.push({ title: plainMarkdown(currentTitle), body });
+    currentBody = [];
+  };
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    const heading = /^#{1,4}\s+(.+)$/.exec(line);
+    if (heading) {
+      flush();
+      currentTitle = heading[1];
+      continue;
+    }
+    if (!line || /^---+$/.test(line) || /^!\[[^\]]*\]\([^)]+\)$/.test(line)) continue;
+    currentBody.push(line);
+  }
+  flush();
+  return sections.filter((section) =>
+    !/^(sources?|references?|further reading|transcript|captions?)$/i.test(section.title)
+  );
+}
+
+function fallbackParagraphs(content: string) {
+  return content
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}/)
+    .map((paragraph) => concise(paragraph, 58))
+    .filter((paragraph) => paragraph.length >= 70 && !/^sources?\b/i.test(paragraph));
+}
+
+/**
+ * Gives source-backed text lessons a useful visual teaching layer when an
+ * educator has not authored a bespoke interactive experience. It deliberately
+ * derives only from the lesson itself: no invented facts, external model call,
+ * or hidden source is introduced.
+ */
+export function deriveLessonExperience({
+  lessonTitle,
+  content,
+  courseTitle = "",
+}: DerivedLessonExperienceInput): LessonExperience | null {
+  const cleanTitle = plainMarkdown(lessonTitle).slice(0, 160);
+  const cleanContent = content.trim();
+  if (!cleanTitle || plainMarkdown(cleanContent).length < 180) return null;
+
+  const sections = derivedSections(cleanContent);
+  const outcomeSection = sections.find((section) =>
+    /^(your outcome|learning outcomes?|learning objectives?|what you(?:'|’)ll learn)$/i.test(section.title)
+  );
+  const teachingSections = sections.filter((section) =>
+    !/^(your outcome|learning outcomes?|learning objectives?|what you(?:'|’)ll learn|quiz|knowledge check)$/i.test(section.title)
+  );
+  const paragraphFallbacks = fallbackParagraphs(cleanContent);
+  const sceneSources = teachingSections.length
+    ? teachingSections
+    : paragraphFallbacks.map((body, index) => ({
+        title: index === 0 ? "Start with the central idea" : `Build the idea: step ${index + 1}`,
+        body,
+      }));
+  const tones: ExperienceScene["tone"][] = ["blue", "orange", "green", "red"];
+  const scenes = sceneSources.slice(0, 4).map((section, index) => ({
+    id: `guided-scene-${index + 1}`,
+    label: `Part ${index + 1} of ${Math.min(4, sceneSources.length)}`,
+    title: concise(section.title, 12).slice(0, 160),
+    body: concise(section.body, 58).slice(0, 1_200),
+    metric: index === 0
+      ? "Core idea"
+      : index === sceneSources.length - 1 || index === 3
+        ? "Transfer"
+        : "Evidence",
+    tone: tones[index],
+  })).filter((scene) => scene.title && scene.body);
+  if (!scenes.length) return null;
+
+  const outcome = concise(outcomeSection?.body || scenes[0].body, 42);
+  const context = courseTitle ? ` in ${plainMarkdown(courseTitle)}` : "";
+  return {
+    version: 1,
+    eyebrow: "Guided lesson map",
+    title: `See how ${cleanTitle} fits together`,
+    intro: outcome || `Follow the core ideas, evidence and practical meaning of this lesson${context}.`,
+    scenes,
+    activity: {
+      kind: "meter",
+      title: "Prove that the lesson is usable",
+      prompt: "Move each slider only as far as you can support with a specific explanation, example or decision. This is a private rehearsal, not a grade.",
+      dimensions: [
+        {
+          id: "explain",
+          label: "I can explain the central idea without jargon",
+          lowLabel: "Not yet",
+          highLabel: "Clearly",
+          weight: 1.2,
+          initial: 30,
+        },
+        {
+          id: "evidence",
+          label: "I can point to evidence or an example",
+          lowLabel: "No evidence",
+          highLabel: "Specific evidence",
+          weight: 1.1,
+          initial: 30,
+        },
+        {
+          id: "apply",
+          label: "I can use it in a real situation",
+          lowLabel: "Unsure",
+          highLabel: "Ready to apply",
+          weight: 1.3,
+          initial: 25,
+        },
+      ],
+      thresholds: [
+        {
+          max: 39,
+          label: "Replay the guided map",
+          feedback: "Return to the scene you cannot yet explain. Write one sentence in your own words before moving on.",
+          tone: "risk",
+        },
+        {
+          max: 69,
+          label: "Understanding is forming",
+          feedback: "You have the outline. Add one concrete example or source-backed fact, then test the idea in the lesson activity.",
+          tone: "caution",
+        },
+        {
+          max: 100,
+          label: "Ready for the knowledge check",
+          feedback: "You can explain, support and apply the idea. Continue and use the scored check to test whether that confidence holds.",
+          tone: "good",
+        },
+      ],
+    },
+    takeaway: outcome || scenes.at(-1)!.body,
+  };
 }
 
 export function parseLessonExperience(value: unknown): LessonExperience | null {

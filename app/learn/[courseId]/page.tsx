@@ -16,6 +16,7 @@ import { LessonContent } from "../../../lib/lesson-content";
 import { getLessonGuide } from "../../../lib/lesson-guide";
 import type { LessonExperience } from "../../../lib/lesson-experience";
 import { useLowBandwidthMode } from "../../../lib/low-bandwidth";
+import { preferredSpeechVoice } from "../../../lib/speech-voices";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 import { ContextualLessonHelp } from "./lesson-help";
 import { InteractiveLessonExperience } from "./lesson-experience";
@@ -152,6 +153,10 @@ function LessonTranscriptNarrator({
   const [rate, setRate] = useState(0.98);
   const text = narrationSource(transcript, lessonContent);
   useEffect(() => {
+    const saved = Number(window.localStorage.getItem("northstar:narration-rate"));
+    if ([0.85, 0.98, 1.15, 1.3].includes(saved)) setRate(saved);
+  }, []);
+  useEffect(() => {
     if (!isSupported) {
       return;
     }
@@ -160,11 +165,9 @@ function LessonTranscriptNarrator({
       setVoices(available);
       setVoicesLoaded(true);
       if (!voiceUri && available.length > 0) {
-        const selected =
-          available.find((voice) =>
-            voice.lang?.toLowerCase().startsWith("en"),
-          ) || available[0];
-        setVoiceUri(selected.voiceURI);
+        const saved = window.localStorage.getItem("northstar:narration-voice") || "";
+        const selected = preferredSpeechVoice(available, saved);
+        if (selected) setVoiceUri(selected.voiceURI);
       }
     };
     loadVoices();
@@ -237,7 +240,10 @@ function LessonTranscriptNarrator({
           <span>Voice</span>{" "}
           <select
             value={voiceUri}
-            onChange={(event) => setVoiceUri(event.target.value)}
+            onChange={(event) => {
+              setVoiceUri(event.target.value);
+              window.localStorage.setItem("northstar:narration-voice", event.target.value);
+            }}
           >
             {" "}
             {voices.map((option) => (
@@ -252,7 +258,11 @@ function LessonTranscriptNarrator({
           <span>Speed</span>{" "}
           <select
             value={String(rate)}
-            onChange={(event) => setRate(Number(event.target.value))}
+            onChange={(event) => {
+              const nextRate = Number(event.target.value);
+              setRate(nextRate);
+              window.localStorage.setItem("northstar:narration-rate", String(nextRate));
+            }}
           >
             {" "}
             <option value="0.85">0.85x</option>{" "}
