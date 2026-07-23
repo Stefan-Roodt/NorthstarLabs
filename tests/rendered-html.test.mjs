@@ -546,6 +546,18 @@ test("upgrades Module 1.9 to narrated premium teaching with Ethereum fundamental
   }
 });
 
+test("keeps the complete three-part Crypto Mastery programme in learning order", async () => {
+  const migration = await readFile(
+    new URL("../drizzle/0086_crypto_mastery_programme_sequence.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migration, /Crypto Mastery: Digital Assets — Complete Programme/);
+  assert.match(migration, /WHEN `id` LIKE 'cmf-module-1-%'/);
+  assert.match(migration, /31 \+ CAST\(substr\(`id`,14\) AS INTEGER\)/);
+  assert.match(migration, /63 \+ CAST\(substr\(`id`,14\) AS INTEGER\)/);
+  assert.match(migration, /Module 3\.2: Mean-Reversion Strategy/);
+});
+
 test("upgrades Modules 1.10 to 1.12 to narrated premium teaching", async () => {
   const [generator, mediaScript, migration] = await Promise.all([
     readFile(new URL("../scripts/generate-module-1-10-12-premium.mjs", import.meta.url), "utf8"),

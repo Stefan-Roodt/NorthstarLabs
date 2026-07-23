@@ -275,6 +275,43 @@ const premiumModuleNine = database.prepare(
 if (premiumModuleNine.count !== 3) {
   throw new Error("Crypto Mastery Module 1.9 was not upgraded to narrated premium lessons.");
 }
+const cryptoMasteryProgramme = database.prepare(
+  `SELECT title,description FROM courses
+   WHERE id='cognizen-crypto-mastery-foundations-production'`,
+).get();
+const cryptoMasterySequence = database.prepare(
+  `SELECT id,position FROM course_sections
+   WHERE course_id='cognizen-crypto-mastery-foundations-production'
+   ORDER BY position,id`,
+).all();
+const expectedCryptoMasterySequence = [
+  ["cmf-start-here", 0],
+  ["cmf-module-1-1", 1],
+  ["cmf-module-1-31", 31],
+  ["cmf-module-2-01", 32],
+  ["cmf-module-2-31", 62],
+  ["cmf-module-3-00", 63],
+  ["cmf-module-3-01", 64],
+  ["cmf-module-3-31", 94],
+];
+if (
+  cryptoMasteryProgramme?.title !==
+    "Crypto Mastery: Digital Assets — Complete Programme" ||
+  !cryptoMasteryProgramme.description.includes("three-part")
+) {
+  throw new Error("Crypto Mastery does not identify itself as the complete three-part programme.");
+}
+for (const [id, position] of expectedCryptoMasterySequence) {
+  const section = cryptoMasterySequence.find((item) => item.id === id);
+  if (!section || section.position !== position) {
+    throw new Error(`Crypto Mastery section ${id} is not in programme order.`);
+  }
+}
+if (cryptoMasterySequence.some((section, index) =>
+  index > 0 && section.position <= cryptoMasterySequence[index - 1].position
+)) {
+  throw new Error("Crypto Mastery contains duplicate or reversed section positions.");
+}
 for (const table of ["course_sections", "media_assets", "lesson_resources"]) {
   if (!tables.some((item) => item.name === table)) {
     throw new Error(`The ${table} course-authoring table was not created.`);
