@@ -138,7 +138,7 @@ export default function TutorDirectoryPage({ params }: { params: Promise<{ slug:
             <div><dt>Price</dt><dd>{tutor.priceCents ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}/${tutor.priceUnit}` : "Ask tutor"}</dd></div>
           </dl>
           {tutor.availability && <p className="tutor-availability"><span>o</span>{tutor.availability}</p>}
-          <Link href={`/schools/${data.school.slug}/tutors/${tutor.slug}`}>View profile and enquire</Link>
+          <Link href={`/schools/${data.school.slug}/tutors/${tutor.slug}`}>View profile & book</Link>
         </article>)}
       </div> : <article className="tutor-empty">
         <h2>No exact matches yet.</h2>

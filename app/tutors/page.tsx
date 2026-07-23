@@ -297,7 +297,7 @@ export default function TutorMarketplacePage() {
                 : "Ask about availability"}</b><small>{tutor.availableSlotCount ? `${tutor.availableSlotCount} requestable ${tutor.availableSlotCount === 1 ? "time" : "times"}` : tutor.availability || "Send a private enquiry"}</small></p>
             </div>
             <div className="marketplace-card-actions">
-              <Link href={`/schools/${tutor.schoolSlug}/tutors/${tutor.slug}`}>View profile & times</Link>
+              <Link href={`/schools/${tutor.schoolSlug}/tutors/${tutor.slug}`}>{tutor.availableSlotCount ? "Choose a time" : "View profile & contact"}</Link>
               <button aria-pressed={comparedIds.includes(tutor.id)} onClick={() => toggleCompare(tutor)}>
                 {comparedIds.includes(tutor.id) ? "✓ Comparing" : "+ Compare"}
               </button>
@@ -332,7 +332,7 @@ export default function TutorMarketplacePage() {
         <b>Learner proof</b>{compared.map((tutor) => <span key={`reviews-${tutor.id}`}>{tutor.reviewCount ? `${tutor.averageRating} * from ${tutor.reviewCount}` : "No verified reviews yet"}</span>)}
         <b>Format</b>{compared.map((tutor) => <span key={`mode-${tutor.id}`}>{sessionLabel(tutor.sessionMode)}</span>)}
         <b>Price</b>{compared.map((tutor) => <span key={`price-${tutor.id}`}>{priceLabel(tutor)}</span>)}
-        <b>Availability</b>{compared.map((tutor) => <span key={`availability-${tutor.id}`}>{tutor.availableSlotCount ? `${tutor.availableSlotCount} open times` : "Enquire directly"}</span>)}
+        <b>Availability</b>{compared.map((tutor) => <span key={`availability-${tutor.id}`}>{tutor.availableSlotCount ? `${tutor.availableSlotCount} open times` : "Ask directly"}</span>)}
         <i aria-hidden="true" />{compared.map((tutor) => <Link key={`action-${tutor.id}`} href={`/schools/${tutor.schoolSlug}/tutors/${tutor.slug}`}>Choose {tutor.displayName.split(" ")[0]}</Link>)}
       </div>
     </section>}

@@ -234,7 +234,7 @@ export default function TutoringPage() {
       <Link className="system-brand" href="/learn">* NORTHSTARLABS</Link>
       <nav>
         <Link href="/learn">My learning</Link>
-        <Link href="/tutors">Find a tutor</Link>
+        <Link href="/tutors">Find a coach</Link>
         <Link href="/courses">Explore courses</Link>
         <Link href="/account">Account settings</Link>
         <button onClick={signOut}>Sign out</button>
@@ -243,9 +243,9 @@ export default function TutoringPage() {
 
     <section className="tutoring-hero">
       <div>
-        <p className="sys-kicker">MY TUTORING</p>
-        <h1>Personal help, without the admin chase.</h1>
-        <p>Request a time, follow its confirmation and keep every joining detail in one trusted place.</p>
+        <p className="sys-kicker">MY COACHING</p>
+        <h1>Every session. One clear next step.</h1>
+        <p>Request a time, follow confirmation, find joining details, and leave protected feedback without chasing messages.</p>
       </div>
       {!loading && <dl>
         <div><dt>Upcoming</dt><dd>{upcoming.length}</dd></div>
@@ -273,12 +273,17 @@ export default function TutoringPage() {
               <span key={theme.tag}>{ratingTagLabels[theme.tag] || theme.tag.replaceAll("_", " ")}</span>
             )}</div>}
           </article>}
-          <div className="tutoring-heading"><div><p className="sys-kicker">NEXT</p><h2>Upcoming requests</h2></div><Link href="/courses">Explore learning</Link></div>
+          <div className="tutoring-journey" aria-label="Coaching journey">
+            <div><span>1</span><b>Request sent</b><small>Your details stay private</small></div>
+            <div><span>2</span><b>Coach confirms</b><small>The held time becomes booked</small></div>
+            <div><span>3</span><b>Meet & review</b><small>Joining details and verified feedback</small></div>
+          </div>
+          <div className="tutoring-heading"><div><p className="sys-kicker">NEXT</p><h2>Your sessions and requests</h2></div><Link href="/tutors">Find a coach</Link></div>
           {upcoming.length
             ? <div className="tutoring-grid">{upcoming.map((item) => card(item, true))}</div>
             : <article className="panel tutoring-empty">
               <span>1:1</span>
-              <div><h2>No upcoming tutoring yet.</h2><p>Open an academy&apos;s tutor directory, compare expertise and request a time that works for you.</p><Link className="sys-primary" href="/courses">Find an academy</Link></div>
+              <div><h2>Your coaching desk is ready.</h2><p>Search by topic, compare expertise and rates, then choose a listed time or ask about availability.</p><Link className="sys-primary" href="/tutors">Find a coach</Link></div>
             </article>}
 
           {history.length > 0 && <div className="tutoring-history">
