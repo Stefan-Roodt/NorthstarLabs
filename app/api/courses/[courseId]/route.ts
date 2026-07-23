@@ -77,6 +77,7 @@ type CourseReadinessSummary = {
 };
 
 type CourseReadinessPayload = {
+  pendingSourceFiles?: number;
   sections: Array<{
     id: string;
     title: string;
@@ -161,6 +162,39 @@ type CourseReadinessMessage = {
   errors?: string[];
   readiness?: CourseReadinessSummary;
 };
+
+type PendingImport = {
+  projectId: string;
+  projectTitle: string;
+  remaining: number;
+};
+
+async function pendingImportForCourse(courseId: string, schoolId: string): Promise<PendingImport | null> {
+  const projects = await env.DB.prepare(
+    `SELECT id,title,result_json AS resultJson
+     FROM course_import_projects
+     WHERE school_id=? AND status='awaiting_files'
+     ORDER BY updated_at DESC`,
+  ).bind(schoolId).all<{ id: string; title: string; resultJson: string }>();
+  for (const project of projects.results) {
+    try {
+      const result = JSON.parse(project.resultJson || "{}") as {
+        courses?: Array<{ id?: string }>;
+        documents?: Array<{ courseId?: string; attached?: boolean }>;
+      };
+      if (!result.courses?.some((course) => course.id === courseId)) continue;
+      const remaining = result.documents?.filter((document) =>
+        document.courseId === courseId && document.attached !== true
+      ).length || 0;
+      if (remaining > 0) {
+        return { projectId: project.id, projectTitle: project.title, remaining };
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
 
 async function loadCourseLessonData(
   courseId: string,
@@ -314,6 +348,7 @@ function toReadinessPayload(course: {
   title: string | null;
   description: string | null;
   certificateTitle: string | null;
+  pendingSourceFiles?: number;
   sections: CourseReadinessPayload["sections"];
   lessons: CourseReadinessPayload["lessons"];
 }) {
@@ -321,6 +356,7 @@ function toReadinessPayload(course: {
     title: String(course.title || ""),
     description: String(course.description || ""),
     certificateTitle: String(course.certificateTitle || ""),
+    pendingSourceFiles: course.pendingSourceFiles,
     sections: course.sections.map((section) => ({
       id: section.id,
       title: section.title,
@@ -376,10 +412,16 @@ export async function GET(
      FROM courses WHERE id=?`,
     ).bind(courseId).first<{ schoolId: string }>();
   if (!course) return Response.json({ error: "Course not found" }, { status: 404 });
-  const { media, sections, lessons } = await loadCourseLessonData(courseId, course.schoolId);
+  const [{ media, sections, lessons }, pendingImport] = await Promise.all([
+    loadCourseLessonData(courseId, course.schoolId),
+    pendingImportForCourse(courseId, course.schoolId),
+  ]);
 
   return Response.json({
     ...course,
+    pendingSourceFiles: pendingImport?.remaining || 0,
+    importProjectId: pendingImport?.projectId || null,
+    importProjectTitle: pendingImport?.projectTitle || null,
     sections,
     media,
     lessons,
@@ -447,11 +489,15 @@ export async function PATCH(
   if (!courseRecord) return Response.json({ error: "Course not found" }, { status: 404 });
 
   if (status === "published") {
-    const courseDetails = await loadCourseLessonData(courseId, existing.schoolId);
+    const [courseDetails, pendingImport] = await Promise.all([
+      loadCourseLessonData(courseId, existing.schoolId),
+      pendingImportForCourse(courseId, existing.schoolId),
+    ]);
     const readinessIssues = toReadinessPayload({
       title: title ?? courseRecord?.title ?? "",
       description: description ?? courseRecord?.description ?? "",
       certificateTitle: certificateTitle || courseRecord?.certificateTitle || "",
+      pendingSourceFiles: pendingImport?.remaining || 0,
       sections: courseDetails.sections,
       lessons: courseDetails.lessons,
     });

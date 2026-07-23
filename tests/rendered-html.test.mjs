@@ -951,6 +951,21 @@ test("ships a free inspect-first academy and course migration studio", async () 
   assert.match(privacy, /normalised course structure/);
 });
 
+test("blocks publication until imported source files are fully attached", async () => {
+  const [courseApi, builder, readiness] = await Promise.all([
+    readFile(new URL("../app/api/courses/[courseId]/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/course-readiness.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(courseApi, /pendingImportForCourse/);
+  assert.match(courseApi, /status='awaiting_files'/);
+  assert.match(courseApi, /pendingSourceFiles/);
+  assert.match(readiness, /course-import-files/);
+  assert.match(readiness, /Finish attaching the imported source files/);
+  assert.match(builder, /IMPORT NOT YET VERIFIED/);
+  assert.match(builder, /Finish file upload/);
+});
+
 test("ships a structured course editor, reusable media library, and safe learner rendering", async () => {
   const [schema, migration, cleanupMigration, builder, lessonsApi, uploadsApi, courseApi, learnApi, learner, renderer] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
