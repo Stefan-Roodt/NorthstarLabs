@@ -166,7 +166,7 @@ export default function TutorDetailPage({ params }: {
     setBusy(false);
   }
 
-  if (!data) return <main className="system-loading"><div><b>NorthStarLabs</b><p>{notice || "Opening tutor profile..."}</p>{notice && <Link href={`/schools/${path.slug}/tutors`}>Back to tutors</Link>}</div></main>;
+  if (!data) return <main className="system-loading"><div><b>NorthstarLabs</b><p>{notice || "Opening tutor profile..."}</p>{notice && <Link href={`/schools/${path.slug}/tutors`}>Back to tutors</Link>}</div></main>;
   const tutor = data.tutors[0];
   const style = {
     "--school-primary": data.school.primaryColor,
@@ -280,7 +280,7 @@ export default function TutorDetailPage({ params }: {
     <footer className="tutor-public-footer">
       <Link href={`/schools/${data.school.slug}/tutors`}>Back to all tutors</Link>
       <p>NorthstarLabs provides the connection; tutors remain responsible for their services and arrangements.</p>
-      <small>Powered by <Link href="/">NorthStarLabs</Link></small>
+      <small>Powered by <Link href="/">NorthstarLabs</Link></small>
     </footer>
   </main>;
 }

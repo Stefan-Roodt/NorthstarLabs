@@ -137,7 +137,7 @@ export default function CommunityManagement() {
     }
   }
 
-  if (!data) return <main className="system-loading"><div><b>NorthStarLabs</b><p>{message}</p></div></main>;
+  if (!data) return <main className="system-loading"><div><b>NorthstarLabs</b><p>{message}</p></div></main>;
 
   const activeMembers = data.members.filter((member) => member.status === "active").length;
   const moderators = data.members.filter((member) => member.role === "moderator" && member.status === "active").length;

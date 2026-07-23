@@ -253,7 +253,7 @@ export default function ProductsPage() {
   }
 
   if (!data) {
-    return <main className="system-loading"><div><b>NorthStarLabs</b><p>{message}</p></div></main>;
+    return <main className="system-loading"><div><b>NorthstarLabs</b><p>{message}</p></div></main>;
   }
 
   return <main className="product-admin-page">
@@ -362,7 +362,7 @@ export default function ProductsPage() {
       </section>
 
       <section className="panel product-grants">
-        <div className="product-section-heading"><span>ACCESS</span><div><h2>Grant access directly</h2><p>Useful for invited clients, internal teams and paid orders handled outside NorthStarLabs.</p></div></div>
+        <div className="product-section-heading"><span>ACCESS</span><div><h2>Grant access directly</h2><p>Useful for invited clients, internal teams and paid orders handled outside NorthstarLabs.</p></div></div>
         <form onSubmit={grantAccess}>
           <label>Product<select required value={grantProductId} onChange={(event) => setGrantProductId(event.target.value)}>
             <option value="">Choose a product</option>

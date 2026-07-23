@@ -186,7 +186,7 @@ export default function LiveLearningPage() {
     URL.revokeObjectURL(href);
   }
 
-  if (!data) return <main className="system-loading"><div><b>NorthStarLabs</b><p>{message}</p></div></main>;
+  if (!data) return <main className="system-loading"><div><b>NorthstarLabs</b><p>{message}</p></div></main>;
   const upcoming = data.sessions.filter((session) => session.endsAt >= now && session.status === "scheduled");
   const history = data.sessions.filter((session) => !upcoming.includes(session));
 

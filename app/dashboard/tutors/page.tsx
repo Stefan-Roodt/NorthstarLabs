@@ -538,7 +538,7 @@ export default function TutorAdminPage() {
     setBusy("");
   }
 
-  if (!data) return <main className="system-loading"><div><b>NorthStarLabs</b><p>{message}</p></div></main>;
+  if (!data) return <main className="system-loading"><div><b>NorthstarLabs</b><p>{message}</p></div></main>;
 
   return <main className="tutor-admin-page">
     <header className="product-admin-top">

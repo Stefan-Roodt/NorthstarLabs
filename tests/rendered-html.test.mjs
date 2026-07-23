@@ -1995,12 +1995,17 @@ test("keeps learner and creator navigation free of broken placeholder glyphs", a
     "../app/portfolio/[slug]/page.tsx",
     "../app/schools/[slug]/tutors/page.tsx",
     "../app/schools/[slug]/tutors/[tutorSlug]/page.tsx",
+    "../app/account/page.tsx",
+    "../app/layout.tsx",
+    "../app/manifest.ts",
+    "../lib/email-service.ts",
   ].map((path) => readFile(new URL(path, import.meta.url), "utf8")));
   for (const source of sources) {
     assert.doesNotMatch(source, />\s*\?\s*</);
     assert.doesNotMatch(source, /\w+ \?["<]/);
     assert.doesNotMatch(source, /\[OK\]/);
     assert.doesNotMatch(source, />o</);
+    assert.doesNotMatch(source, /NorthStarLabs/);
   }
 });
 

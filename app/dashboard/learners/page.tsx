@@ -272,7 +272,7 @@ export default function LearnerManagement() {
     URL.revokeObjectURL(url);
   }
 
-  if (!data) return <main className="system-loading"><div><b>NorthStarLabs</b><p>{message}</p></div></main>;
+  if (!data) return <main className="system-loading"><div><b>NorthstarLabs</b><p>{message}</p></div></main>;
 
   return <main className="admin-page">
     <header className="admin-top">

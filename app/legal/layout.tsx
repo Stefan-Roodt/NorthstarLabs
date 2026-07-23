@@ -13,7 +13,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
       </header>
       {children}
       <footer className="legal-footer">
-        <span>(c) 2026 Northstar Labs. All rights reserved.</span>
+        <span>(c) 2026 NorthstarLabs. All rights reserved.</span>
         <nav>
           <Link href="/">Home</Link>
           <Link href="/legal/terms">Terms</Link>

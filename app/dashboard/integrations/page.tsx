@@ -227,7 +227,7 @@ export default function IntegrationsPage() {
     location.href = "/dashboard";
   }
 
-  if (!data) return <main className="system-loading"><div><b>NorthStarLabs</b><p>{message}</p></div></main>;
+  if (!data) return <main className="system-loading"><div><b>NorthstarLabs</b><p>{message}</p></div></main>;
 
   return <main className="integration-page">
     <header className="product-admin-top">
@@ -235,7 +235,7 @@ export default function IntegrationsPage() {
       <nav><Link href="/dashboard/control">Control centre</Link><Link href="/dashboard/products">Products</Link><Link href="/dashboard/live">Live learning</Link><Link href="/account">Account settings</Link><button onClick={signOut}>Sign out</button></nav>
     </header>
     <section className="integration-hero">
-      <div><p className="sys-kicker">MOBILE & INTEGRATIONS</p><h1>Connect learning to the rest of the work.</h1><p>Calendar downloads, meeting links and installable mobile access work immediately. Signed webhooks connect NorthStarLabs events to automation tools, CRMs and your own systems.</p></div>
+      <div><p className="sys-kicker">MOBILE & INTEGRATIONS</p><h1>Connect learning to the rest of the work.</h1><p>Calendar downloads, meeting links and installable mobile access work immediately. Signed webhooks connect NorthstarLabs events to automation tools, CRMs and your own systems.</p></div>
       <span><strong>{data.integrations.filter((item) => item.status === "active").length}</strong> active connections</span>
     </section>
 
@@ -244,7 +244,7 @@ export default function IntegrationsPage() {
       <section className="native-integrations">
         <article className="panel native-integration-card"><span>01</span><div><p className="sys-kicker">CALENDAR</p><h2>Apple, Google & Outlook</h2><p>Every eligible live session can be downloaded as a standards-based calendar file with its secure meeting link.</p><b>READY</b></div></article>
         <article className="panel native-integration-card"><span>02</span><div><p className="sys-kicker">AUTOMATION</p><h2>Signed event delivery</h2><p>Northstar can send verified product, learner and live-session activity to compatible HTTPS endpoints.</p><b>READY</b></div></article>
-        <article className="panel native-integration-card"><span>03</span><div><p className="sys-kicker">MOBILE</p><h2>Installable learning app</h2><p>Phones and tablets can install NorthStarLabs from the browser, launch full-screen and keep the learning shell available during brief network interruptions.</p><b>READY</b></div></article>
+        <article className="panel native-integration-card"><span>03</span><div><p className="sys-kicker">MOBILE</p><h2>Installable learning app</h2><p>Phones and tablets can install NorthstarLabs from the browser, launch full-screen and keep the learning shell available during brief network interruptions.</p><b>READY</b></div></article>
       </section>
 
       <section className="provider-connections" id="provider-connections">
@@ -304,7 +304,7 @@ export default function IntegrationsPage() {
       </section>
 
       <form className="panel webhook-editor" onSubmit={createWebhook}>
-        <div className="product-section-heading"><span>WEBHOOK</span><div><h2>Add an automation endpoint</h2><p>Events are signed with HMAC-SHA256 so your system can verify they came from NorthStarLabs.</p></div></div>
+        <div className="product-section-heading"><span>WEBHOOK</span><div><h2>Add an automation endpoint</h2><p>Events are signed with HMAC-SHA256 so your system can verify they came from NorthstarLabs.</p></div></div>
         <label>Connection name<input required minLength={2} maxLength={100} value={name} onChange={(event) => setName(event.target.value)} placeholder="CRM learner sync" /></label>
         <label>Public HTTPS endpoint<input required type="url" value={endpointUrl} onChange={(event) => setEndpointUrl(event.target.value)} placeholder="https://automation.example.com/northstar" /></label>
         <fieldset className="webhook-events"><legend>Send these events</legend>
@@ -315,7 +315,7 @@ export default function IntegrationsPage() {
       </form>
 
       {revealedSecret && <section className="panel webhook-secret">
-        <p className="sys-kicker">COPY THIS ONCE</p><h2>Webhook signing secret</h2><p>Store this in your receiving system. NorthStarLabs will not show it again.</p><code>{revealedSecret}</code><button className="sys-primary" onClick={copySecret}>Copy secret</button>
+        <p className="sys-kicker">COPY THIS ONCE</p><h2>Webhook signing secret</h2><p>Store this in your receiving system. NorthstarLabs will not show it again.</p><code>{revealedSecret}</code><button className="sys-primary" onClick={copySecret}>Copy secret</button>
       </section>}
 
       <section className="webhook-list">

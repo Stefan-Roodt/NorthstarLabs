@@ -37,7 +37,7 @@ export async function updateCourseProgress(
         `SELECT c.title AS courseTitle,c.certificate_title AS certificateTitle,
           c.certificate_accent AS certificateAccent,
           c.certificate_valid_days AS certificateValidDays,
-          COALESCE(p.display_name,'NorthStarLabs learner') AS recipientName
+          COALESCE(p.display_name,'NorthstarLabs learner') AS recipientName
          FROM courses c LEFT JOIN profiles p ON p.id=? WHERE c.id=?`,
       ).bind(userId, courseId).first<{
         courseTitle: string;
@@ -61,8 +61,8 @@ export async function updateCourseProgress(
         courseId,
         certificateCode,
         issuedAt,
-        details?.recipientName || "NorthStarLabs learner",
-        details?.courseTitle || "NorthStarLabs course",
+        details?.recipientName || "NorthstarLabs learner",
+        details?.courseTitle || "NorthstarLabs course",
         details?.certificateTitle || "Certificate of Completion",
         details?.certificateAccent || "#3556d8",
         expiresAt,

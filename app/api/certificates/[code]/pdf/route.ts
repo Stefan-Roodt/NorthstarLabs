@@ -21,7 +21,7 @@ export async function GET(
   const certificate = await env.DB.prepare(
     `SELECT cert.code,cert.issued_at AS issuedAt,
       COALESCE(cert.course_title,c.title) AS courseTitle,
-      COALESCE(cert.recipient_name,p.display_name,'NorthStarLabs learner') AS learnerName,
+      COALESCE(cert.recipient_name,p.display_name,'NorthstarLabs learner') AS learnerName,
       cert.certificate_title AS certificateTitle,cert.accent_color AS accentColor,
       cert.status,cert.expires_at AS expiresAt,s.name AS issuerName
      FROM certificates cert
@@ -46,7 +46,7 @@ export async function GET(
   return new Response(pdf, {
     headers: {
       "content-type": "application/pdf",
-      "content-disposition": `attachment; filename="NorthStarLabs-${certificate.code}.pdf"`,
+      "content-disposition": `attachment; filename="NorthstarLabs-${certificate.code}.pdf"`,
       "cache-control": "public, max-age=300",
       "x-content-type-options": "nosniff",
     },

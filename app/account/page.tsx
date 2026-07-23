@@ -291,7 +291,7 @@ export default function AccountPage() {
     location.href = "/";
   }
 
-  if (!profile) return <main className="system-loading"><div><b>NorthStarLabs</b><p>{message}</p></div></main>;
+  if (!profile) return <main className="system-loading"><div><b>NorthstarLabs</b><p>{message}</p></div></main>;
 
   return <main className="account-page">
     <header className="account-top">
@@ -309,7 +309,7 @@ export default function AccountPage() {
     <section className="account-hero">
       <div>
         <p className="sys-kicker">ACCOUNT & SECURITY</p>
-        <h1>Your NorthStarLabs account.</h1>
+        <h1>Your NorthstarLabs account.</h1>
         <p>Keep your profile, sign-in details, and account security current.</p>
       </div>
       <span>{displayName.slice(0, 2).toUpperCase()}</span>
@@ -410,7 +410,7 @@ export default function AccountPage() {
             ["communityEmails", "Community activity", "Relevant community and moderation notifications."],
             ["liveSessionReminders", "Live session reminders", "Email reminders before registered 1:1 and group sessions."],
             ["creatorSummaries", "Creator summaries", "Scheduled learning-performance reports."],
-            ["productUpdates", "Product updates", "Occasional NorthStarLabs product news."],
+            ["productUpdates", "Product updates", "Occasional NorthstarLabs product news."],
           ].map(([key, label, description]) => <label key={key}>
             <span><b>{label}</b><small>{description}</small></span>
             <input type="checkbox" checked={Boolean(preferences[key as keyof NotificationPreferences])}
@@ -421,7 +421,7 @@ export default function AccountPage() {
 
       <article className="panel account-card account-data-card">
         <div><p className="sys-kicker">PRIVACY & YOUR DATA</p><h2>Export or remove your account</h2></div>
-        <p>Download the profile, learning activity, quiz attempts, mastery and practice history, certificates, community posts, and preferences NorthStarLabs stores for you.</p>
+        <p>Download the profile, learning activity, quiz attempts, mastery and practice history, certificates, community posts, and preferences NorthstarLabs stores for you.</p>
         <button className="sys-primary" disabled={Boolean(busy)} onClick={exportMyData}>
           {busy === "export" ? "Preparing export..." : "Download my data"}
         </button>

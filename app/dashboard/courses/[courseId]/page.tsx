@@ -882,7 +882,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     } catch (error) {
       setMediaProduction("");
       setMessage(error instanceof DOMException && error.name === "NotAllowedError"
-        ? "Microphone access was not allowed. Enable it for NorthStarLabs or upload an audio file."
+        ? "Microphone access was not allowed. Enable it for NorthstarLabs or upload an audio file."
         : "The microphone could not be started. Try again or upload an audio file.");
     }
   }
@@ -912,7 +912,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     let recorder: MediaRecorder | null = null;
     try {
       setMediaProduction("cinematic");
-      setMessage("Creating a six-second NorthStarLabs lesson intro in your browser.");
+      setMessage("Creating a six-second NorthstarLabs lesson intro in your browser.");
       canvas.width = 1280;
       canvas.height = 720;
       const context = canvas.getContext("2d");
@@ -1078,7 +1078,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   }
 
   if (!course) {
-    return <main className="system-loading"><div><b>NorthStarLabs</b><p>{message}</p></div></main>;
+    return <main className="system-loading"><div><b>NorthstarLabs</b><p>{message}</p></div></main>;
   }
 
   const filteredMedia = course.media.filter((asset) =>
@@ -1390,7 +1390,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
             <button className="sys-primary" onClick={() => saveCourse(course.status)}>Save course settings</button>
           </div>
           <section className="course-danger-zone">
-            <div><p className="sys-kicker">DANGER ZONE</p><h2>Delete this course permanently</h2><p>NorthStarLabs removes course content, enrolments, progress, assessments, certificates, playback grants, and media that is not used anywhere else.</p></div>
+            <div><p className="sys-kicker">DANGER ZONE</p><h2>Delete this course permanently</h2><p>NorthstarLabs removes course content, enrolments, progress, assessments, certificates, playback grants, and media that is not used anywhere else.</p></div>
             <button className="danger-button" onClick={deleteCourse}>Delete course</button>
           </section>
         </div>}
