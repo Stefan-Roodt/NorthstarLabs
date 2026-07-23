@@ -82,6 +82,28 @@ function whatsappLink(number: string) {
   return `https://wa.me/${number.replace(/\D/g, "")}`;
 }
 
+function schoolInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function inquiryDraftKey(tutorId: string) {
+  return `northstar:tutor-inquiry:${tutorId}`;
+}
+
+function clearInquiryDraft(tutorId: string) {
+  try {
+    sessionStorage.removeItem(inquiryDraftKey(tutorId));
+  } catch {
+    // Storage can be unavailable in locked-down browsers; enquiry still works.
+  }
+}
+
 export default function TutorDetailPage({ params }: {
   params: Promise<{ slug: string; tutorSlug: string }>;
 }) {
@@ -114,6 +136,39 @@ export default function TutorDetailPage({ params }: {
         setData(detail);
         const tutorId = detail.tutors[0]?.id;
         if (!tutorId) return;
+        try {
+          const stored = sessionStorage.getItem(inquiryDraftKey(tutorId));
+          if (stored) {
+            const draft = JSON.parse(stored) as {
+              tutorId?: string;
+              subject?: string;
+              message?: string;
+              preferredTimes?: string;
+              contactPreference?: string;
+              phoneNumber?: string;
+              selectedSlotId?: string;
+              savedAt?: number;
+            };
+            const savedRecently = Date.now() - Number(draft.savedAt || 0) < 2 * 60 * 60 * 1000;
+            if (draft.tutorId === tutorId && savedRecently) {
+              setSubject(String(draft.subject || "").slice(0, 160));
+              setMessage(String(draft.message || "").slice(0, 2000));
+              setPreferredTimes(String(draft.preferredTimes || "").slice(0, 500));
+              setContactPreference(["email", "phone", "whatsapp"].includes(String(draft.contactPreference))
+                ? String(draft.contactPreference)
+                : "email");
+              setPhoneNumber(String(draft.phoneNumber || "").slice(0, 80));
+              setSelectedSlotId(detail.slots.some((slot) => slot.id === draft.selectedSlotId)
+                ? String(draft.selectedSlotId)
+                : "");
+              setNotice("Your saved request is ready. Review it, then send when you are comfortable.");
+            } else {
+              clearInquiryDraft(tutorId);
+            }
+          }
+        } catch {
+          clearInquiryDraft(tutorId);
+        }
         const reviewsResponse = await fetch(`/api/tutor-reviews?tutorId=${encodeURIComponent(tutorId)}`);
         if (reviewsResponse.ok) {
           const result = await reviewsResponse.json() as { reviews: TutorReview[] };
@@ -128,6 +183,20 @@ export default function TutorDetailPage({ params }: {
     if (!data?.tutors[0] || !supabase || busy) return;
     const session = (await supabase.auth.getSession()).data.session;
     if (!session) {
+      try {
+        sessionStorage.setItem(inquiryDraftKey(data.tutors[0].id), JSON.stringify({
+          tutorId: data.tutors[0].id,
+          subject,
+          message,
+          preferredTimes,
+          contactPreference,
+          phoneNumber,
+          selectedSlotId,
+          savedAt: Date.now(),
+        }));
+      } catch {
+        // Do not block sign-in when browser storage is unavailable.
+      }
       const returnTo = `/schools/${data.school.slug}/tutors/${data.tutors[0].slug}#enquire`;
       location.href = `/login?next=${encodeURIComponent(returnTo)}`;
       return;
@@ -153,10 +222,11 @@ export default function TutorDetailPage({ params }: {
     const result = await response.json();
     setNotice(response.ok
       ? selectedSlotId
-        ? `Your appointment request was sent to ${result.tutorName}. Track confirmation in My tutoring.`
+        ? `Your appointment request was sent to ${result.tutorName}. Track confirmation in My coaching.`
         : `Your enquiry was sent to ${result.tutorName}. The tutor or academy will reply using your preferred method.`
       : result.error || "Your enquiry could not be sent.");
     if (response.ok) {
+      clearInquiryDraft(data.tutors[0].id);
       setSubject("");
       setMessage("");
       setPreferredTimes("");
@@ -181,7 +251,7 @@ export default function TutorDetailPage({ params }: {
         {data.school.logoUrl ? <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={data.school.logoUrl} alt="" />
-        </> : <span>{data.school.name.slice(0, 2).toUpperCase()}</span>}
+        </> : <span>{schoolInitials(data.school.name)}</span>}
         <b>{data.school.name}</b>
       </Link>
       <nav>
@@ -248,6 +318,10 @@ export default function TutorDetailPage({ params }: {
         <p className="sys-kicker">{data.slots.length ? "CHOOSE A TIME" : "REQUEST A SESSION"}</p>
         <h2>{data.slots.length ? `Book time with ${tutor.displayName}.` : `Ask ${tutor.displayName} about a session.`}</h2>
         <p>Your request goes privately to the coach and academy. You can track every update in My coaching.</p>
+        {!signedIn && <aside className="tutor-auth-handoff">
+          <b>Write your request before creating an account.</b>
+          <span>If you need to sign in, NorthstarLabs will save this form in this browser and bring it back exactly where you left it.</span>
+        </aside>}
         {notice && <div className="notice" role="status">{notice}</div>}
         {notice.startsWith("Your ") && <Link className="tutor-track-request" href="/tutoring">Open My coaching {"\u2192"}</Link>}
         <fieldset className="tutor-slot-picker">
@@ -272,7 +346,13 @@ export default function TutorDetailPage({ params }: {
           <label>How should the tutor reply?<select value={contactPreference} onChange={(event) => setContactPreference(event.target.value)}><option value="email">Email</option><option value="phone">Phone call</option><option value="whatsapp">WhatsApp</option></select></label>
           <label>Phone number{contactPreference === "email" && " (optional)"}<input required={contactPreference !== "email"} type="tel" value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} placeholder="+264 81 000 0000" /></label>
         </div>
-        <button className="tutor-primary-action" disabled={busy}>{busy ? "Sending request..." : selectedSlotId ? "Request this appointment" : "Send session request"}</button>
+        <button className="tutor-primary-action" disabled={busy}>{busy
+          ? "Sending request..."
+          : !signedIn
+            ? "Continue to sign in & send"
+            : selectedSlotId
+              ? "Request this appointment"
+              : "Send session request"}</button>
         <small>By sending this request, you agree that the tutor and academy may contact you about this session.</small>
       </form>
     </section>

@@ -1588,7 +1588,7 @@ test("ships academy tutor discovery, direct contact, protected enquiries, and se
 });
 
 test("ships a free coach marketplace with optional verified exposure", async () => {
-  const [migration, openMarketplaceMigration, plans, welcome, profile, admin, marketplace, home] = await Promise.all([
+  const [migration, openMarketplaceMigration, plans, welcome, profile, admin, marketplace, publicProfile, home] = await Promise.all([
     readFile(new URL("../drizzle/0020_clammy_sally_floyd.sql", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0046_open_coach_marketplace.sql", import.meta.url), "utf8"),
     readFile(new URL("../lib/coach-listing-plans.ts", import.meta.url), "utf8"),
@@ -1596,6 +1596,7 @@ test("ships a free coach marketplace with optional verified exposure", async () 
     readFile(new URL("../app/api/profile/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/dashboard/tutors/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/tutors/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/schools/[slug]/tutors/[tutorSlug]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(migration, /ADD `service_type`/);
@@ -1622,6 +1623,11 @@ test("ships a free coach marketplace with optional verified exposure", async () 
   assert.match(marketplace, /Every coach can be listed free/);
   assert.match(marketplace, /VERIFIED PROFESSIONAL/);
   assert.match(marketplace, /List my coaching free/);
+  assert.match(publicProfile, /sessionStorage\.setItem\(inquiryDraftKey/);
+  assert.match(publicProfile, /Your saved request is ready/);
+  assert.match(publicProfile, /Continue to sign in & send/);
+  assert.match(publicProfile, /sessionStorage\.removeItem\(inquiryDraftKey/);
+  assert.match(publicProfile, /Track confirmation in My coaching/);
   assert.match(home, /Become a coach/);
   assert.match(home, /Open an academy/);
 });
