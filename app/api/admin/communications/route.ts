@@ -4,6 +4,7 @@ import { queueEmail, retryEmail } from "../../../../lib/email-service";
 import { getSchoolReport } from "../../../../lib/reporting";
 import { requireApiUser } from "../../../../lib/server-auth";
 import { requestedSchoolId, requireCreatorSchool } from "../../../../lib/school-access";
+import { resendDeliveryConnection } from "../../../../lib/provider-integrations";
 
 function validEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -105,13 +106,15 @@ export async function GET(request: Request) {
        WHERE al.school_id=? ORDER BY al.created_at DESC LIMIT 40`,
     ).bind(school.id).all(),
   ]);
+  const academyProvider = await resendDeliveryConnection(env.DB, school.id).catch(() => null);
+  const platformConfigured = Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
   return Response.json({
     school,
     currentUserEmail: user.email || "",
     provider: {
-      name: "Resend",
-      configured: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM),
-      sender: process.env.EMAIL_FROM || null,
+      name: academyProvider ? "Resend academy connection" : "Resend",
+      configured: Boolean(academyProvider || platformConfigured),
+      sender: academyProvider?.settings.from || process.env.EMAIL_FROM || null,
     },
     messages: messages.results,
     schedules: schedules.results,

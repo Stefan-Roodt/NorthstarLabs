@@ -1376,7 +1376,7 @@ test("ships bundles, memberships, live learning, mobile installation, and integr
   assert.match(storefront, /PROGRAMMES & MEMBERSHIPS/);
 });
 
-test("connects Zoom, Mailchimp, Zapier, and consent-based Google Analytics", async () => {
+test("connects email, Zoom, Mailchimp, Zapier, and consent-based Google Analytics", async () => {
   const [
     schema,
     migration,
@@ -1412,8 +1412,10 @@ test("connects Zoom, Mailchimp, Zapier, and consent-based Google Analytics", asy
   assert.match(migration, /ALTER TABLE `integrations` ADD `credentials_json`/);
   assert.match(integrationsApi, /connect_provider/);
   assert.match(integrationsApi, /test_provider/);
-  assert.match(integrationsApi, /zoom.*mailchimp.*zapier.*google_analytics/s);
+  assert.match(integrationsApi, /resend.*zoom.*mailchimp.*zapier.*google_analytics/s);
   assert.match(provider, /AES-GCM/);
+  assert.match(provider, /testResendConnection/);
+  assert.match(provider, /provider='resend'/);
   assert.match(provider, /grant_type=account_credentials/);
   assert.match(provider, /\/meetings/);
   assert.match(provider, /status: "pending"/);
@@ -1421,7 +1423,7 @@ test("connects Zoom, Mailchimp, Zapier, and consent-based Google Analytics", asy
   assert.match(integrationEvents, /syncMailchimpLearner/);
   assert.match(liveApi, /createZoomMeeting/);
   assert.match(liveStudio, /Leave this blank to create the Zoom meeting automatically/);
-  for (const label of ["Zoom", "Mailchimp", "Zapier", "Google Analytics"]) {
+  for (const label of ["Resend", "Zoom", "Mailchimp", "Zapier", "Google Analytics"]) {
     assert.match(integrationStudio, new RegExp(label));
   }
   assert.match(analyticsApi, /provider='google_analytics'/);
@@ -1430,6 +1432,36 @@ test("connects Zoom, Mailchimp, Zapier, and consent-based Google Analytics", asy
   assert.match(layout, /GoogleAnalytics/);
   assert.doesNotMatch(academyExport, /credentials_json/);
   assert.match(privacy, /pending subscription/);
+});
+
+test("lets each academy verify and use its own encrypted email sender", async () => {
+  const [provider, integrationsApi, communicationsApi, email, operations, studio] = await Promise.all([
+    readFile(new URL("../lib/provider-integrations.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/integrations/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/admin/communications/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/email-service.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/operations/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/integrations/page.tsx", import.meta.url), "utf8"),
+  ]);
+  const { resendSettings } = await import("../lib/provider-integrations.ts");
+  const valid = resendSettings(
+    "re_1234567890",
+    "NorthstarLabs <learn@northstarlabs.co.za>",
+    "support@northstarlabs.co.za",
+  );
+  assert.equal(valid.settings.domain, "northstarlabs.co.za");
+  assert.equal(valid.settings.replyTo, "support@northstarlabs.co.za");
+  assert.throws(() => resendSettings("bad", "not-an-email", ""), /valid Resend API key/);
+  assert.match(provider, /https:\/\/api\.resend\.com\/domains\?limit=100/);
+  assert.match(provider, /domain\.status !== "verified"/);
+  assert.match(integrationsApi, /Resend email delivery/);
+  assert.match(communicationsApi, /resendDeliveryConnection/);
+  assert.match(email, /school_id AS schoolId/);
+  assert.match(email, /academyConnection\?\.credentials\.apiKey/);
+  assert.match(email, /"user-agent": "NorthstarLabs\/1\.0"/);
+  assert.match(operations, /Connect email delivery/);
+  assert.match(studio, /id="email-delivery"/);
+  assert.match(studio, /Secrets are encrypted/);
 });
 
 test("guides creators, learners, and academy visitors to their next useful action", async () => {

@@ -145,10 +145,12 @@ export default function OperationsPage() {
           <h2>{data.provider.configured ? "Email delivery is ready." : "Connect a verified sender."}</h2>
           <p>{data.provider.configured
             ? `Messages are sent through ${data.provider.name}${data.provider.sender ? ` from ${data.provider.sender}` : ""}.`
-            : "Invitations and notifications are safely queued until a Resend key and verified sender are connected in the production environment."}</p>
-          <button className="sys-primary" disabled={Boolean(busy)} onClick={() => act("test")}>
-            {busy === "test" ? "Sending..." : "Send me a test email"}
-          </button>
+            : "Invitations and notifications are safely queued until you connect a Resend API key and verified academy sender."}</p>
+          {data.provider.configured
+            ? <button className="sys-primary" disabled={Boolean(busy)} onClick={() => act("test")}>
+              {busy === "test" ? "Sending..." : "Send me a test email"}
+            </button>
+            : <Link className="sys-primary" href="/dashboard/integrations#email-delivery">Connect email delivery</Link>}
         </article>
 
         <article className="panel report-schedule">

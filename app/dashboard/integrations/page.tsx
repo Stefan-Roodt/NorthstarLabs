@@ -63,6 +63,7 @@ export default function IntegrationsPage() {
   const [busy, setBusy] = useState("");
   const [zoom, setZoom] = useState({ accountId: "", clientId: "", clientSecret: "", hostEmail: "" });
   const [mailchimp, setMailchimp] = useState({ apiKey: "", audienceId: "", tag: "Northstar learner" });
+  const [resend, setResend] = useState({ apiKey: "", from: "", replyTo: "" });
   const [zapierUrl, setZapierUrl] = useState("");
   const [measurementId, setMeasurementId] = useState("");
 
@@ -196,6 +197,7 @@ export default function IntegrationsPage() {
       ? `${provider.replaceAll("_", " ")} connected: ${result.connectedLabel}.`
       : result.error || "The provider could not be connected.");
     if (response.ok) {
+      if (provider === "resend") setResend({ apiKey: "", from: "", replyTo: "" });
       if (provider === "zoom") setZoom({ accountId: "", clientId: "", clientSecret: "", hostEmail: "" });
       if (provider === "mailchimp") setMailchimp({ apiKey: "", audienceId: "", tag: "Northstar learner" });
       if (provider === "zapier") setZapierUrl("");
@@ -250,6 +252,15 @@ export default function IntegrationsPage() {
       <section className="provider-connections" id="provider-connections">
         <div className="product-section-heading"><span>PROVIDERS</span><div><h2>Connect the services you already use</h2><p>Each connection is academy-specific. Secrets are encrypted, never shown again, and excluded from exports.</p></div></div>
         <div className="provider-connection-grid">
+          <article className="panel provider-connection-card" id="email-delivery">
+            <div className="provider-card-heading"><span>R</span><div><p className="sys-kicker">TRANSACTIONAL EMAIL</p><h3>Resend</h3></div>{providerStatus(data.integrations, "resend")}</div>
+            <p>Deliver invitations, enrolments, reminders, certificates and reports from your verified academy domain. Messages remain queued safely until this connection passes verification.</p>
+            <label>API key<input type="password" autoComplete="new-password" value={resend.apiKey} onChange={(event) => setResend({ ...resend, apiKey: event.target.value })} placeholder="re_..." /></label>
+            <label>Verified sender <small>Use a domain already verified in Resend.</small><input value={resend.from} onChange={(event) => setResend({ ...resend, from: event.target.value })} placeholder="NorthstarLabs <learn@northstarlabs.co.za>" /></label>
+            <label>Reply-to email <small>Optional; replies go here instead of the sender.</small><input type="email" value={resend.replyTo} onChange={(event) => setResend({ ...resend, replyTo: event.target.value })} placeholder="support@northstarlabs.co.za" /></label>
+            <ProviderActions provider="resend" integrations={data.integrations} busy={busy} connectDisabled={!resend.apiKey || !resend.from} onConnect={() => connectProvider("resend", resend)} onTest={testProvider} onDelete={deleteWebhook} />
+          </article>
+
           <article className="panel provider-connection-card">
             <div className="provider-card-heading"><span>Z</span><div><p className="sys-kicker">LIVE LEARNING</p><h3>Zoom</h3></div>{providerStatus(data.integrations, "zoom")}</div>
             <p>Create scheduled Zoom meetings directly from Live Learning. A manually pasted meeting URL remains available as a fallback.</p>

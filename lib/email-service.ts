@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { resendDeliveryConnection } from "./provider-integrations";
 
 export type EmailTemplateKey =
   | "invitation"
@@ -377,7 +378,7 @@ export async function deliverEmail(id: string) {
     `SELECT id,recipient_email AS recipientEmail,subject,html_body AS htmlBody,
       text_body AS textBody,status,idempotency_key AS idempotencyKey,
       attempt_count AS attemptCount,available_at AS availableAt,
-      scheduled_at AS scheduledAt
+      scheduled_at AS scheduledAt,school_id AS schoolId
      FROM email_messages WHERE id=?`,
   ).bind(id).first<{
     id: string;
@@ -390,6 +391,7 @@ export async function deliverEmail(id: string) {
     attemptCount: number;
     availableAt: number;
     scheduledAt: number | null;
+    schoolId: string | null;
   }>();
   if (!message) return { id, status: "missing" };
   if (message.status === "sent") return { id, status: "sent" };
@@ -405,13 +407,28 @@ export async function deliverEmail(id: string) {
     ).bind(scheduledFor - RESEND_SCHEDULE_WINDOW_MS, now, id).run();
     return { id, status: "pending" };
   }
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM;
+  let academyConnection: Awaited<ReturnType<typeof resendDeliveryConnection>> = null;
+  try {
+    academyConnection = await resendDeliveryConnection(env.DB, message.schoolId);
+  } catch (error) {
+    await env.DB.prepare(
+      `UPDATE email_messages SET status='configuration_required',
+       attempt_count=attempt_count+1,last_error=?,updated_at=? WHERE id=?`,
+    ).bind(
+      error instanceof Error ? error.message : "The academy email connection could not be decrypted.",
+      Date.now(),
+      id,
+    ).run();
+    return { id, status: "configuration_required" };
+  }
+  const apiKey = academyConnection?.credentials.apiKey || process.env.RESEND_API_KEY;
+  const from = academyConnection?.settings.from || process.env.EMAIL_FROM;
+  const replyTo = academyConnection?.settings.replyTo || process.env.EMAIL_REPLY_TO;
   if (!apiKey || !from) {
     await env.DB.prepare(
       `UPDATE email_messages SET status='configuration_required',
        attempt_count=attempt_count+1,last_error=?,updated_at=? WHERE id=?`,
-    ).bind("Connect RESEND_API_KEY and EMAIL_FROM to send this message.", Date.now(), id).run();
+    ).bind("Connect a verified Resend sender in Integrations to send this message.", Date.now(), id).run();
     return { id, status: "configuration_required" };
   }
 
@@ -421,6 +438,7 @@ export async function deliverEmail(id: string) {
       authorization: `Bearer ${apiKey}`,
       "content-type": "application/json",
       "idempotency-key": message.idempotencyKey,
+      "user-agent": "NorthstarLabs/1.0",
     },
     body: JSON.stringify({
       from,
@@ -428,7 +446,7 @@ export async function deliverEmail(id: string) {
       subject: message.subject,
       html: message.htmlBody,
       text: message.textBody,
-      reply_to: process.env.EMAIL_REPLY_TO || undefined,
+      reply_to: replyTo || undefined,
       scheduled_at: scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
     }),
   });
@@ -482,7 +500,7 @@ export async function scheduleDeferredEmails(limit = 250) {
 
 export async function cancelEmailsByIdempotencyPattern(pattern: string) {
   const rows = await env.DB.prepare(
-    `SELECT id,status,provider_message_id AS providerMessageId
+    `SELECT id,status,provider_message_id AS providerMessageId,school_id AS schoolId
      FROM email_messages
      WHERE idempotency_key LIKE ? AND status IN
        ('pending','retrying','configuration_required','scheduled')
@@ -491,11 +509,13 @@ export async function cancelEmailsByIdempotencyPattern(pattern: string) {
     id: string;
     status: string;
     providerMessageId: string | null;
+    schoolId: string | null;
   }>();
-  const apiKey = process.env.RESEND_API_KEY;
   let cancelled = 0;
   let failed = 0;
   for (const row of rows.results) {
+    const academyConnection = await resendDeliveryConnection(env.DB, row.schoolId).catch(() => null);
+    const apiKey = academyConnection?.credentials.apiKey || process.env.RESEND_API_KEY;
     if (row.status === "scheduled" && row.providerMessageId && !apiKey) {
       failed += 1;
       await env.DB.prepare(
@@ -506,7 +526,13 @@ export async function cancelEmailsByIdempotencyPattern(pattern: string) {
     if (row.status === "scheduled" && row.providerMessageId && apiKey) {
       const response = await fetch(
         `https://api.resend.com/emails/${encodeURIComponent(row.providerMessageId)}/cancel`,
-        { method: "POST", headers: { authorization: `Bearer ${apiKey}` } },
+        {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${apiKey}`,
+            "user-agent": "NorthstarLabs/1.0",
+          },
+        },
       );
       if (!response.ok) {
         failed += 1;
