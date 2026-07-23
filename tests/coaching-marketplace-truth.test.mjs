@@ -19,11 +19,15 @@ test("marketplace distinguishes bookable, faculty and enquiry-only support", asy
 
   assert.match(marketplace, /Available to request now/);
   assert.match(marketplace, /Faculty and enquiry-only support/);
+  assert.match(marketplace, /faculty and support/);
+  assert.match(marketplace, /serviceMode === "faculty_support" \? "FACULTY"/);
   assert.match(marketplace, /published appointment/);
   assert.match(marketplace, /tutorServiceLabel/);
   assert.doesNotMatch(marketplace, /Book confidently/);
   assert.match(profile, /This is an academy faculty contact, not a published one-to-one appointment/);
+  assert.match(profile, /FACULTY SUPPORT AT/);
   assert.match(profile, /Send faculty enquiry/);
+  assert.match(academy, /ACADEMY FACULTY/);
   assert.match(academy, /View profile & availability/);
   assert.doesNotMatch(academy, /View tutor & book/);
   assert.match(landing, /Open listing — free/);

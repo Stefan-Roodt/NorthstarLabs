@@ -4,6 +4,7 @@ import Link from "next/link";
 import { type CSSProperties, useEffect, useState } from "react";
 import type { CatalogCourse } from "../../../lib/starter-courses";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
+import { tutorServiceMode } from "../../../lib/tutor-service-mode";
 
 type School = {
   id: string;
@@ -334,7 +335,7 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
                 <img src={tutor.photoUrl} alt="" />
               </>
               : <span>{tutor.displayName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span>}
-            <div><small>{tutor.verified ? "✓ VERIFIED TUTOR" : "ACADEMY TUTOR"}</small><h3>{tutor.displayName}</h3></div>
+            <div><small>{tutorServiceMode({ displayName: tutor.displayName }) === "faculty_support" ? "ACADEMY FACULTY" : tutor.verified ? "✓ VERIFIED TUTOR" : "ACADEMY TUTOR"}</small><h3>{tutor.displayName}</h3></div>
           </div>
           <p>{tutor.headline}</p>
           <div className="school-tutor-subjects">{tutor.subjects.slice(0, 4).map((subject) => <span key={subject}>{subject}</span>)}</div>
