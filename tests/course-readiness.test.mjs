@@ -60,3 +60,17 @@ test("blocks publishing when a named curriculum section has no lessons", () => {
   assert.equal(readiness.label, "Not ready to publish");
   assert.ok(readiness.score < 100);
 });
+
+test("does not label a text-only course as fully produced", () => {
+  const readiness = getCourseReadiness(courseWithLesson({
+    lessonType: "text",
+    primaryAssetId: null,
+    primaryAsset: null,
+    videoKey: "",
+  }));
+
+  assert.ok(readiness.score < 100);
+  assert.ok(readiness.improvements.some((issue) => issue.id === "course-narrated-teaching"));
+  assert.equal(readiness.productionCoverage.narratedTeaching.ready, 0);
+  assert.equal(readiness.productionCoverage.narratedTeaching.total, 1);
+});

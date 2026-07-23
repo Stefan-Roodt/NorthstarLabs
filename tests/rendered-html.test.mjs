@@ -2209,9 +2209,10 @@ test("makes assessments teach with explanations, answer feedback, and guided ret
 });
 
 test("gives creators an honest, actionable learner-quality review", async () => {
-  const [editor, readinessSource, styles] = await Promise.all([
+  const [editor, readinessSource, readinessApi, styles] = await Promise.all([
     readFile(new URL("../app/dashboard/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/course-readiness.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/courses/readiness/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/builder.css", import.meta.url), "utf8"),
   ]);
   const { getCourseReadiness } = await import("../lib/course-readiness.ts");
@@ -2261,16 +2262,23 @@ test("gives creators an honest, actionable learner-quality review", async () => 
   assert.ok(review.improvements.some((issue) => issue.id === "lesson-1-transcript"));
   assert.ok(review.improvements.some((issue) => issue.id === "lesson-2-quiz-depth"));
   assert.ok(review.improvements.some((issue) => issue.id === "lesson-2-quiz-feedback"));
-  assert.match(editor, /COURSE QUALITY REVIEW/);
+  assert.match(editor, /PRODUCTION READINESS REVIEW/);
+  assert.match(editor, /Production \{readiness\?\.score/);
   assert.match(editor, /See the course a learner will experience/);
   assert.match(editor, /Preview as learner/);
-  assert.match(editor, /This score is guidance, not accreditation/);
+  assert.match(editor, /not accreditation or subject approval/);
+  assert.match(editor, /productionCoverage/);
   assert.match(readinessSource, /Add a learner outcome/);
+  assert.match(readinessSource, /course-narrated-teaching/);
+  assert.match(readinessSource, /This course cannot honestly claim a fully narrated standard yet/);
   assert.match(readinessSource, /transcript improves accessibility/);
   assert.match(readinessSource, /quiz teaches as well as scores/);
   assert.match(readinessSource, /Fallback and parity assets prove that playback works/);
   assert.match(styles, /\.quality-score-card/);
+  assert.match(styles, /\.production-coverage-grid/);
   assert.match(styles, /\.lesson-quality-signal/);
+  assert.match(readinessApi, /ma\.filename AS primaryFilename/);
+  assert.match(readinessApi, /id: lesson\.primaryAssetId/);
   assert.match(readinessSource, /Attach playable primary media before learners reach this lesson/);
   assert.match(readinessSource, /needs an assessment/);
 
