@@ -1099,10 +1099,11 @@ test("ships a structured course editor, reusable media library, and safe learner
   assert.match(builder, /Collapse all/);
   assert.match(builder, /Current lesson/);
   assert.match(builder, /CURRICULUM_SECTION_BATCH = 20/);
-  assert.match(builder, /visibleSections\.slice\(0, curriculumSectionLimit\)/);
-  assert.match(builder, /Show next \{Math\.min\(CURRICULUM_SECTION_BATCH, remainingSectionCount\)\} sections/);
+  assert.match(builder, /pinnedSectionIds = new Set/);
+  assert.match(builder, /index < curriculumSectionLimit \|\| pinnedSectionIds\.has\(section\.id\)/);
+  assert.match(builder, /Load more sections/);
   assert.match(builder, /The complete curriculum remains searchable/);
-  assert.match(builder, /Math\.ceil\(\(sectionIndex \+ 1\) \/ CURRICULUM_SECTION_BATCH\)/);
+  assert.doesNotMatch(builder, /Math\.ceil\(\(sectionIndex \+ 1\) \/ CURRICULUM_SECTION_BATCH\)/);
   assert.match(builder, /!nextQuery\.trim\(\) && selected\?\.sectionId/);
   assert.match(builder, /openSectionIds\.has\(section\.id\)/);
   assert.match(builder, /isOpen && <div className="curriculum-lessons">/);

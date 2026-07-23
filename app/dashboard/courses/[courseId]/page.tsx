@@ -607,24 +607,12 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       return;
     }
     setCourse({ ...course, sections: [...course.sections, section] });
-    setCurriculumSectionLimit(
-      Math.ceil((course.sections.length + 1) / CURRICULUM_SECTION_BATCH) * CURRICULUM_SECTION_BATCH,
-    );
     revealSection(section.id);
     setMessage("Section added");
   }
 
   function revealSection(sectionId: string) {
     if (!sectionId) return;
-    const sectionIndex = [...(course?.sections || [])]
-      .sort((a, b) => a.position - b.position)
-      .findIndex((section) => section.id === sectionId);
-    if (sectionIndex >= 0) {
-      setCurriculumSectionLimit((current) => Math.max(
-        current,
-        Math.ceil((sectionIndex + 1) / CURRICULUM_SECTION_BATCH) * CURRICULUM_SECTION_BATCH,
-      ));
-    }
     setOpenSectionIds((current) => {
       if (current.has(sectionId)) return current;
       const next = new Set(current);
@@ -1200,7 +1188,13 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
         )
       )
     : orderedSections;
-  const renderedSections = visibleSections.slice(0, curriculumSectionLimit);
+  const pinnedSectionIds = new Set([
+    ...openSectionIds,
+    ...(selected?.sectionId ? [selected.sectionId] : []),
+  ]);
+  const renderedSections = visibleSections.filter((section, index) =>
+    index < curriculumSectionLimit || pinnedSectionIds.has(section.id)
+  );
   const remainingSectionCount = Math.max(0, visibleSections.length - renderedSections.length);
   const productionSections = readiness?.productionQueue.filter((section) =>
     section.missingLessons.length > 0
@@ -1400,7 +1394,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
           <button type="button" onClick={() => setCurriculumSectionLimit((current) =>
             Math.min(visibleSections.length, current + CURRICULUM_SECTION_BATCH)
           )}>
-            Show next {Math.min(CURRICULUM_SECTION_BATCH, remainingSectionCount)} sections
+            Load more sections
           </button>
           <small>The complete curriculum remains searchable. Loading it in stages keeps large courses fast.</small>
         </div>}
