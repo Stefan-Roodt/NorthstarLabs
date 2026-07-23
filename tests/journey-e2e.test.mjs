@@ -271,7 +271,7 @@ test("seeds a complete interactive Module 2.3 as a private CogniZen pilot", asyn
   }
 });
 
-test("seeds the complete Crypto Mastery foundations programme with its guided orientation", async () => {
+test("seeds the complete three-part Crypto Mastery programme with its guided orientation", async () => {
   const db = await migratedDatabase();
   const course = db.prepare(`
     SELECT c.title,c.status,s.slug AS schoolSlug,
@@ -286,7 +286,7 @@ test("seeds the complete Crypto Mastery foundations programme with its guided or
     WHERE c.id='cognizen-crypto-mastery-foundations-production'
   `).get();
   assert.deepEqual({ ...course }, {
-    title: "Crypto Mastery: Foundations — Production draft",
+    title: "Crypto Mastery: Digital Assets — Complete Programme",
     status: "draft",
     schoolSlug: "cognizen-consulting",
     sections: 95,
