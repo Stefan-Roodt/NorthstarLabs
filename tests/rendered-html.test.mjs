@@ -1391,7 +1391,7 @@ test("guides creators, learners, and academy visitors to their next useful actio
   assert.match(styles, /\.school-mobile-join/);
 });
 
-test("ships academy tutor discovery, direct contact, and protected enquiries", async () => {
+test("ships academy tutor discovery, direct contact, protected enquiries, and session-aware navigation", async () => {
   const [
     schema,
     migration,
@@ -1407,6 +1407,7 @@ test("ships academy tutor discovery, direct contact, and protected enquiries", a
     learnerHome,
     storefront,
     email,
+    signedInHook,
   ] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0015_special_kang.sql", import.meta.url), "utf8"),
@@ -1422,6 +1423,7 @@ test("ships academy tutor discovery, direct contact, and protected enquiries", a
     readFile(new URL("../app/learn/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/schools/[slug]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/email-service.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/use-signed-in.ts", import.meta.url), "utf8"),
   ]);
   assert.match(schema, /export const tutors/);
   assert.match(schema, /export const tutorInquiries/);
@@ -1440,7 +1442,11 @@ test("ships academy tutor discovery, direct contact, and protected enquiries", a
   assert.match(slotsApi, /slot\.status !== "open"/);
   assert.match(slotsApi, /overlaps an existing tutor slot/);
   assert.match(tutorDirectory, /Find a tutor who fits how you learn/);
+  assert.match(tutorDirectory, /useSignedIn/);
+  assert.match(tutorDirectory, /Coaching requests/);
   assert.match(tutorProfile, /Send a private enquiry/);
+  assert.match(tutorProfile, /useSignedIn/);
+  assert.match(tutorProfile, /My learning/);
   assert.match(tutorProfile, /Call tutor/);
   assert.match(tutorProfile, /Request appointment/);
   assert.match(tutorAdmin, /Learner enquiries/);
@@ -1450,6 +1456,9 @@ test("ships academy tutor discovery, direct contact, and protected enquiries", a
   assert.match(marketplace, /Find the person who can get you/);
   assert.match(marketplace, /Compare what matters/);
   assert.match(marketplace, /View profile & times/);
+  assert.match(marketplace, /Coach workspace/);
+  assert.match(marketplace, /List coaching free/);
+  assert.match(signedInHook, /onAuthStateChange/);
   assert.match(learnerHome, /My live classes/);
   assert.doesNotMatch(learnerHome, /My tutoring/);
   assert.match(storefront, /ONE-TO-ONE SUPPORT/);

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import { useSignedIn } from "../../../../lib/use-signed-in";
 
 type PublicTutor = {
   id: string;
@@ -34,6 +35,7 @@ type TutorDirectory = {
 };
 
 export default function TutorDirectoryPage({ params }: { params: Promise<{ slug: string }> }) {
+  const signedIn = useSignedIn();
   const [slug, setSlug] = useState("");
   const [data, setData] = useState<TutorDirectory | null>(null);
   const [search, setSearch] = useState("");
@@ -90,7 +92,14 @@ export default function TutorDirectoryPage({ params }: { params: Promise<{ slug:
         </> : <span>{data.school.name.slice(0, 2).toUpperCase()}</span>}
         <b>{data.school.name}</b>
       </Link>
-      <nav><Link href={`/schools/${data.school.slug}`}>Academy</Link><Link href={`/login?next=${encodeURIComponent(`/schools/${data.school.slug}/tutors`)}`}>Sign in</Link></nav>
+      <nav>
+        <Link href={`/schools/${data.school.slug}`}>Academy</Link>
+        {signedIn ? <>
+          <Link href="/learn">My learning</Link>
+          <Link href="/tutoring">Coaching requests</Link>
+          <Link href="/account">Account</Link>
+        </> : <Link href={`/login?next=${encodeURIComponent(`/schools/${data.school.slug}/tutors`)}`}>Sign in</Link>}
+      </nav>
     </header>
 
     <section className="tutor-directory-hero">
