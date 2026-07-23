@@ -149,7 +149,7 @@ async function previewImport(
       const automatedPlan = sanitizeImportPlan(automated.plan);
       normalized = {
         ...automatedPlan,
-        warnings: [...normalized.warnings, ...automatedPlan.warnings],
+        warnings: [...new Set([...normalized.warnings, ...automatedPlan.warnings])],
       };
     }
   } catch (error) {
