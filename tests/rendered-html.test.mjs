@@ -128,8 +128,8 @@ test("ships a real signature catalogue without placeholder proof", async () => {
   ]);
   assert.doesNotMatch(home, /href="#"/);
   assert.doesNotMatch(home, /32k\+|\$1\.4B|96M|4\.8\/5|Avery Lin|21% less/);
-  assert.match(home, /REAL PEOPLE/);
-  assert.match(home, /Find your coach/);
+  assert.match(home, /COURSES THAT LEAD TO PROGRESS/);
+  assert.match(home, /Find a coach/);
   assert.match(home, /Take a course/);
   assert.match(catalog, /NORTHSTARLABS ORIGINALS/);
   assert.match(courseData, /AI Command Studio/);
@@ -866,7 +866,8 @@ test("guides new members into creating or learning with a low-friction join flow
     readFile(new URL("../app/welcome/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
   ]);
-  assert.match(home, /Coach or teach/);
+  assert.match(home, /Become a coach/);
+  assert.match(home, /Open an academy/);
   assert.match(home, /No credit card required/);
   assert.match(login, /No card or sales call/);
   assert.match(login, /emailRedirectTo: new URL\(destination/);
@@ -1457,7 +1458,8 @@ test("ships a free coach marketplace with optional verified exposure", async () 
   assert.match(marketplace, /Every coach can be listed free/);
   assert.match(marketplace, /VERIFIED PROFESSIONAL/);
   assert.match(marketplace, /List my coaching free/);
-  assert.match(home, /Coach or teach/);
+  assert.match(home, /Become a coach/);
+  assert.match(home, /Open an academy/);
 });
 
 test("ships independent coach verification and completed-session learner proof", async () => {
@@ -1557,9 +1559,10 @@ test("makes NorthstarLabs clear, memorable, discoverable, and responsive to unme
     readFile(new URL("../app/courses/page.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(home, /LEARN AT YOUR PACE/);
-  assert.match(home, /ONE-TO-ONE HELP/);
-  assert.match(home, /SHARE YOUR EXPERTISE/);
-  assert.match(home, /Whatever you want to learn/);
+  assert.match(home, /PERSONAL LEARNING HELP/);
+  assert.match(home, /OFFER ONE-TO-ONE HELP/);
+  assert.match(home, /BUILD AND TEACH/);
+  assert.match(home, /Learn with a clear path/);
   assert.match(home, /Courses for the path\. Human help for the roadblocks\./);
   assert.match(home, /Can&apos;t find it\?/);
   assert.match(home, /href="\/demand"/);
