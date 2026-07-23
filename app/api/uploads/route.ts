@@ -52,7 +52,7 @@ function inferredContentType(filename: string) {
   const extension = filename.split(".").at(-1)?.toLowerCase() || "";
   return ({
     mp4: "video/mp4", webm: "video/webm", ogv: "video/ogg",
-    mp3: "audio/mpeg", m4a: "audio/mp4", oga: "audio/ogg", wav: "audio/wav",
+    mp3: "audio/mpeg", m4a: "audio/mp4", oga: "audio/ogg", ogg: "audio/ogg", wav: "audio/wav",
     jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif",
     pdf: "application/pdf", doc: "application/msword",
     docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

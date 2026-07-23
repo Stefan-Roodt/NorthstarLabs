@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildNarrationProductionCsv,
   buildNarrationDraft,
   countNarrationWords,
   estimateNarrationMinutes,
+  matchNarrationFilename,
+  narrationFilename,
+  narrationFileStem,
 } from "../lib/narration-production.ts";
 
 test("builds a reviewable narration draft only from substantive lesson text", () => {
@@ -38,4 +42,46 @@ test("reports honest word and spoken-time estimates", () => {
   assert.equal(countNarrationWords(script), 281);
   assert.equal(estimateNarrationMinutes(script), 3);
   assert.equal(estimateNarrationMinutes(""), 0);
+});
+
+test("creates stable collision-resistant narration filenames and matches only exact stems", () => {
+  const first = narrationFilename("lesson/one");
+  const second = narrationFilename("lesson-one");
+  assert.match(first, /^narration-lesson-one-[a-z0-9]{7}\.mp3$/);
+  assert.notEqual(first, second);
+  assert.equal(matchNarrationFilename(first.toUpperCase(), ["lesson/one", "lesson-one"]), "lesson/one");
+  assert.equal(matchNarrationFilename("lesson-one.mp3", ["lesson/one", "lesson-one"]), null);
+  assert.equal(narrationFileStem(""), "narration-lesson-000045h");
+});
+
+test("exports a production-ready CSV without losing quoted or multiline scripts", () => {
+  const readyTranscript = `A credible script includes "quoted evidence" and a practical explanation.
+
+${Array.from({ length: 45 }, (_, index) => `word${index}`).join(" ")}`;
+  const csv = buildNarrationProductionCsv([
+    {
+      order: 1,
+      moduleTitle: "Module 1, Foundations",
+      lessonId: "lesson-1",
+      lessonTitle: "Ownership and \"control\"",
+      transcript: readyTranscript,
+      hasMedia: false,
+    },
+    {
+      order: 2,
+      moduleTitle: "Module 1, Foundations",
+      lessonId: "lesson-2",
+      lessonTitle: "Thin script",
+      transcript: "Needs work.",
+      hasMedia: false,
+    },
+  ]);
+
+  assert.match(csv, /^"production_order","module","lesson","lesson_id","required_audio_filename"/);
+  assert.match(csv, /"Module 1, Foundations"/);
+  assert.match(csv, /"Ownership and ""control"""/);
+  assert.match(csv, /"ready_for_recording"/);
+  assert.match(csv, /"script_review_required"/);
+  assert.match(csv, new RegExp(narrationFilename("lesson-1").replace(".", "\\.")));
+  assert.match(csv, /A credible script includes ""quoted evidence"" and a practical explanation\.\r?\n\r?\nword0/);
 });
