@@ -1483,7 +1483,7 @@ test("ships academy tutor discovery, direct contact, protected enquiries, and se
   assert.match(slotsApi, /overlaps an existing tutor slot/);
   assert.match(tutorDirectory, /Find a tutor who fits how you learn/);
   assert.match(tutorDirectory, /useSignedIn/);
-  assert.match(tutorDirectory, /Coaching requests/);
+  assert.match(tutorDirectory, /My coaching/);
   assert.match(tutorProfile, /Choose an appointment/);
   assert.match(tutorProfile, /Ask about a session/);
   assert.match(tutorProfile, /useSignedIn/);

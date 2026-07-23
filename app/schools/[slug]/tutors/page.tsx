@@ -96,7 +96,7 @@ export default function TutorDirectoryPage({ params }: { params: Promise<{ slug:
         <Link href={`/schools/${data.school.slug}`}>Academy</Link>
         {signedIn ? <>
           <Link href="/learn">My learning</Link>
-          <Link href="/tutoring">Coaching requests</Link>
+          <Link href="/tutoring">My coaching</Link>
           <Link href="/account">Account</Link>
         </> : <Link href={`/login?next=${encodeURIComponent(`/schools/${data.school.slug}/tutors`)}`}>Sign in</Link>}
       </nav>
