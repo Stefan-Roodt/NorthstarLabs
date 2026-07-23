@@ -101,6 +101,8 @@ type Course = {
   media: Asset[];
 };
 
+const CURRICULUM_SECTION_BATCH = 20;
+
 const blankQuestion = (): QuizQuestion => ({
   id: crypto.randomUUID(),
   prompt: "",
@@ -260,6 +262,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [launchGuideDismissed, setLaunchGuideDismissed] = useState(false);
   const [curriculumQuery, setCurriculumQuery] = useState("");
+  const [curriculumSectionLimit, setCurriculumSectionLimit] = useState(CURRICULUM_SECTION_BATCH);
   const [openSectionIds, setOpenSectionIds] = useState<Set<string>>(new Set());
   const [showAllProductionSections, setShowAllProductionSections] = useState(false);
   const revision = useRef(0);
@@ -315,6 +318,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       setCourse(loaded);
       setSelectedId(loaded.lessons[0]?.id || "");
       const firstSectionId = loaded.lessons[0]?.sectionId || loaded.sections[0]?.id || "";
+      setCurriculumSectionLimit(CURRICULUM_SECTION_BATCH);
       setOpenSectionIds(firstSectionId ? new Set([firstSectionId]) : new Set());
       setMessage(openedFromCreation ? "Private course created - start with the first useful lesson" : "All changes saved");
     })();
@@ -603,12 +607,24 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       return;
     }
     setCourse({ ...course, sections: [...course.sections, section] });
+    setCurriculumSectionLimit(
+      Math.ceil((course.sections.length + 1) / CURRICULUM_SECTION_BATCH) * CURRICULUM_SECTION_BATCH,
+    );
     revealSection(section.id);
     setMessage("Section added");
   }
 
   function revealSection(sectionId: string) {
     if (!sectionId) return;
+    const sectionIndex = [...(course?.sections || [])]
+      .sort((a, b) => a.position - b.position)
+      .findIndex((section) => section.id === sectionId);
+    if (sectionIndex >= 0) {
+      setCurriculumSectionLimit((current) => Math.max(
+        current,
+        Math.ceil((sectionIndex + 1) / CURRICULUM_SECTION_BATCH) * CURRICULUM_SECTION_BATCH,
+      ));
+    }
     setOpenSectionIds((current) => {
       if (current.has(sectionId)) return current;
       const next = new Set(current);
@@ -629,6 +645,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   function focusCurrentSection() {
     const sectionId = selected?.sectionId || course?.sections[0]?.id || "";
     setCurriculumQuery("");
+    revealSection(sectionId);
     setOpenSectionIds(new Set(sectionId ? [sectionId] : []));
   }
 
@@ -1183,6 +1200,8 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
         )
       )
     : orderedSections;
+  const renderedSections = visibleSections.slice(0, curriculumSectionLimit);
+  const remainingSectionCount = Math.max(0, visibleSections.length - renderedSections.length);
   const productionSections = readiness?.productionQueue.filter((section) =>
     section.missingLessons.length > 0
   ) || [];
@@ -1254,7 +1273,10 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               type="search"
               aria-label="Search curriculum"
               value={curriculumQuery}
-              onChange={(event) => setCurriculumQuery(event.target.value)}
+              onChange={(event) => {
+                setCurriculumQuery(event.target.value);
+                setCurriculumSectionLimit(CURRICULUM_SECTION_BATCH);
+              }}
               placeholder={`Search ${course.lessons.length} lessons`}
             />
           </label>
@@ -1267,7 +1289,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
             : "No matching sections or lessons"}</small>}
         </div>
         <div className="curriculum-sections">
-          {visibleSections.map((section) => {
+          {renderedSections.map((section) => {
             const sectionIndex = orderedSections.findIndex((item) => item.id === section.id);
             const sectionLessons = course.lessons
               .filter((lesson) => lesson.sectionId === section.id)
@@ -1369,6 +1391,15 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
             </section>;
           })}
         </div>
+        {remainingSectionCount > 0 && <div className="curriculum-load-more">
+          <p><b>{renderedSections.length} of {visibleSections.length}</b> {curriculumSearch ? "matching sections shown" : "sections loaded"}</p>
+          <button type="button" onClick={() => setCurriculumSectionLimit((current) =>
+            Math.min(visibleSections.length, current + CURRICULUM_SECTION_BATCH)
+          )}>
+            Show next {Math.min(CURRICULUM_SECTION_BATCH, remainingSectionCount)} sections
+          </button>
+          <small>The complete curriculum remains searchable. Loading it in stages keeps large courses fast.</small>
+        </div>}
         <button className="media-library-button" onClick={() => setWorkspaceTab("media")}>
           <span>MEDIA</span><div><b>Academy media library</b><small>{course.media.length} reusable files</small></div>
         </button>
