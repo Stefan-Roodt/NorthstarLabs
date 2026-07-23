@@ -18,6 +18,16 @@ type MailchimpSettings = {
   tag: string;
 };
 
+type ResendCredentials = {
+  apiKey: string;
+};
+
+type ResendSettings = {
+  from: string;
+  replyTo: string;
+  domain: string;
+};
+
 type ProviderRow = {
   id: string;
   credentialsJson: string | null;
@@ -78,6 +88,84 @@ function parseSettings<T>(value: string) {
   } catch {
     return {} as T;
   }
+}
+
+function emailAddress(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed || /[\r\n]/.test(trimmed)) return "";
+  const bracketed = trimmed.match(/<([^<>]+)>$/)?.[1]?.trim();
+  const email = bracketed || trimmed;
+  return /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email) ? email.toLowerCase() : "";
+}
+
+export function resendSettings(apiKey: string, from: string, replyTo: string) {
+  const sender = emailAddress(from);
+  const reply = replyTo.trim() ? emailAddress(replyTo) : "";
+  const key = apiKey.trim();
+  if (!key.startsWith("re_") || key.length < 12) {
+    throw new Error("Add a valid Resend API key.");
+  }
+  if (!sender) {
+    throw new Error("Add a verified sender such as NorthstarLabs <learn@northstarlabs.co.za>.");
+  }
+  if (replyTo.trim() && !reply) {
+    throw new Error("Add a valid reply-to email address.");
+  }
+  return {
+    credentials: { apiKey: key },
+    settings: {
+      from: from.trim(),
+      replyTo: reply,
+      domain: sender.split("@")[1],
+    },
+  };
+}
+
+export async function testResendConnection(
+  credentials: ResendCredentials,
+  settings: ResendSettings,
+) {
+  const response = await fetch("https://api.resend.com/domains?limit=100", {
+    headers: {
+      authorization: `Bearer ${credentials.apiKey}`,
+      "user-agent": "NorthstarLabs/1.0",
+    },
+    signal: AbortSignal.timeout(10_000),
+  });
+  const result = await response.json() as {
+    data?: Array<{ name?: string; status?: string; capabilities?: { sending?: string } }>;
+    message?: string;
+    name?: string;
+  };
+  if (!response.ok) {
+    throw new Error(result.message || result.name || "Resend rejected this API key.");
+  }
+  const domain = result.data?.find((item) =>
+    item.name?.toLowerCase() === settings.domain.toLowerCase()
+  );
+  if (!domain) {
+    throw new Error(`Add and verify ${settings.domain} in Resend before connecting it.`);
+  }
+  if (domain.status !== "verified" || domain.capabilities?.sending === "disabled") {
+    throw new Error(`${settings.domain} is ${domain.status || "not verified"} in Resend.`);
+  }
+  return domain.name || settings.domain;
+}
+
+export async function resendDeliveryConnection(db: D1Database, schoolId: string | null) {
+  if (!schoolId) return null;
+  const integration = await db.prepare(
+    `SELECT credentials_json AS credentialsJson,settings_json AS settingsJson
+     FROM integrations WHERE school_id=? AND provider='resend' AND status='active'
+     ORDER BY updated_at DESC LIMIT 1`,
+  ).bind(schoolId).first<ProviderRow>();
+  if (!integration) return null;
+  return {
+    credentials: await decryptIntegrationCredentials<ResendCredentials>(
+      integration.credentialsJson,
+    ),
+    settings: parseSettings<ResendSettings>(integration.settingsJson),
+  };
 }
 
 async function zoomToken(credentials: ZoomCredentials) {

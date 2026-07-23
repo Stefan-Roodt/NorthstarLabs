@@ -10,6 +10,8 @@ import {
   decryptIntegrationCredentials,
   encryptIntegrationCredentials,
   mailchimpSettings,
+  resendSettings,
+  testResendConnection,
   testMailchimpConnection,
   testZoomConnection,
 } from "../../../lib/provider-integrations";
@@ -166,7 +168,7 @@ export async function POST(request: Request) {
 
   if (body.action === "connect_provider") {
     const provider = String(body.provider || "");
-    if (!["zoom", "mailchimp", "zapier", "google_analytics"].includes(provider)) {
+    if (!["resend", "zoom", "mailchimp", "zapier", "google_analytics"].includes(provider)) {
       return Response.json({ error: "Unsupported provider." }, { status: 400 });
     }
     let name = "";
@@ -177,7 +179,20 @@ export async function POST(request: Request) {
     let credentials: string | null = null;
     let connectedLabel = "Connection verified";
     try {
-      if (provider === "zoom") {
+      if (provider === "resend") {
+        const configured = resendSettings(
+          String(body.apiKey || ""),
+          String(body.from || ""),
+          String(body.replyTo || ""),
+        );
+        connectedLabel = await testResendConnection(
+          configured.credentials,
+          configured.settings,
+        );
+        credentials = await encryptIntegrationCredentials(configured.credentials);
+        settings = configured.settings;
+        name = "Resend email delivery";
+      } else if (provider === "zoom") {
         const zoomCredentials = {
           accountId: String(body.accountId || "").trim(),
           clientId: String(body.clientId || "").trim(),
@@ -293,7 +308,14 @@ export async function POST(request: Request) {
     if (!integration) return Response.json({ error: "Connection not found." }, { status: 404 });
     try {
       let label = "Configuration is valid";
-      if (integration.provider === "zoom") {
+      if (integration.provider === "resend") {
+        label = await testResendConnection(
+          await decryptIntegrationCredentials(integration.credentialsJson),
+          providerSettings(integration.settingsJson) as {
+            from: string; replyTo: string; domain: string;
+          },
+        );
+      } else if (integration.provider === "zoom") {
         label = await testZoomConnection(
           await decryptIntegrationCredentials(integration.credentialsJson),
           providerSettings(integration.settingsJson) as { hostEmail: string },
