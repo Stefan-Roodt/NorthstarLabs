@@ -54,18 +54,20 @@ export async function PATCH(request: Request) {
   if (body.action === "mark_read") {
     const id = typeof body.id === "string" ? body.id.slice(0, 100) : "";
     if (!id) return Response.json({ error: "Choose a notification." }, { status: 400 });
+    const readAt = Date.now();
     const saved = await env.DB.prepare(
       `UPDATE in_app_notifications SET read_at=COALESCE(read_at,?)
-       WHERE id=? AND user_id=? RETURNING id`,
-    ).bind(Date.now(), id, user.id).first();
+       WHERE id=? AND user_id=? RETURNING id,read_at AS readAt`,
+    ).bind(readAt, id, user.id).first<{ id: string; readAt: number }>();
     if (!saved) return Response.json({ error: "Notification not found." }, { status: 404 });
-    return Response.json({ saved: true, id });
+    return Response.json({ saved: true, id, readAt: saved.readAt });
   }
   if (body.action === "mark_all_read") {
+    const readAt = Date.now();
     await env.DB.prepare(
       "UPDATE in_app_notifications SET read_at=COALESCE(read_at,?) WHERE user_id=?",
-    ).bind(Date.now(), user.id).run();
-    return Response.json({ saved: true });
+    ).bind(readAt, user.id).run();
+    return Response.json({ saved: true, readAt });
   }
   const value = (key: string) => body[key] === undefined
     ? Boolean(current[key])

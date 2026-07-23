@@ -932,7 +932,12 @@ test("ships a free inspect-first academy and course migration studio", async () 
   assert.match(page, /natural filename order/);
   assert.match(page, /Nothing was published/);
   assert.match(page, /Create private drafts/);
+  assert.match(page, /Finish file upload/);
+  assert.match(page, /resumeProjectDocuments/);
   assert.match(api, /status='importing'/);
+  assert.match(api, /awaiting_files/);
+  assert.match(api, /attachedAt/);
+  assert.match(api, /documentUpload/);
   assert.match(api, /'draft',0/);
   assert.match(api, /sendInvitations === true/);
   assert.match(api, /attach_document/);

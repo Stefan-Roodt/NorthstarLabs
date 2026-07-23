@@ -121,9 +121,9 @@ export default function AccountPage() {
       setMessage("That notification could not be updated.");
       return;
     }
-    const now = Date.now();
+    const result = await response.json() as { readAt: number };
     setInbox((current) => current.map((item) =>
-      item.id === notification.id ? { ...item, readAt: now } : item
+      item.id === notification.id ? { ...item, readAt: result.readAt } : item
     ));
     setUnreadCount((current) => Math.max(0, current - 1));
   }
@@ -141,8 +141,8 @@ export default function AccountPage() {
       setMessage("Notifications could not be updated.");
       return;
     }
-    const now = Date.now();
-    setInbox((current) => current.map((item) => ({ ...item, readAt: item.readAt || now })));
+    const result = await response.json() as { readAt: number };
+    setInbox((current) => current.map((item) => ({ ...item, readAt: item.readAt || result.readAt })));
     setUnreadCount(0);
   }
 
