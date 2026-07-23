@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     );
   }
   const rows = await env.DB.prepare(
-    `SELECT c.id,c.title,c.description,c.status,c.price_cents AS priceCents,
+    `SELECT c.id,c.school_id AS schoolId,c.title,c.description,c.status,c.price_cents AS priceCents,
       c.updated_at AS updatedAt,
       COUNT(DISTINCT e.id) AS students,
       COUNT(DISTINCT l.id) AS lessonCount,
@@ -25,7 +25,9 @@ export async function GET(request: Request) {
      LEFT JOIN quizzes q ON q.lesson_id=l.id
      WHERE c.school_id = ? GROUP BY c.id ORDER BY c.updated_at DESC`
   ).bind(school.id).all();
-  return Response.json(rows.results);
+  return Response.json(rows.results, {
+    headers: { "cache-control": "private, no-store, max-age=0" },
+  });
 }
 
 export async function POST(request: Request) {
