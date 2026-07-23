@@ -34,13 +34,24 @@ type ImportProject = {
   status: string;
   summary: CourseImportSummary;
   warnings: string[];
-  result?: { courses?: Array<{ id: string; title: string; editorUrl: string }> };
+  result?: Partial<ImportResult>;
+  documentUpload?: { total: number; attached: number; remaining: number };
   createdAt: number;
+  updatedAt?: number;
   importedAt: number | null;
+};
+type ImportDocument = {
+  clientId: string;
+  filename: string;
+  courseId: string;
+  lessonId: string;
+  attached: boolean;
+  assetId?: string;
+  attachedAt?: number;
 };
 type ImportResult = {
   courses: Array<{ clientId: string; id: string; title: string; originalTitle: string; editorUrl: string }>;
-  documents: Array<{ clientId: string; filename: string; courseId: string; lessonId: string }>;
+  documents: ImportDocument[];
   invitations: Array<{ email: string; courseId: string | null; inviteUrl: string }>;
 };
 
@@ -264,15 +275,36 @@ export default function ImportStudioPage() {
     }
   }
 
-  async function uploadSequentialDocuments(importResult: ImportResult, projectId: string) {
-    const byClientId = new Map(documents.map(({ file }) => [
+  async function uploadSequentialDocuments(
+    importResult: ImportResult,
+    projectId: string,
+    preparedDocuments = documents,
+  ) {
+    const byClientId = new Map(preparedDocuments.map(({ file }) => [
       documentClientId(file),
       file,
     ] as const));
+    const byFilename = new Map(preparedDocuments.map(({ file }) => [
+      file.name.toLowerCase(),
+      file,
+    ] as const));
     const progress: string[] = [];
+    let latestProject: ImportProject | null = null;
+    let attachedCount = 0;
+    let failedCount = 0;
+    let missingCount = 0;
     for (const mapping of importResult.documents) {
-      const file = byClientId.get(mapping.clientId);
-      if (!file) continue;
+      if (mapping.attached) {
+        attachedCount += 1;
+        continue;
+      }
+      const file = byClientId.get(mapping.clientId) || byFilename.get(mapping.filename.toLowerCase());
+      if (!file) {
+        missingCount += 1;
+        progress.push(`${mapping.filename}: select this original file to finish the module`);
+        setUploadProgress([...progress]);
+        continue;
+      }
       progress.push(`Uploading ${file.name}.`);
       setUploadProgress([...progress]);
       const uploadResponse = await authed(
@@ -285,6 +317,7 @@ export default function ImportStudioPage() {
       );
       const upload = await uploadResponse.json() as { id?: string; error?: string };
       if (!uploadResponse.ok || !upload.id) {
+        failedCount += 1;
         progress[progress.length - 1] = `${file.name}: ${upload.error || "upload failed"}`;
         setUploadProgress([...progress]);
         continue;
@@ -298,12 +331,39 @@ export default function ImportStudioPage() {
           assetId: upload.id,
         }),
       });
-      const attached = await attachResponse.json() as { error?: string };
+      const attached = await attachResponse.json() as { error?: string; project?: ImportProject };
       progress[progress.length - 1] = attachResponse.ok
         ? `${file.name}: attached to module`
         : `${file.name}: ${attached.error || "could not attach"}`;
+      if (attachResponse.ok) {
+        attachedCount += 1;
+        if (attached.project) latestProject = attached.project;
+      } else {
+        failedCount += 1;
+      }
       setUploadProgress([...progress]);
     }
+    if (latestProject) {
+      setProjects((current) => [
+        latestProject!,
+        ...current.filter((item) => item.id !== latestProject!.id),
+      ]);
+      if (
+        latestProject.result?.courses
+        && latestProject.result.documents
+        && latestProject.result.invitations
+      ) {
+        setResult(latestProject.result as ImportResult);
+      }
+    }
+    return {
+      attachedCount,
+      failedCount,
+      missingCount,
+      remaining: latestProject?.documentUpload?.remaining
+        ?? Math.max(0, importResult.documents.length - attachedCount),
+      project: latestProject,
+    };
   }
 
   async function createDrafts() {
@@ -322,14 +382,45 @@ export default function ImportStudioPage() {
       setResult(data.result);
       setPreview(data.project);
       setProjects((current) => [data.project!, ...current.filter((item) => item.id !== data.project!.id)]);
-      if (data.result.documents.length) await uploadSequentialDocuments(data.result, data.project.id);
+      const uploads = data.result.documents.length
+        ? await uploadSequentialDocuments(data.result, data.project.id)
+        : null;
       setMessage(
         `${data.result.courses.length} private course draft${data.result.courses.length === 1 ? "" : "s"} created. ` +
         `${data.result.invitations.length ? `${data.result.invitations.length} learner invitation${data.result.invitations.length === 1 ? "" : "s"} queued. ` : ""}` +
+        (uploads?.remaining
+          ? `${uploads.remaining} source file${uploads.remaining === 1 ? "" : "s"} still need to be attached. The draft is saved and can be resumed below. `
+          : data.result.documents.length ? "Every source file is safely attached. " : "") +
         "Nothing was published.",
       );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The drafts could not be created.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function resumeProjectDocuments(project: ImportProject, event: ChangeEvent<HTMLInputElement>) {
+    const selected = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (!selected.length || !project.result?.documents?.length || busy) return;
+    const importResult: ImportResult = {
+      courses: project.result.courses || [],
+      documents: project.result.documents,
+      invitations: project.result.invitations || [],
+    };
+    setBusy(`resume-${project.id}`);
+    setResult(importResult);
+    setUploadProgress([]);
+    setMessage("Checking the selected files and resuming the protected upload...");
+    try {
+      const prepared = await prepareDocumentSelection(selected);
+      const uploads = await uploadSequentialDocuments(importResult, project.id, prepared.documents);
+      setMessage(uploads.remaining
+        ? `${uploads.remaining} source file${uploads.remaining === 1 ? "" : "s"} still missing. Select the remaining originals and resume again.`
+        : "Import verified: every source document is attached to its correct module.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The source-file upload could not be resumed.");
     } finally {
       setBusy("");
     }
@@ -460,12 +551,12 @@ export default function ImportStudioPage() {
         {plan.learners.length > 0 && <label className="import-invite-choice"><input type="checkbox" checked={sendInvitations} onChange={(event) => setSendInvitations(event.target.checked)} /><span><b>Create and queue {plan.learners.length} secure learner invitation{plan.learners.length === 1 ? "" : "s"}</b><small>Leave this off to import course drafts without contacting learners. Invitations expire after seven days.</small></span></label>}
         <div className="import-final-check">
           <div><b>Safe by default</b><p>Every course stays private and editable. Existing courses are not overwritten. Duplicate titles receive an &quot;imported draft&quot; label.</p></div>
-          <button type="button" className="sys-primary" onClick={() => void createDrafts()} disabled={busy === "import" || preview.status === "imported"}>{busy === "import" ? "Creating private drafts." : preview.status === "imported" ? "Drafts created" : "Create private drafts"}</button>
+          <button type="button" className="sys-primary" onClick={() => void createDrafts()} disabled={busy === "import" || ["imported", "awaiting_files"].includes(preview.status)}>{busy === "import" ? "Creating private drafts." : ["imported", "awaiting_files"].includes(preview.status) ? "Drafts created" : "Create private drafts"}</button>
         </div>
       </section>}
 
       {result && <section className="import-complete">
-        <p className="sys-kicker">MIGRATION COMPLETE | NOTHING PUBLISHED</p><h2>Your work is now editable in Northstar.</h2>
+        <p className="sys-kicker">{result.documents.some((document) => !document.attached) ? "DRAFTS CREATED | FILES STILL REQUIRED" : "MIGRATION VERIFIED | NOTHING PUBLISHED"}</p><h2>{result.documents.some((document) => !document.attached) ? "Your course is safe. Finish attaching its source files." : "Your work is now editable in Northstar."}</h2>
         <div>{result.courses.map((course) => <Link href={course.editorUrl} key={course.id}><span>COURSE DRAFT</span><b>{course.title}</b><small>Open, review and finish the learner experience</small></Link>)}</div>
         {uploadProgress.length > 0 && <ul>{uploadProgress.map((item) => <li key={item}>{item}</li>)}</ul>}
         <button type="button" onClick={resetWorkspace}>Start another migration</button>
@@ -474,7 +565,7 @@ export default function ImportStudioPage() {
 
     {projects.length > 0 && <section className="import-history">
       <div><p className="sys-kicker">MIGRATION HISTORY</p><h2>A clear record of what moved.</h2></div>
-      <div>{projects.map((project) => <article key={project.id}><span className={project.status}>{project.status}</span><div><b>{project.title}</b><small>{project.summary.courses} courses, {project.summary.lessons} lessons, {project.summary.learners} learners</small></div><time>{new Date(project.updatedAt || project.createdAt).toLocaleDateString("en-ZA", { dateStyle: "medium" })}</time>{project.result?.courses?.[0] && <Link href={project.result.courses[0].editorUrl}>Open draft</Link>}</article>)}</div>
+      <div>{projects.map((project) => <article key={project.id}><span className={project.status}>{project.status === "awaiting_files" ? "files required" : project.status}</span><div><b>{project.title}</b><small>{project.summary.courses} courses, {project.summary.lessons} lessons, {project.summary.learners} learners{project.documentUpload?.remaining ? ` | ${project.documentUpload.remaining} source files missing` : ""}</small></div><time>{new Date(project.updatedAt || project.createdAt).toLocaleDateString("en-ZA", { dateStyle: "medium" })}</time><div className="import-history-actions">{project.status === "awaiting_files" && <label><input multiple type="file" accept=".zip,.pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.html" disabled={Boolean(busy)} onChange={(event) => void resumeProjectDocuments(project, event)} /><span>{busy === `resume-${project.id}` ? "Uploading..." : "Finish file upload"}</span></label>}{project.result?.courses?.[0] && <Link href={project.result.courses[0].editorUrl}>Open draft</Link>}</div></article>)}</div>
     </section>}
   </main>;
 }

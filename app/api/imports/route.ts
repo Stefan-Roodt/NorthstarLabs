@@ -40,7 +40,15 @@ type ImportProject = {
 
 type ImportResult = {
   courses: Array<{ clientId: string; id: string; title: string; originalTitle: string; editorUrl: string }>;
-  documents: Array<{ clientId: string; filename: string; courseId: string; lessonId: string }>;
+  documents: Array<{
+    clientId: string;
+    filename: string;
+    courseId: string;
+    lessonId: string;
+    attached: boolean;
+    assetId?: string;
+    attachedAt?: number;
+  }>;
   invitations: Array<{ email: string; courseId: string | null; inviteUrl: string }>;
 };
 
@@ -54,6 +62,11 @@ function projectSelect() {
 }
 
 function publicProject(project: ImportProject) {
+  const result = JSON.parse(project.resultJson || "{}") as Partial<ImportResult>;
+  const documentTotal = result.documents?.length || 0;
+  const documentAttached = project.status === "imported"
+    ? documentTotal
+    : result.documents?.filter((document) => document.attached).length || 0;
   return {
     id: project.id,
     provider: project.provider,
@@ -63,7 +76,12 @@ function publicProject(project: ImportProject) {
     status: project.status,
     summary: JSON.parse(project.summaryJson || "{}") as CourseImportSummary,
     warnings: JSON.parse(project.warningsJson || "[]") as string[],
-    result: JSON.parse(project.resultJson || "{}") as Partial<ImportResult>,
+    result,
+    documentUpload: {
+      total: documentTotal,
+      attached: documentAttached,
+      remaining: Math.max(0, documentTotal - documentAttached),
+    },
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     importedAt: project.importedAt,
@@ -188,7 +206,7 @@ async function importProject(
   const projectId = safeLabel(body.projectId, "", 100);
   const project = await projectForSchool(projectId, school.id);
   if (!project) return Response.json({ error: "Import preview not found." }, { status: 404 });
-  if (project.status === "imported") {
+  if (["imported", "awaiting_files"].includes(project.status)) {
     return Response.json({ error: "This preview was already imported.", project: publicProject(project) }, { status: 409 });
   }
   if (!project.rightsConfirmed || !["previewed", "failed"].includes(project.status)) {
@@ -279,6 +297,7 @@ async function importProject(
             filename: lesson.document.filename,
             courseId,
             lessonId,
+            attached: false,
           });
         }
         if (lesson.questions.length) {
@@ -357,10 +376,18 @@ async function importProject(
     courseId: invitation.courseId,
     inviteUrl: `${origin}/invite/${encodeURIComponent(invitation.token)}`,
   }));
+  const importStatus = result.documents.length ? "awaiting_files" : "imported";
   statements.push(env.DB.prepare(
-    `UPDATE course_import_projects SET status='imported',result_json=?,imported_at=?,updated_at=?
+    `UPDATE course_import_projects SET status=?,result_json=?,imported_at=?,updated_at=?
      WHERE id=? AND school_id=?`,
-  ).bind(JSON.stringify(result), now, now, project.id, school.id));
+  ).bind(
+    importStatus,
+    JSON.stringify(result),
+    importStatus === "imported" ? now : null,
+    now,
+    project.id,
+    school.id,
+  ));
 
   try {
     await env.DB.batch(statements);
@@ -420,7 +447,7 @@ async function attachDocument(
   body: Record<string, unknown>,
 ) {
   const project = await projectForSchool(safeLabel(body.projectId, "", 100), school.id);
-  if (!project || project.status !== "imported") {
+  if (!project || !["awaiting_files", "imported"].includes(project.status)) {
     return Response.json({ error: "Imported draft not found." }, { status: 404 });
   }
   const result = JSON.parse(project.resultJson || "{}") as ImportResult;
@@ -440,6 +467,27 @@ async function attachDocument(
     `INSERT INTO lesson_resources (id,lesson_id,asset_id,title,position) VALUES (?,?,?,?,0)
      ON CONFLICT(lesson_id,asset_id) DO UPDATE SET title=excluded.title`,
   ).bind(crypto.randomUUID(), mapping.lessonId, asset.id, asset.filename).run();
+  const now = Date.now();
+  const updatedResult: ImportResult = {
+    ...result,
+    documents: result.documents.map((document) => document.clientId === clientId
+      ? { ...document, attached: true, assetId: asset.id, attachedAt: now }
+      : document),
+  };
+  const complete = updatedResult.documents.every((document) => document.attached);
+  await env.DB.prepare(
+    `UPDATE course_import_projects
+     SET status=?,result_json=?,imported_at=CASE WHEN ? THEN COALESCE(imported_at,?) ELSE imported_at END,updated_at=?
+     WHERE id=? AND school_id=?`,
+  ).bind(
+    complete ? "imported" : "awaiting_files",
+    JSON.stringify(updatedResult),
+    complete ? 1 : 0,
+    now,
+    now,
+    project.id,
+    school.id,
+  ).run();
   await writeAuditLog({
     actorId: user.id,
     schoolId: school.id,
@@ -448,7 +496,13 @@ async function attachDocument(
     targetId: mapping.lessonId,
     detail: { projectId: project.id, assetId: asset.id },
   });
-  return Response.json({ attached: true, lessonId: mapping.lessonId, courseId: mapping.courseId });
+  const updatedProject = await projectForSchool(project.id, school.id);
+  return Response.json({
+    attached: true,
+    lessonId: mapping.lessonId,
+    courseId: mapping.courseId,
+    project: publicProject(updatedProject!),
+  });
 }
 
 export async function POST(request: Request) {
@@ -475,7 +529,7 @@ export async function DELETE(request: Request) {
   const id = new URL(request.url).searchParams.get("id") || "";
   const project = await projectForSchool(id, school.id);
   if (!project) return Response.json({ error: "Import preview not found." }, { status: 404 });
-  if (project.status === "imported") {
+  if (["imported", "awaiting_files"].includes(project.status)) {
     return Response.json(
       { error: "This history records created drafts and cannot be deleted from here. Delete the drafts individually if needed." },
       { status: 409 },
