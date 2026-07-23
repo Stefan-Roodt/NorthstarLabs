@@ -426,6 +426,7 @@
 
 /* Connected coaching journey */
 .learner-home>header nav{gap:16px}
+.learner-nav-mobile{display:none}
 .learner-coaching-strip{width:min(1240px,calc(100% - max(48px,14vw)));margin:30px auto 0;padding:27px 30px;display:grid;grid-template-columns:88px minmax(0,1fr) auto auto;gap:25px;align-items:center;border:1px solid var(--rule);border-radius:17px;background:#fffaf4;box-shadow:0 14px 40px #20233c0d}
 .learner-coaching-strip.active{border-color:#aeb9f3;background:linear-gradient(110deg,#fffaf4,#eef1ff)}
 .learner-coaching-mark{width:72px;height:72px;display:grid;place-items:center;border-radius:50%;background:var(--ink);color:var(--acid);font:700 24px var(--font-display);letter-spacing:-.04em}
@@ -452,6 +453,13 @@
 @media(max-width:720px){
   .learner-home>header nav a:nth-child(2){display:inline}
   .learner-home>header nav a:nth-child(1),.learner-home>header nav a:nth-child(4),.learner-home>header nav a:nth-child(5),.learner-home>header nav a:nth-child(6){display:none}
+  .learner-home>header{min-height:68px;padding:10px 12px;gap:8px}
+  .learner-home>header .system-brand{font-size:9px;letter-spacing:.05em;white-space:nowrap}
+  .learner-home>header nav{margin-left:auto;gap:3px;font-size:8px}
+  .learner-home>header nav a,.learner-home>header nav .learner-signout{padding:8px 6px;border-radius:6px;white-space:nowrap}
+  .learner-home>header nav a:hover{background:#eef0ff}
+  .learner-nav-desktop{display:none}
+  .learner-nav-mobile{display:inline}
   .learner-coaching-strip{width:calc(100% - 28px);margin-top:16px;padding:22px 18px;grid-template-columns:54px 1fr;gap:15px}
   .learner-coaching-mark{width:52px;height:52px;font-size:18px}
   .learner-coaching-actions{grid-column:1/-1;grid-template-columns:1fr 1fr;min-width:0}

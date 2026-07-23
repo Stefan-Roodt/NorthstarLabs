@@ -1503,6 +1503,7 @@ test("ships academy tutor discovery, direct contact, protected enquiries, and se
   assert.match(signedInHook, /onAuthStateChange/);
   assert.match(learnerHome, /My live classes/);
   assert.match(learnerHome, /My coaching/);
+  assert.match(learnerHome, /learner-nav-mobile/);
   assert.match(learnerHome, /HUMAN HELP DESK/);
   assert.match(learnerHome, /tutor-inquiries\?view=learner/);
   assert.match(storefront, /ONE-TO-ONE SUPPORT/);
