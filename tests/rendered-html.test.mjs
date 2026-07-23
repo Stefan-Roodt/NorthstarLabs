@@ -2306,6 +2306,11 @@ test("gives creators an honest, actionable learner-quality review", async () => 
   assert.match(editor, /Northstar never marks a lesson narrated until playable media and a reviewed transcript are both present/);
   assert.match(editor, /selectedNarrationMinutes = estimateNarrationMinutes\(selected\?\.transcript \|\| ""\)/);
   assert.match(editor, /aria-label="Captions and narration transcript"/);
+  assert.match(editor, /BULK PRODUCTION/);
+  assert.match(editor, /Download \{productionLessonQueue\.length\}-lesson production CSV/);
+  assert.match(editor, /Filename does not exactly match an exported production filename/);
+  assert.match(editor, /Northstar never guesses, replaces media, or publishes for you/);
+  assert.match(editor, /Nothing was published automatically/);
   assert.match(readinessSource, /Add a learner outcome/);
   assert.match(readinessSource, /course-narrated-teaching/);
   assert.match(readinessSource, /productionQueue/);
@@ -2316,6 +2321,8 @@ test("gives creators an honest, actionable learner-quality review", async () => 
   assert.match(styles, /\.quality-score-card/);
   assert.match(styles, /\.production-coverage-grid/);
   assert.match(styles, /\.production-queue-list/);
+  assert.match(styles, /\.narration-batch/);
+  assert.match(styles, /\.narration-batch-files/);
   assert.match(styles, /\.lesson-quality-signal/);
   assert.match(readinessApi, /ma\.filename AS primaryFilename/);
   assert.match(readinessApi, /id: lesson\.primaryAssetId/);

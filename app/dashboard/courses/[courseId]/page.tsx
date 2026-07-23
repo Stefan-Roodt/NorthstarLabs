@@ -5,7 +5,14 @@ import { useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCourseReadiness, type CourseReadinessIssue } from "../../../../lib/course-readiness";
 import { LessonContent } from "../../../../lib/lesson-content";
-import { buildNarrationDraft, countNarrationWords, estimateNarrationMinutes } from "../../../../lib/narration-production";
+import {
+  buildNarrationDraft,
+  buildNarrationProductionCsv,
+  countNarrationWords,
+  estimateNarrationMinutes,
+  matchNarrationFilename,
+  narrationFilename,
+} from "../../../../lib/narration-production";
 import { getSupabaseBrowser } from "../../../../lib/supabase-client";
 
 type QuizQuestion = {
@@ -100,6 +107,25 @@ type Course = {
   sections: Section[];
   lessons: Lesson[];
   media: Asset[];
+};
+
+type NarrationBatchStatus =
+  | "ready"
+  | "invalid"
+  | "unmatched"
+  | "duplicate"
+  | "script-required"
+  | "media-conflict"
+  | "attached"
+  | "failed";
+
+type NarrationBatchItem = {
+  file: File;
+  lessonId?: string;
+  lessonTitle?: string;
+  sectionTitle?: string;
+  status: NarrationBatchStatus;
+  detail: string;
 };
 
 const CURRICULUM_SECTION_BATCH = 20;
@@ -267,11 +293,15 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   const [openSectionIds, setOpenSectionIds] = useState<Set<string>>(new Set());
   const [showAllProductionSections, setShowAllProductionSections] = useState(false);
   const [productionRunActive, setProductionRunActive] = useState(false);
+  const [narrationBatch, setNarrationBatch] = useState<NarrationBatchItem[]>([]);
+  const [narrationBatchBusy, setNarrationBatchBusy] = useState(false);
+  const [narrationBatchResult, setNarrationBatchResult] = useState("");
   const revision = useRef(0);
   const contentEditor = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const narrationInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
+  const narrationBatchInput = useRef<HTMLInputElement>(null);
   const narrationRecorder = useRef<MediaRecorder | null>(null);
   const narrationStream = useRef<MediaStream | null>(null);
   const narrationChunks = useRef<Blob[]>([]);
@@ -922,6 +952,184 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     return result.asset;
   }
 
+  function downloadNarrationManifest() {
+    if (!course || !productionLessonQueue.length) return;
+    const manifest = productionLessonQueue.map((item, index) => {
+      const lesson = course.lessons.find((candidate) => candidate.id === item.id);
+      return {
+        order: index + 1,
+        moduleTitle: item.sectionTitle,
+        lessonId: item.id,
+        lessonTitle: item.title,
+        transcript: lesson?.transcript || "",
+        hasMedia: Boolean(
+          item.hasMedia ||
+          lesson?.primaryAssetId ||
+          lesson?.primaryAsset ||
+          lesson?.videoKey?.trim()
+        ),
+      };
+    });
+    const blob = new Blob(
+      ["\uFEFF", buildNarrationProductionCsv(manifest)],
+      { type: "text/csv;charset=utf-8" },
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${safeMediaFilename(course.title)}-narration-production.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setMessage(`${manifest.length} unfinished lessons exported for narration production`);
+  }
+
+  function stageNarrationBatch(files: File[]) {
+    if (!course) return;
+    const lessonIds = productionLessonQueue.map((lesson) => lesson.id);
+    const seenLessonIds = new Set<string>();
+    const supportedExtensions = /\.(mp3|m4a|oga|ogg|wav)$/i;
+    const staged = files.map<NarrationBatchItem>((file) => {
+      if (
+        (!file.type.startsWith("audio/") && !supportedExtensions.test(file.name)) ||
+        file.size <= 0 ||
+        file.size > 50 * 1024 * 1024
+      ) {
+        return {
+          file,
+          status: "invalid",
+          detail: file.size <= 0
+            ? "The file is empty."
+            : file.size > 50 * 1024 * 1024
+              ? "Audio files must be 50 MB or smaller."
+            : "Use MP3, M4A, OGA, OGG, WAV or WebM audio.",
+        };
+      }
+      const lessonId = matchNarrationFilename(file.name, lessonIds);
+      if (!lessonId) {
+        return {
+          file,
+          status: "unmatched",
+          detail: "Filename does not exactly match an exported production filename.",
+        };
+      }
+      const productionLesson = productionLessonQueue.find((lesson) => lesson.id === lessonId)!;
+      const lesson = course.lessons.find((candidate) => candidate.id === lessonId);
+      const identity = {
+        lessonId,
+        lessonTitle: productionLesson.title,
+        sectionTitle: productionLesson.sectionTitle,
+      };
+      if (seenLessonIds.has(lessonId)) {
+        return {
+          file,
+          ...identity,
+          status: "duplicate",
+          detail: "More than one selected file targets this lesson.",
+        };
+      }
+      seenLessonIds.add(lessonId);
+      if (
+        productionLesson.hasMedia ||
+        lesson?.primaryAssetId ||
+        lesson?.primaryAsset ||
+        lesson?.videoKey?.trim()
+      ) {
+        return {
+          file,
+          ...identity,
+          status: "media-conflict",
+          detail: "Existing lesson media needs human review before replacement.",
+        };
+      }
+      if (countNarrationWords(lesson?.transcript || "") < 40) {
+        return {
+          file,
+          ...identity,
+          status: "script-required",
+          detail: "Approve or expand the lesson script before attaching audio.",
+        };
+      }
+      return {
+        file,
+        ...identity,
+        status: "ready",
+        detail: "Exact lesson match and approved script confirmed.",
+      };
+    });
+    setNarrationBatch(staged);
+    setNarrationBatchResult("");
+    setMessage(`${files.length} narration file${files.length === 1 ? "" : "s"} staged - nothing uploaded yet`);
+  }
+
+  async function attachNarrationBatch() {
+    if (!course || narrationBatchBusy) return;
+    const readyItems = narrationBatch.filter((item) => item.status === "ready" && item.lessonId);
+    if (!readyItems.length) return;
+    if (selected && dirty?.id === selected.id && !await persistLesson(selected, dirty.revision)) return;
+    setNarrationBatchBusy(true);
+    setNarrationBatchResult("");
+    let attached = 0;
+    let failed = 0;
+    for (const item of readyItems) {
+      const lesson = course.lessons.find((candidate) => candidate.id === item.lessonId);
+      if (!lesson) {
+        failed += 1;
+        setNarrationBatch((current) => current.map((candidate) =>
+          candidate === item ? { ...candidate, status: "failed", detail: "Lesson is no longer available." } : candidate
+        ));
+        continue;
+      }
+      const asset = await uploadFile(item.file);
+      if (!asset) {
+        failed += 1;
+        setNarrationBatch((current) => current.map((candidate) =>
+          candidate === item ? { ...candidate, status: "failed", detail: "Upload failed; retry this file." } : candidate
+        ));
+        continue;
+      }
+      if (asset.kind !== "audio") {
+        failed += 1;
+        setNarrationBatch((current) => current.map((candidate) =>
+          candidate === item
+            ? { ...candidate, status: "failed", detail: "The uploaded file was not recognised as audio and remains unattached." }
+            : candidate
+        ));
+        continue;
+      }
+      const updatedLesson: Lesson = {
+        ...lesson,
+        primaryAssetId: asset.id,
+        primaryAsset: asset,
+        videoKey: "",
+        lessonType: "audio",
+      };
+      const saved = await persistLesson(updatedLesson, undefined, true);
+      if (!saved) {
+        failed += 1;
+        setNarrationBatch((current) => current.map((candidate) =>
+          candidate === item
+            ? { ...candidate, status: "failed", detail: "Audio is safe in the library but could not be attached." }
+            : candidate
+        ));
+        continue;
+      }
+      attached += 1;
+      setCourse((current) => current ? {
+        ...current,
+        lessons: current.lessons.map((candidate) =>
+          candidate.id === updatedLesson.id ? updatedLesson : candidate
+        ),
+      } : current);
+      setNarrationBatch((current) => current.map((candidate) =>
+        candidate === item ? { ...candidate, status: "attached", detail: "Uploaded and attached; course remains unpublished." } : candidate
+      ));
+    }
+    setNarrationBatchBusy(false);
+    const result = `${attached} narration file${attached === 1 ? "" : "s"} attached${failed ? `; ${failed} need attention` : ""}.`;
+    setNarrationBatchResult(result);
+    setMessage(`${result} Nothing was published automatically.`);
+  }
+
   async function attachProducedMedia(asset: Asset, lesson: Lesson, successMessage: string) {
     const updatedLesson: Lesson = {
       ...lesson,
@@ -1514,6 +1722,80 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                 onClick={() => openProductionLesson(productionSections[0].missingLessons[0].id)}
               >Continue production &rarr;</button>}
             </header>
+            {productionLessonQueue.length > 0 && <section className="narration-batch" aria-label="Bulk narration production">
+              <div className="narration-batch-intro">
+                <div>
+                  <p className="sys-kicker">BULK PRODUCTION</p>
+                  <h3>Move hundreds of lesson scripts without losing control.</h3>
+                  <p>Export the complete recording brief, produce audio using the exact supplied filenames, then stage every finished file for a safe match check. Northstar never guesses, replaces media, or publishes for you.</p>
+                </div>
+                <ol>
+                  <li><b>1.</b> Export scripts and required filenames</li>
+                  <li><b>2.</b> Record or generate the reviewed scripts</li>
+                  <li><b>3.</b> Stage files, inspect matches, then attach</li>
+                </ol>
+              </div>
+              <div className="narration-batch-actions">
+                <button type="button" className="sys-secondary" onClick={downloadNarrationManifest}>
+                  Download {productionLessonQueue.length}-lesson production CSV
+                </button>
+                <button
+                  type="button"
+                  className="sys-primary"
+                  disabled={narrationBatchBusy}
+                  onClick={() => narrationBatchInput.current?.click()}
+                >Choose finished audio</button>
+                <input
+                  ref={narrationBatchInput}
+                  type="file"
+                  hidden
+                  multiple
+                  accept="audio/mpeg,audio/mp4,audio/webm,audio/ogg,audio/wav,.mp3,.m4a,.oga,.ogg,.wav,.webm"
+                  onChange={(event) => {
+                    stageNarrationBatch(Array.from(event.target.files || []));
+                    event.target.value = "";
+                  }}
+                />
+              </div>
+              {narrationBatch.length > 0 && <div className="narration-batch-review">
+                <header>
+                  <div>
+                    <span>{narrationBatch.filter((item) => item.status === "ready").length} ready</span>
+                    <span>{narrationBatch.filter((item) => !["ready", "attached"].includes(item.status)).length} blocked</span>
+                    <span>{narrationBatch.filter((item) => item.status === "attached").length} attached</span>
+                  </div>
+                  <button type="button" onClick={() => {
+                    setNarrationBatch([]);
+                    setNarrationBatchResult("");
+                  }}>Clear staged files</button>
+                </header>
+                <div className="narration-batch-files">
+                  {narrationBatch.slice(0, 12).map((item, index) => <article key={`${item.file.name}-${index}`} data-status={item.status}>
+                    <span>{item.status === "ready" ? "READY" : item.status.replace("-", " ").toUpperCase()}</span>
+                    <div>
+                      <b>{item.file.name}</b>
+                      {item.lessonTitle && <small>{item.sectionTitle} / {item.lessonTitle}</small>}
+                      <p>{item.detail}</p>
+                    </div>
+                  </article>)}
+                  {narrationBatch.length > 12 && <p className="narration-batch-more">
+                    {narrationBatch.length - 12} more staged file{narrationBatch.length - 12 === 1 ? "" : "s"} included in these checks.
+                  </p>}
+                </div>
+                <footer>
+                  <p>{narrationBatchResult || "Review the blocked files. Only exact, conflict-free matches can be attached."}</p>
+                  <button
+                    className="sys-primary"
+                    type="button"
+                    disabled={narrationBatchBusy || !narrationBatch.some((item) => item.status === "ready")}
+                    onClick={attachNarrationBatch}
+                  >{narrationBatchBusy
+                    ? "Uploading and attaching..."
+                    : `Upload & attach ${narrationBatch.filter((item) => item.status === "ready").length} verified file${narrationBatch.filter((item) => item.status === "ready").length === 1 ? "" : "s"}`}</button>
+                </footer>
+              </div>}
+              <p className="narration-batch-note">Expected example: <code>{narrationFilename(productionLessonQueue[0].id)}</code>. Files remain private; publishing still requires a separate course review.</p>
+            </section>}
             {visibleProductionSections.length > 0 && <div className="production-queue-list">
               {visibleProductionSections.map((section, index) => {
                 const nextLesson = section.missingLessons[0];
