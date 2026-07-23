@@ -458,8 +458,12 @@ export default function ImportStudioPage() {
       <div>
         <p className="sys-kicker">BRING THE WORK YOU HAVE ALREADY DONE</p>
         <h1>Move in without starting over.</h1>
-        <p>Bring course structures, ordered documents, learner lists and existing media references into <b>{academy.name}</b>. Inspect every mapping first. Northstar creates editable private drafts-never surprise publications.</p>
-        <div className="import-hero-promise"><span>1</span> Upload or paste <i>then</i><span>2</span> Inspect the map <i>then</i><span>3</span> Create private drafts</div>
+        <p>Bring course structures, ordered documents, learner lists and existing media references into <b>{academy.name}</b>. Inspect every mapping first. Northstar creates editable private drafts—never surprise publications.</p>
+        <ol className="import-hero-promise">
+          <li><span>1</span><b>Upload or paste</b></li>
+          <li><span>2</span><b>Inspect the map</b></li>
+          <li><span>3</span><b>Create private drafts</b></li>
+        </ol>
       </div>
       <aside>
         <small>FIRST MIGRATION</small>

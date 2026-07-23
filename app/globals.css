@@ -123,3 +123,19 @@
 .import-page{overflow-x:clip}.import-hero>*,.import-workspace>*,.import-input-grid>*,.import-autopilot>*,.import-history>*,.document-sequence li>div{min-width:0}.import-provider-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
 @media(max-width:1050px){.import-provider-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.import-provider-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Import Studio: keep the three-step promise legible without widening narrow screens. */
+.import-hero-promise{list-style:none;padding:0;margin:35px 0 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;font-size:10px;font-weight:900}
+.import-hero-promise>li{min-width:0;display:flex;align-items:center;gap:10px}
+.import-hero-promise>li+li:before{content:"then";color:var(--blue);font-size:10px}
+.import-hero-promise span{display:grid;place-items:center;flex:0 0 27px;width:27px;height:27px;border-radius:50%;background:var(--blue);color:white}
+.import-hero-promise b{min-width:0;line-height:1.35}
+.import-file-label{grid-template-columns:minmax(0,1fr) auto!important}
+.import-file-label span{min-width:0}
+@media(max-width:760px){
+  .import-page{width:100%;max-width:100vw;overflow-x:hidden}
+  .import-hero-promise{grid-template-columns:minmax(0,1fr);gap:0}
+  .import-hero-promise>li{padding:9px 0;border-top:1px solid var(--rule)}
+  .import-hero-promise>li:first-child{border-top:0}
+  .import-hero-promise>li+li:before{content:none}
+}
