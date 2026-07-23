@@ -1892,7 +1892,8 @@ test("keeps learner catalogue facts and completion language trustworthy", async 
   assert.match(courseData, /4 guided hours \+ board briefing/);
   assert.doesNotMatch(courseData, /14 hours \+ board briefing/);
   assert.match(learner, /Watch target reached/);
-  assert.match(learner, /Finish the lesson below/);
+  assert.match(learner, /Finish now or keep exploring/);
+  assert.match(learner, /REQUIRED VIEWING COMPLETE/);
   assert.match(styles, /\.catalog-card-proof/);
 });
 

@@ -541,6 +541,8 @@ export default function Learn({
   } | null>(null);
   const [resourceMessage, setResourceMessage] = useState("");
   const [learnerMessage, setLearnerMessage] = useState("");
+  const [completionDockDismissedFor, setCompletionDockDismissedFor] =
+    useState("");
   const [orientationDismissed, setOrientationDismissed] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [curriculumOpen, setCurriculumOpen] = useState(false);
@@ -682,6 +684,16 @@ export default function Learn({
     setLearnerMessage("Text-first lesson ready. Media is still paused.");
     return true;
   }
+  function focusLessonStart() {
+    window.requestAnimationFrame(() => {
+      const lessonStart = document.getElementById("lesson-start");
+      lessonStart?.scrollIntoView({
+        behavior: shouldReduceMotion ? "auto" : "smooth",
+        block: "start",
+      });
+      lessonStart?.focus({ preventScroll: true });
+    });
+  }
   function continueToNext() {
     if (current < lessons.length - 1) void openLesson(current + 1);
   }
@@ -695,6 +707,7 @@ export default function Learn({
       if (!available) return;
     }
     setCurrent(index);
+    setCompletionDockDismissedFor("");
     setCurriculumOpen(false);
     const sectionId = lessons[index]?.sectionId;
     if (sectionId) {
@@ -712,6 +725,7 @@ export default function Learn({
         ? "Text-first lesson ready. Media is still paused."
         : "",
     );
+    focusLessonStart();
   }
   async function saveLearnerState(
     lessonId: string,
@@ -874,6 +888,7 @@ export default function Learn({
         if (!available) return;
       }
       setCurrent(current + 1);
+      setCompletionDockDismissedFor("");
       setAnswers([]);
       setQuizResult("");
       setQuizFeedback([]);
@@ -882,6 +897,7 @@ export default function Learn({
           ? "Text-first lesson ready. Media is still paused."
           : "",
       );
+      focusLessonStart();
     }
   }
   async function submitQuiz() {
@@ -1063,6 +1079,14 @@ export default function Learn({
   const normalizedSearch = search.trim().toLowerCase();
   const watchRequirementMet =
     lesson.requiredWatchPercent <= lesson.watchedPercent;
+  const showCompletionDock =
+    !preview &&
+    !lesson.quiz &&
+    !lesson.locked &&
+    lesson.requiredWatchPercent > 0 &&
+    watchRequirementMet &&
+    completionDockDismissedFor !== lesson.id &&
+    (!lesson.completed || current < lessons.length - 1);
   const completionRequirement = lesson.quiz
     ? `Pass the knowledge check at ${lesson.quiz.passingScore}% or higher`
     : lesson.requiredWatchPercent > 0
@@ -1490,8 +1514,10 @@ export default function Learn({
         <LazyMotion features={domAnimation}>
           {" "}
           <m.section
+            id="lesson-start"
             key={lesson.id}
             data-tour="lesson"
+            tabIndex={-1}
             initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
@@ -1603,7 +1629,7 @@ export default function Learn({
                             : "Watch target reached"
                           : `Watch ${lesson.requiredWatchPercent}% to complete`}
                       </b>
-                      <span>{lesson.watchedPercent}% watched{watchRequirementMet && !lesson.completed ? " · Finish the lesson below" : ""}</span>
+                      <span>{lesson.watchedPercent}% watched{watchRequirementMet && !lesson.completed ? " · Finish now or keep exploring" : ""}</span>
                     </div>{" "}
                     <i>
                       <b
@@ -1613,6 +1639,30 @@ export default function Learn({
                       />
                     </i>{" "}
                   </div>
+                )}{" "}
+                {showCompletionDock && (
+                  <aside className="lesson-ready-dock" aria-live="polite" aria-label="Lesson completion is ready">
+                    <div>
+                      <small>{lesson.completed ? "LESSON COMPLETE" : "REQUIRED VIEWING COMPLETE"}</small>
+                      <b>{lesson.completed ? "Your next lesson is ready." : "Finish now—or keep using the optional practice below."}</b>
+                    </div>
+                    <div>
+                      <button
+                        className="lesson-ready-later"
+                        type="button"
+                        onClick={() => setCompletionDockDismissedFor(lesson.id)}
+                      >
+                        Keep exploring
+                      </button>
+                      <button className="sys-primary" type="button" onClick={completeLesson}>
+                        {lesson.completed
+                          ? "Continue to next lesson →"
+                          : current === lessons.length - 1
+                            ? "Finish course"
+                            : "Finish & continue →"}
+                      </button>
+                    </div>
+                  </aside>
                 )}{" "}
                 {lesson.experience && (
                   <InteractiveLessonExperience
