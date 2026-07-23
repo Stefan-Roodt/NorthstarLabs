@@ -167,6 +167,16 @@ export default function AccountPage() {
     location.href = "/";
   }
 
+  async function signOutCurrentDevice() {
+    if (!supabase) return;
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    location.href = "/";
+  }
+
   async function exportMyData() {
     setBusy("export");
     setMessage("Preparing your personal-data export...");
@@ -226,8 +236,16 @@ export default function AccountPage() {
 
   return <main className="account-page">
     <header className="account-top">
-      <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
-      <nav><Link href="/learn">My learning</Link><Link href="/dashboard">Creator workspace</Link></nav>
+      <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
+      <nav>
+        <Link href="/learn">My learning</Link>
+        <Link href="/dashboard">Creator workspace</Link>
+      </nav>
+      <div className="account-actions">
+        <button className="account-signout-mini" type="button" onClick={signOutCurrentDevice}>
+          Sign out
+        </button>
+      </div>
     </header>
     <section className="account-hero">
       <div>

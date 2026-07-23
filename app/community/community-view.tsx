@@ -170,6 +170,11 @@ export function CommunityView({ schoolSlug }: { schoolSlug?: string }) {
       : result.error || "The report could not be submitted.");
   }
 
+  async function signOut() {
+    await supabase?.auth.signOut();
+    location.href = "/";
+  }
+
   if (loading) return <main className="system-loading"><p>Opening the community...</p></main>;
   if (accessError || !data) {
     return <main className="system-loading"><div>
@@ -196,14 +201,15 @@ export function CommunityView({ schoolSlug }: { schoolSlug?: string }) {
       <nav>
         <Link href="/learn">My learning</Link>
         <a href={`/schools/${data.school.slug}`}>Courses</a>
-        <a href="/account">Account</a>
+        <a href="/account">Account settings</a>
+        <button onClick={signOut}>Sign out</button>
         {data.canModerate &&
           <a href={`/dashboard/community?schoolId=${encodeURIComponent(data.school.id)}`}>Manage community</a>}
       </nav>
     </header>
     <section className="community-hero">
       <div>
-        <p className="sys-kicker">{data.membership.role.toUpperCase()} SPACE · {data.school.name.toUpperCase()}</p>
+        <p className="sys-kicker">{data.membership.role.toUpperCase()} SPACE - {data.school.name.toUpperCase()}</p>
         <h1>{data.community.name}</h1>
         <p>{data.community.description}</p>
       </div>

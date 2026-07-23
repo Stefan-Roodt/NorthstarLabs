@@ -5,6 +5,25 @@ import {
   PLAYBACK_GRANT_TTL_MS,
 } from "../../../../../lib/media-stream";
 
+function normalizeNarrationText(value: unknown, fallback: unknown) {
+  const primary = typeof value === "string" ? value.trim() : "";
+  const secondary = typeof fallback === "string" ? fallback.trim() : "";
+  return (primary || secondary)
+    .replace(/[#>*_`]/g, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isPlayableMediaKey(key: unknown) {
+  return (
+    typeof key === "string"
+    && (key.startsWith("r2:")
+      || key.startsWith("static:")
+      || /^https?:\/\//.test(key))
+  );
+}
+
 type PreviewRow = {
   courseId: string;
   courseTitle: string;
@@ -20,15 +39,11 @@ type PreviewRow = {
   transcript: string;
   primaryAssetId: string | null;
   primaryKey: string | null;
+  videoKey: string | null;
   primaryFilename: string | null;
   primaryContentType: string | null;
   primaryKind: string | null;
   primaryAltText: string | null;
-  introAssetId: string | null;
-  introKey: string | null;
-  introFilename: string | null;
-  introContentType: string | null;
-  introKind: string | null;
 };
 
 type PreviewAsset = {
@@ -39,6 +54,82 @@ type PreviewAsset = {
   kind: string;
   altText?: string;
 };
+
+const COURSE_VIDEO_FALLBACKS: Record<string, Record<string, {
+  id: string;
+  key: string;
+  filename: string;
+  contentType: string;
+  altText: string;
+}>> = {
+  "cognizen-crypto-mastery-foundations-production": {
+    "1": {
+      id: "cmf-module-1-fallback-premium-track",
+      key: "static:/media/faculty/crypto-mastery-welcome.mp4",
+      filename: "crypto-mastery-welcome.mp4",
+      contentType: "video/mp4",
+      altText: "Crypto Mastery fallback track for Module 1",
+    },
+    "2": {
+      id: "cmf-module-2-premium-track",
+      key: "static:/media/faculty/cmf-module-2-premium-track.mp4",
+      filename: "cmf-module-2-premium-track.mp4",
+      contentType: "video/mp4",
+      altText: "Crypto Mastery fallback track for Module 2",
+    },
+    "3": {
+      id: "cmf-module-3-premium-track",
+      key: "static:/media/faculty/cmf-module-3-premium-track.mp4",
+      filename: "cmf-module-3-premium-track.mp4",
+      contentType: "video/mp4",
+      altText: "Crypto Mastery fallback track for Module 3",
+    },
+  },
+};
+
+function fallbackAssetForLesson(courseId: string, lessonType: string, lessonId: unknown) {
+  if (lessonType === "quiz" || typeof lessonId !== "string") return null;
+  const moduleFallbacks = COURSE_VIDEO_FALLBACKS[courseId];
+  if (!moduleFallbacks) return null;
+  const match = /^cmf-module-(\d+)-/.exec(lessonId);
+  if (!match) return null;
+  const fallback = moduleFallbacks[match[1]];
+  if (!fallback) return null;
+  return {
+    id: fallback.id,
+    key: fallback.key,
+    filename: fallback.filename,
+    contentType: fallback.contentType,
+    kind: "video",
+    altText: fallback.altText,
+  };
+}
+
+function resolvePrimaryPreviewAsset(row: PreviewRow, fallbackAsset: PreviewAsset | null) {
+  if (row.primaryAssetId && isPlayableMediaKey(row.primaryKey)) {
+    return {
+      id: row.primaryAssetId,
+      key: row.primaryKey,
+      filename: row.primaryFilename || "Preview lesson media",
+      contentType: row.primaryContentType || "video/mp4",
+      kind: row.primaryKind || "video",
+      altText: row.primaryAltText || "",
+    };
+  }
+
+  if (row.videoKey && isPlayableMediaKey(row.videoKey)) {
+    return {
+      id: null,
+      key: row.videoKey,
+      filename: "Lesson video",
+      contentType: row.primaryContentType || "video/mp4",
+      kind: "video",
+      altText: "",
+    };
+  }
+
+  return fallbackAsset;
+}
 
 async function publicMedia(
   row: PreviewRow,
@@ -80,20 +171,17 @@ export async function GET(
       l.id AS lessonId,l.title AS lessonTitle,l.lesson_type AS lessonType,
       l.content,l.duration_minutes AS durationMinutes,l.transcript,
       l.primary_asset_id AS primaryAssetId,
-      COALESCE(ma.key,l.video_key) AS primaryKey,
+      ma.key AS primaryKey,
+      l.video_key AS videoKey,
       COALESCE(ma.filename,'Preview lesson media') AS primaryFilename,
       COALESCE(ma.content_type,'video/mp4') AS primaryContentType,
       COALESCE(ma.kind,CASE WHEN l.video_key IS NULL THEN NULL ELSE 'video' END) AS primaryKind,
-      ma.alt_text AS primaryAltText,
-      l.intro_asset_id AS introAssetId,ima.key AS introKey,
-      ima.filename AS introFilename,ima.content_type AS introContentType,
-      ima.kind AS introKind
+      ma.alt_text AS primaryAltText
      FROM courses c
      JOIN schools s ON s.id=c.school_id
      JOIN lessons l ON l.course_id=c.id AND l.is_preview=1
      LEFT JOIN course_sections cs ON cs.id=l.section_id
      LEFT JOIN media_assets ma ON ma.id=l.primary_asset_id
-     LEFT JOIN media_assets ima ON ima.id=l.intro_asset_id
      WHERE c.id=? AND c.status='published'
      ORDER BY COALESCE(cs.position,0),l.position,l.id
      LIMIT 1`,
@@ -101,22 +189,9 @@ export async function GET(
 
   if (!row) return Response.json({ error: "This course does not have a public preview lesson yet." }, { status: 404 });
 
-  const primaryAsset = row.primaryKey ? await publicMedia(row, {
-    id: row.primaryAssetId,
-    key: row.primaryKey,
-    filename: row.primaryFilename || "Preview lesson media",
-    contentType: row.primaryContentType || "video/mp4",
-    kind: row.primaryKind || "video",
-    altText: row.primaryAltText || "",
-  }) : null;
-  const introAsset = row.introKey ? await publicMedia(row, {
-    id: row.introAssetId,
-    key: row.introKey,
-    filename: row.introFilename || "Lesson opening",
-    contentType: row.introContentType || "video/webm",
-    kind: row.introKind || "video",
-  }) : null;
-
+  const fallbackAsset = fallbackAssetForLesson(row.courseId, row.lessonType, row.lessonId);
+  const selectedAsset = resolvePrimaryPreviewAsset(row, fallbackAsset);
+  const primaryAsset = selectedAsset ? await publicMedia(row, selectedAsset) : null;
   const questions = await env.DB.prepare(
     `SELECT qq.id,qq.prompt,qq.options_json AS optionsJson,
       qq.correct_index AS correctIndex,qq.explanation
@@ -139,18 +214,17 @@ export async function GET(
       schoolName: row.schoolName,
       schoolSlug: row.schoolSlug,
     },
-    lesson: {
-      id: row.lessonId,
-      title: row.lessonTitle,
-      type: row.lessonType,
-      content: row.content,
-      durationMinutes: Number(row.durationMinutes || 0),
-      transcript: row.transcript,
-      primaryAsset,
-      introAsset,
-      questions: questions.results.map((question) => ({
-        id: question.id,
-        prompt: question.prompt,
+      lesson: {
+        id: row.lessonId,
+        title: row.lessonTitle,
+        type: row.lessonType,
+        content: row.content,
+        durationMinutes: Number(row.durationMinutes || 0),
+        transcript: normalizeNarrationText(row.transcript, row.content),
+        primaryAsset,
+        questions: questions.results.map((question) => ({
+          id: question.id,
+          prompt: question.prompt,
         options: JSON.parse(question.optionsJson) as string[],
         correctIndex: Number(question.correctIndex || 0),
         explanation: question.explanation || "",

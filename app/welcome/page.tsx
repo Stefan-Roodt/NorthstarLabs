@@ -7,7 +7,8 @@ import { getSupabaseBrowser } from "../../lib/supabase-client";
 
 export default function WelcomePage() {
   const [name, setName] = useState("");
-  const [schoolName, setSchoolName] = useState("");
+  const [academyName, setAcademyName] = useState("");
+  const [coachName, setCoachName] = useState("");
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
@@ -30,7 +31,8 @@ export default function WelcomePage() {
       const email = data.session.user.email || "";
       const displayName = String(data.session.user.user_metadata?.full_name || email.split("@")[0] || "there");
       setName(displayName.split(" ")[0]);
-      setSchoolName(focusedPath === "coach" ? `${displayName} Coaching` : `${displayName}'s Academy`);
+      setAcademyName(`${displayName}'s Academy`);
+      setCoachName(`${displayName} Coaching`);
       const response = await fetch("/api/profile", {
         headers: { authorization: `Bearer ${data.session.access_token}` },
       });
@@ -43,7 +45,8 @@ export default function WelcomePage() {
         };
         if (profile.displayName) {
           setName(profile.displayName.split(" ")[0]);
-          setSchoolName(focusedPath === "coach" ? `${profile.displayName} Coaching` : `${profile.displayName}'s Academy`);
+          setAcademyName(`${profile.displayName}'s Academy`);
+          setCoachName(`${profile.displayName} Coaching`);
         }
         if (profile.onboardingCompleted && focusedPath === "learner") {
           location.replace("/courses?welcome=1");
@@ -53,10 +56,10 @@ export default function WelcomePage() {
           location.replace("/dashboard?welcome=creator");
           return;
         }
-        if (profile.onboardingCompleted && focusedPath === "coach" && profile.onboardingPath === "coach" && profile.hasCreatorSchool) {
-          location.replace("/dashboard/tutors?setup=1");
-          return;
-        }
+      if (profile.onboardingCompleted && focusedPath === "coach" && profile.onboardingPath === "coach" && profile.hasCreatorSchool) {
+        location.replace("/dashboard/tutors?setup=1");
+        return;
+      }
         if (profile.onboardingCompleted && !focusedPath) {
           location.replace(profile.onboardingPath === "coach"
             ? "/dashboard/tutors?setup=1"
@@ -112,11 +115,15 @@ export default function WelcomePage() {
         "content-type": "application/json",
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        role,
-        schoolName: role === "creator" || role === "coach" ? schoolName : undefined,
-      }),
-    });
+        body: JSON.stringify({
+          role,
+          schoolName: role === "creator"
+            ? academyName || `${name}'s Academy`
+            : role === "coach"
+              ? coachName || `${name} Coaching`
+              : undefined,
+        }),
+      });
     const result = await response.json();
     if (!response.ok) {
       setMessage(result.error || "We could not finish setting up your account.");
@@ -126,17 +133,22 @@ export default function WelcomePage() {
     location.replace(role === "coach" ? "/dashboard/tutors?setup=1" : role === "creator" ? "/dashboard?welcome=creator" : "/courses?welcome=1");
   }
 
+  async function signOut() {
+    await supabase?.auth.signOut();
+    location.href = "/";
+  }
+
   if (!ready) return (
     <main className="system-loading">
-      <div><b>✦ NORTHSTARLABS</b><p>Preparing your starting point…</p></div>
+      <div><b>{"\u2726"} NORTHSTARLABS</b><p>Preparing your starting point...</p></div>
     </main>
   );
 
   return (
     <main className="welcome-page">
       <header>
-        <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
-        <a href="/account">Account settings</a>
+        <Link className="system-brand" href="/">{"\u2726"} NORTHSTARLABS</Link>
+        <button onClick={signOut}>Sign out</button>
       </header>
 
       <section className="welcome-hero">
@@ -148,7 +160,7 @@ export default function WelcomePage() {
       <section className={`welcome-paths${focusedPath ? ` focused-${focusedPath}` : ""}`} aria-label="Choose how to start">
         <article className={preferredPath === "creator" ? "welcome-path preferred" : "welcome-path"}>
           <div className="welcome-path-number">01</div>
-          <p className="sys-kicker">FINAL STEP · ACADEMY</p>
+          <p className="sys-kicker">FINAL STEP {"\u00B7"} ACADEMY</p>
           <h2>Name your academy.</h2>
           <p>We will create the private workspace where you build courses, manage learners, run live sessions, and grow your community.</p>
           <ul>
@@ -162,16 +174,16 @@ export default function WelcomePage() {
               required
               minLength={2}
               maxLength={80}
-              value={schoolName}
-              onChange={(event) => setSchoolName(event.target.value)}
+            value={academyName}
+            onChange={(event) => setAcademyName(event.target.value)}
             />
           </label>
           <button
             className="sys-primary"
-            disabled={busy !== "" || schoolName.trim().length < 2}
+            disabled={busy !== "" || academyName.trim().length < 2}
             onClick={() => choosePath("creator")}
           >
-            {busy === "creator" ? "Creating your academy…" : "Create my academy →"}
+            {busy === "creator" ? "Creating your academy..." : "Create my academy " + "\u2192"}
           </button>
           <Link className="welcome-secondary" href="/courses/northstar-ai-command-studio/preview">Preview a finished NorthstarLabs lesson</Link>
         </article>
@@ -191,14 +203,14 @@ export default function WelcomePage() {
             disabled={busy !== ""}
             onClick={() => choosePath("learner")}
           >
-            {busy === "learner" ? "Preparing your learning space…" : "Choose my first course →"}
+            {busy === "learner" ? "Preparing your learning space..." : "Choose my first course " + "\u2192"}
           </button>
           <Link className="welcome-secondary" href="/courses">Browse all courses</Link>
         </article>
 
         <article className={preferredPath === "coach" ? "welcome-path preferred" : "welcome-path"}>
           <div className="welcome-path-number">03</div>
-          <p className="sys-kicker">FINAL STEP · COACHING</p>
+          <p className="sys-kicker">FINAL STEP {"\u00B7"} COACHING</p>
           <h2>Name your coaching practice.</h2>
           <p>We will open your private coach desk. Add your expertise, rate, and availability there; nothing is advertised until you publish it.</p>
           <ul>
@@ -212,16 +224,16 @@ export default function WelcomePage() {
               required
               minLength={2}
               maxLength={80}
-              value={schoolName}
-              onChange={(event) => setSchoolName(event.target.value)}
+            value={coachName}
+            onChange={(event) => setCoachName(event.target.value)}
             />
           </label>
           <button
             className="sys-primary"
-            disabled={busy !== "" || schoolName.trim().length < 2}
+            disabled={busy !== "" || coachName.trim().length < 2}
             onClick={() => choosePath("coach")}
           >
-            {busy === "coach" ? "Preparing your coach profile…" : "Set up my coach profile →"}
+            {busy === "coach" ? "Preparing your coach profile..." : "Set up my coach profile " + "\u2192"}
           </button>
           <Link className="welcome-secondary" href="/tutors">See how learners find coaches</Link>
         </article>
@@ -231,7 +243,7 @@ export default function WelcomePage() {
 
       <section className="welcome-help">
         <p><b>Not sure yet?</b> Preview a real lesson from our AI Command Studio. You can see the learner experience without creating another account or changing your route.</p>
-        <Link href="/courses/northstar-ai-command-studio/preview">Preview a real lesson →</Link>
+        <Link href="/courses/northstar-ai-command-studio/preview">Preview a real lesson {"\u2192"}</Link>
       </section>
     </main>
   );

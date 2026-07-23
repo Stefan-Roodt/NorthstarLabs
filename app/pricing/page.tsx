@@ -39,6 +39,6 @@ export default function PricingPage() {
       <small>Paid academy upgrades remain unavailable until PayFast live billing completes activation and a verified transaction test.</small>
     </section>
 
-    <footer className="compact-pricing-footer"><Link href="/">✦ NORTHSTARLABS</Link><nav><Link href="/about">What Northstar does</Link><Link href="/courses">Courses</Link><Link href="/tutors">Coaches</Link></nav></footer>
+    <footer className="compact-pricing-footer"><Link href="/">* NORTHSTARLABS</Link><nav><Link href="/about">What Northstar does</Link><Link href="/courses">Courses</Link><Link href="/tutors">Coaches</Link></nav></footer>
   </main>;
 }

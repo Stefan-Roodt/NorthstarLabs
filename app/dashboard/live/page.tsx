@@ -192,7 +192,7 @@ export default function LiveLearningPage() {
 
   return <main className="live-admin-page">
     <header className="product-admin-top">
-      <Link className="system-brand" href="/dashboard">✦ NORTHSTARLABS</Link>
+      <Link className="system-brand" href="/dashboard">* NORTHSTARLABS</Link>
       <nav><Link href="/dashboard/products">Products</Link><Link href="/dashboard/integrations">Integrations</Link><Link href="/learn">Learner view</Link></nav>
     </header>
     <section className="live-admin-hero">
@@ -256,7 +256,7 @@ function SessionCard({
   return <article className="panel live-session-card">
     <div className="live-session-date"><strong>{start.toLocaleDateString("en-ZA", { day: "2-digit" })}</strong><span>{start.toLocaleDateString("en-ZA", { month: "short" }).toUpperCase()}</span></div>
     <div className="live-session-main">
-      <div className="live-session-title"><span className={`status ${session.status}`}>{session.status}</span><small>{session.productName || session.courseTitle}</small><h3>{session.title}</h3><p>{start.toLocaleString("en-ZA", { dateStyle: "full", timeStyle: "short" })} · {session.meetingProvider.replaceAll("_", " ")}</p></div>
+      <div className="live-session-title"><span className={`status ${session.status}`}>{session.status}</span><small>{session.productName || session.courseTitle}</small><h3>{session.title}</h3><p>{start.toLocaleString("en-ZA", { dateStyle: "full", timeStyle: "short" })} - {session.meetingProvider.replaceAll("_", " ")}</p></div>
       <div className="live-session-metrics"><span><b>{session.registrations || 0}</b> registered</span><span><b>{session.attended || 0}</b> attended</span><span><b>{session.capacity || "∞"}</b> capacity</span></div>
       <div className="live-session-actions">
         <a href={session.meetingUrl} target="_blank" rel="noreferrer">Open meeting ↗</a>

@@ -2,18 +2,124 @@ import { env } from "cloudflare:workers";
 import { requireApiUser } from "../../../../lib/server-auth";
 import { parseLessonExperience } from "../../../../lib/lesson-experience";
 
+function normalizeNarrationText(value: unknown, fallback: unknown) {
+  const primary = typeof value === "string" ? value.trim() : "";
+  const secondary = typeof fallback === "string" ? fallback.trim() : "";
+  const cleaned = (primary || secondary)
+    .replace(/[#>*_`]/g, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned;
+}
+
 function learnerMediaKey(key: unknown) {
   return typeof key === "string" && key.startsWith("r2:") ? "r2:protected" : key;
+}
+
+function isPlayableMediaKey(key: unknown) {
+  return (
+    typeof key === "string"
+    && (key.startsWith("r2:")
+      || key.startsWith("static:")
+      || /^https?:\/\//.test(key))
+  );
+}
+
+const COURSE_VIDEO_FALLBACKS: Record<string, Record<string, {
+  id: string;
+  key: string;
+  filename: string;
+  contentType: string;
+  altText: string;
+}>> = {
+  "cognizen-crypto-mastery-foundations-production": {
+    "1": {
+      id: "cmf-module-1-fallback-premium-track",
+      key: "static:/media/faculty/crypto-mastery-welcome.mp4",
+      filename: "crypto-mastery-welcome.mp4",
+      contentType: "video/mp4",
+      altText: "Crypto Mastery fallback track for Module 1",
+    },
+    "2": {
+      id: "cmf-module-2-premium-track",
+      key: "static:/media/faculty/cmf-module-2-premium-track.mp4",
+      filename: "cmf-module-2-premium-track.mp4",
+      contentType: "video/mp4",
+      altText: "Crypto Mastery fallback track for Module 2",
+    },
+    "3": {
+      id: "cmf-module-3-premium-track",
+      key: "static:/media/faculty/cmf-module-3-premium-track.mp4",
+      filename: "cmf-module-3-premium-track.mp4",
+      contentType: "video/mp4",
+      altText: "Crypto Mastery fallback track for Module 3",
+    },
+  },
+};
+
+function fallbackAssetForLesson(courseId: string, lessonType: string, lessonId: unknown) {
+  if (lessonType === "quiz" || typeof lessonId !== "string") return null;
+  const moduleFallbacks = COURSE_VIDEO_FALLBACKS[courseId];
+  if (!moduleFallbacks) return null;
+  const match = /^cmf-module-(\d+)-/.exec(lessonId);
+  if (!match) return null;
+  const fallback = moduleFallbacks[match[1]];
+  if (!fallback) return null;
+  return {
+    id: fallback.id,
+    key: fallback.key,
+    filename: fallback.filename,
+    contentType: fallback.contentType,
+    kind: "video",
+    altText: fallback.altText,
+  };
 }
 
 function publicLessonFields(lesson: Record<string, unknown>) {
   const safe = { ...lesson };
   for (const key of [
     "videoKey", "primaryKey", "primaryFilename", "primaryContentType", "primaryKind",
-    "primaryAltText", "introKey", "introFilename", "introContentType", "introKind", "introAltText",
-    "experienceJson",
+    "primaryAltText", "experienceJson",
   ]) delete safe[key];
   return safe;
+}
+
+function resolvePrimaryLessonAsset(
+  lesson: Record<string, unknown>,
+  fallbackAsset: Record<string, unknown> | null,
+) {
+  const primaryAssetId = typeof lesson.primaryAssetId === "string" ? lesson.primaryAssetId : null;
+  const primaryAssetKey = typeof lesson.primaryKey === "string" ? lesson.primaryKey : null;
+  const primaryFilename = typeof lesson.primaryFilename === "string" ? lesson.primaryFilename : null;
+  const primaryContentType = typeof lesson.primaryContentType === "string" ? lesson.primaryContentType : null;
+  const primaryKind = typeof lesson.primaryKind === "string" ? lesson.primaryKind : null;
+  const primaryAltText = typeof lesson.primaryAltText === "string" ? lesson.primaryAltText : null;
+  const videoKey = typeof lesson.videoKey === "string" ? lesson.videoKey : null;
+
+  if (primaryAssetId && isPlayableMediaKey(primaryAssetKey)) {
+    return {
+      id: primaryAssetId,
+      key: learnerMediaKey(primaryAssetKey),
+      filename: primaryFilename,
+      contentType: primaryContentType || "video/mp4",
+      kind: primaryKind || "video",
+      altText: primaryAltText || "",
+    };
+  }
+
+  if (videoKey && isPlayableMediaKey(videoKey)) {
+    return {
+      id: null,
+      key: learnerMediaKey(videoKey),
+      filename: "Lesson video",
+      contentType: "video/mp4",
+      kind: "video",
+      altText: "",
+    };
+  }
+
+  return fallbackAsset;
 }
 
 export async function GET(request: Request, context: { params: Promise<{ courseId: string }> }) {
@@ -63,7 +169,7 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
   const lessons = await env.DB.prepare(
     `SELECT l.id,l.section_id AS sectionId,l.title,l.lesson_type AS lessonType,
       l.content,l.content_format AS contentFormat,l.video_key AS videoKey,
-      l.primary_asset_id AS primaryAssetId,l.intro_asset_id AS introAssetId,
+      l.primary_asset_id AS primaryAssetId,
       l.duration_minutes AS durationMinutes,
       l.is_preview AS isPreview,l.available_after_days AS availableAfterDays,
       l.required_watch_percent AS requiredWatchPercent,l.transcript,l.position,
@@ -73,16 +179,12 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
       COALESCE(lp.notes,'') AS notes,COALESCE(lp.bookmarked,0) AS bookmarked,
       ma.key AS primaryKey,ma.filename AS primaryFilename,
       ma.content_type AS primaryContentType,ma.kind AS primaryKind,
-      ma.alt_text AS primaryAltText,
-      ima.key AS introKey,ima.filename AS introFilename,
-      ima.content_type AS introContentType,ima.kind AS introKind,
-      ima.alt_text AS introAltText
+      ma.alt_text AS primaryAltText
      FROM lessons l
      LEFT JOIN course_sections cs ON cs.id=l.section_id
      LEFT JOIN lesson_progress lp ON lp.lesson_id=l.id AND lp.user_id=?
      LEFT JOIN media_assets ma ON ma.id=l.primary_asset_id
-     LEFT JOIN media_assets ima ON ima.id=l.intro_asset_id
-     WHERE l.course_id=? ORDER BY COALESCE(cs.position,0),l.position,l.id`
+      WHERE l.course_id=? ORDER BY COALESCE(cs.position,0),l.position,l.id`
   ).bind(user.id,courseId).all();
   const resourceRows = await env.DB.prepare(
     `SELECT lr.id,lr.lesson_id AS lessonId,lr.asset_id AS assetId,lr.title,lr.position,
@@ -202,39 +304,22 @@ export async function GET(request: Request, context: { params: Promise<{ courseI
     course: access,
     sections: sections.results,
     lessons: controlledLessons.map(({lesson,availableAt,locked,lockReason})=>{
-      const includeDetail = !compact || String(lesson.id) === detailLessonId;
+    const includeDetail = !compact || String(lesson.id) === detailLessonId;
+      const fallbackAsset = includeDetail
+        ? fallbackAssetForLesson(courseId, String(lesson.lessonType || ""), lesson.id)
+        : null;
       return {
       ...publicLessonFields(lesson as Record<string, unknown>),
       content: includeDetail ? lesson.content : "",
-      transcript: includeDetail ? lesson.transcript : "",
+      transcript: includeDetail ? normalizeNarrationText(lesson.transcript, lesson.content) : "",
       experience: includeDetail ? parseLessonExperience(lesson.experienceJson) : null,
       detailLoaded: includeDetail,
       availableAt,
       locked,
       lockReason,
-      primaryAsset: includeDetail && lesson.primaryAssetId ? {
-        id: lesson.primaryAssetId,
-        key: learnerMediaKey(lesson.primaryKey),
-        filename: lesson.primaryFilename,
-        contentType: lesson.primaryContentType,
-        kind: lesson.primaryKind,
-        altText: lesson.primaryAltText,
-      } : includeDetail && lesson.videoKey ? {
-        id: null,
-        key: learnerMediaKey(lesson.videoKey),
-        filename: "Lesson video",
-        contentType: "video/mp4",
-        kind: "video",
-        altText: "",
-      } : null,
-      introAsset: includeDetail && lesson.introAssetId ? {
-        id: lesson.introAssetId,
-        key: learnerMediaKey(lesson.introKey),
-        filename: lesson.introFilename,
-        contentType: lesson.introContentType,
-        kind: lesson.introKind,
-        altText: lesson.introAltText,
-      } : null,
+      primaryAsset: includeDetail
+        ? resolvePrimaryLessonAsset(lesson as Record<string, unknown>, fallbackAsset as Record<string, unknown> | null)
+        : null,
       resources: includeDetail ? resources.get(String(lesson.id)) || [] : [],
       quiz:includeDetail ? quizzes.get(String(lesson.id))||null : null
     }}),

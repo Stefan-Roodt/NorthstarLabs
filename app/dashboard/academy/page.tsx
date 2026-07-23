@@ -42,7 +42,7 @@ function validUrl(value: string | null) {
 
 function validateSchool(school: School) {
   const errors: Partial<Record<keyof School, string>> = {};
-  if (school.name.trim().length < 2) errors.name = "Enter at least 2 characters, for example “CogniZen Consulting”.";
+  if (school.name.trim().length < 2) errors.name = "Enter at least 2 characters, for example \"CogniZen Consulting\".";
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(school.slug)) {
     errors.slug = "Use lowercase words separated by single hyphens, for example cognizen-consulting.";
   }
@@ -165,7 +165,7 @@ export default function AcademySettings() {
         <section className="academy-completion" aria-label="Storefront completion">
           <div><p className="sys-kicker">YOUR COMPLETION GUIDE</p><h2>{readyCount} of {readiness.length} essentials ready</h2><p>Complete these essentials first. Image links, colours and policy links are useful, but they will not stop you from publishing.</p></div>
           <div className="academy-completion-list">
-            {readiness.map((item) => <span className={item.ready ? "ready" : ""} key={item.label}><b>{item.ready ? "✓" : "○"}</b>{item.label}</span>)}
+            {readiness.map((item) => <span className={item.ready ? "ready" : ""} key={item.label}><b>{item.ready ? "✓" : "o"}</b>{item.label}</span>)}
           </div>
         </section>
         <section className="panel" id="academy-identity">
@@ -178,7 +178,7 @@ export default function AcademySettings() {
             <label><span className="academy-field-label">Support email <em>Recommended</em></span><input aria-invalid={Boolean(fieldError("supportEmail"))} type="email" maxLength={160} value={school.supportEmail} onChange={(event) => update("supportEmail", event.target.value)} placeholder="help@youracademy.com" /><small>Where learners can ask for help. Use an inbox you check regularly.</small>{fieldError("supportEmail") && <strong className="academy-field-error">{fieldError("supportEmail")}</strong>}</label>
             <label className="academy-span-two"><span className="academy-field-label">Short description <em>Recommended</em></span><textarea maxLength={600} value={school.description} onChange={(event) => update("description", event.target.value)} placeholder="We help first-time founders validate an idea and launch with confidence." /><small>In one or two sentences: who you help, what they learn, and the result. Aim for at least 40 characters.</small></label>
             <label><span className="academy-field-label">Logo image link <em>Optional</em></span><input aria-invalid={Boolean(fieldError("logoUrl"))} type="url" value={school.logoUrl || ""} onChange={(event) => update("logoUrl", event.target.value || null)} placeholder="https://example.com/logo.png" /><small>Paste a public PNG, JPG, WebP or SVG link. Leave blank to use your initials.</small>{fieldError("logoUrl") && <strong className="academy-field-error">{fieldError("logoUrl")}</strong>}</label>
-            <label><span className="academy-field-label">Cover image link <em>Optional</em></span><input aria-invalid={Boolean(fieldError("coverImageUrl"))} type="url" value={school.coverImageUrl || ""} onChange={(event) => update("coverImageUrl", event.target.value || null)} placeholder="https://example.com/academy-cover.jpg" /><small>Paste a public wide image link. Recommended shape: 1600 × 900 pixels.</small>{fieldError("coverImageUrl") && <strong className="academy-field-error">{fieldError("coverImageUrl")}</strong>}</label>
+            <label><span className="academy-field-label">Cover image link <em>Optional</em></span><input aria-invalid={Boolean(fieldError("coverImageUrl"))} type="url" value={school.coverImageUrl || ""} onChange={(event) => update("coverImageUrl", event.target.value || null)} placeholder="https://example.com/academy-cover.jpg" /><small>Paste a public wide image link. Recommended shape: 1600 x 900 pixels.</small>{fieldError("coverImageUrl") && <strong className="academy-field-error">{fieldError("coverImageUrl")}</strong>}</label>
             <label><span className="academy-field-label">Primary colour <em>Choose visually</em></span><span className="color-input"><input aria-label="Choose primary colour" type="color" value={school.primaryColor} onChange={(event) => update("primaryColor", event.target.value)} /><code>{school.primaryColor}</code></span><small>Used for main buttons and important links. Click the colour square to change it.</small></label>
             <label><span className="academy-field-label">Accent colour <em>Choose visually</em></span><span className="color-input"><input aria-label="Choose accent colour" type="color" value={school.accentColor} onChange={(event) => update("accentColor", event.target.value)} /><code>{school.accentColor}</code></span><small>Used for highlights and contrast. The preview updates immediately.</small></label>
             <label><span className="academy-field-label">Typography <em>Optional</em></span><select value={school.fontTheme} onChange={(event) => update("fontTheme", event.target.value)}>
@@ -197,7 +197,7 @@ export default function AcademySettings() {
             <div><h2>Homepage</h2><p>Write the invitation people see before they browse your courses.</p></div>
           </div>
           <div className="academy-form-grid">
-            <label className="academy-span-two"><span className="academy-field-label">Main homepage headline <em>Recommended</em></span><input maxLength={120} value={school.heroTitle} onChange={(event) => update("heroTitle", event.target.value)} placeholder={`Build practical skills with ${school.name}`} /><small>Promise a clear learner result. Example: “Turn your business idea into a confident first launch.”</small></label>
+            <label className="academy-span-two"><span className="academy-field-label">Main homepage headline <em>Recommended</em></span><input maxLength={120} value={school.heroTitle} onChange={(event) => update("heroTitle", event.target.value)} placeholder={`Build practical skills with ${school.name}`} /><small>Promise a clear learner result. Example: &quot;Turn your business idea into a confident first launch.&quot;</small></label>
             <label className="academy-span-two"><span className="academy-field-label">Homepage promise <em>Recommended</em></span><textarea maxLength={320} value={school.heroDescription} onChange={(event) => update("heroDescription", event.target.value)} placeholder="Practical courses and personal guidance that help you move from uncertainty to action." /><small>Explain how you help and why learners should trust this academy. Aim for at least 40 characters.</small></label>
             <label className="academy-switch academy-span-two">
               <input type="checkbox" checked={Boolean(school.showCommunity)} onChange={(event) => update("showCommunity", event.target.checked ? 1 : 0)} />
@@ -213,7 +213,7 @@ export default function AcademySettings() {
           </div>
           <div className="academy-form-grid">
             <label><span className="academy-field-label">Google result title <em>Recommended</em></span><input maxLength={70} value={school.seoTitle} onChange={(event) => update("seoTitle", event.target.value)} placeholder={`${school.name} | Practical online courses`} /><small>The blue headline people may see in Google. Keep it under 70 characters.</small></label>
-            <label><span className="academy-field-label">Google result description <em>Recommended</em></span><input maxLength={180} value={school.seoDescription} onChange={(event) => update("seoDescription", event.target.value)} placeholder="Practical courses and coaching for people ready to make progress." /><small>A plain-language reason to click, ideally 120–160 characters.</small></label>
+            <label><span className="academy-field-label">Google result description <em>Recommended</em></span><input maxLength={180} value={school.seoDescription} onChange={(event) => update("seoDescription", event.target.value)} placeholder="Practical courses and coaching for people ready to make progress." /><small>A plain-language reason to click, ideally 120-160 characters.</small></label>
             <label><span className="academy-field-label">Your terms page <em>Optional</em></span><input aria-invalid={Boolean(fieldError("termsUrl"))} type="url" value={school.termsUrl || ""} onChange={(event) => update("termsUrl", event.target.value || null)} placeholder="https://youracademy.com/terms" /><small>Leave blank to use the NorthstarLabs platform terms.</small>{fieldError("termsUrl") && <strong className="academy-field-error">{fieldError("termsUrl")}</strong>}</label>
             <label><span className="academy-field-label">Your privacy page <em>Optional</em></span><input aria-invalid={Boolean(fieldError("privacyUrl"))} type="url" value={school.privacyUrl || ""} onChange={(event) => update("privacyUrl", event.target.value || null)} placeholder="https://youracademy.com/privacy" /><small>Leave blank to use the NorthstarLabs privacy policy.</small>{fieldError("privacyUrl") && <strong className="academy-field-error">{fieldError("privacyUrl")}</strong>}</label>
           </div>
@@ -230,7 +230,7 @@ export default function AcademySettings() {
         <div className="academy-preview-browser">
           <div className="academy-preview-nav">
             <BrandMark school={school} />
-            <span>Courses {school.showCommunity ? "· Community" : ""}</span>
+            <span>Courses {school.showCommunity ? "- Community" : ""}</span>
           </div>
           <div className="academy-preview-hero">
             {school.coverImageUrl && <div className="academy-preview-cover" style={{ backgroundImage: `url(${school.coverImageUrl})` }} />}

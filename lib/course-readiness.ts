@@ -54,6 +54,16 @@ export type CourseReadinessIssue = {
   lessonTitle?: string;
 };
 
+export type CourseReadiness = ReturnType<typeof getCourseReadiness>;
+
+export type CourseReadinessPayload = {
+  title: string;
+  description: string;
+  certificateTitle: string;
+  sections: ReadinessSection[];
+  lessons: ReadinessLesson[];
+};
+
 function wordCount(value: string) {
   return value.trim() ? value.trim().split(/\s+/).length : 0;
 }

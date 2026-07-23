@@ -33,7 +33,7 @@ export default function AboutNorthstarLabs() {
   return <main className="about-page">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
     <header className="about-nav">
-      <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+      <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
       <nav>
         <Link href="/courses">Courses</Link>
         <Link href="/tutors">Find a coach</Link>
@@ -93,6 +93,6 @@ export default function AboutNorthstarLabs() {
 
     <section className="about-cta"><p className="sys-kicker">REMEMBER NORTHSTARLABS</p><h2>A course for the path. A coach for the roadblock.</h2><p>Learn. Ask. Progress.</p><div><Link className="button" href="/login?mode=signup&next=%2Fwelcome">Join free →</Link><Link href="/#request-help">Ask us to find something →</Link></div></section>
 
-    <footer className="about-footer"><Link className="system-brand" href="/">✦ NORTHSTARLABS</Link><p>Courses, coaching, and community for real learning progress.</p><nav><Link href="/">Home</Link><Link href="/courses">Courses</Link><Link href="/tutors">Coaches</Link><Link href="/legal/terms">Terms</Link><Link href="/legal/privacy">Privacy</Link></nav></footer>
+    <footer className="about-footer"><Link className="system-brand" href="/">* NORTHSTARLABS</Link><p>Courses, coaching, and community for real learning progress.</p><nav><Link href="/">Home</Link><Link href="/courses">Courses</Link><Link href="/tutors">Coaches</Link><Link href="/legal/terms">Terms</Link><Link href="/legal/privacy">Privacy</Link></nav></footer>
   </main>;
 }

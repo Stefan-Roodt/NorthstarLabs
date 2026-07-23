@@ -87,11 +87,16 @@ export default function LearnerLivePage() {
     URL.revokeObjectURL(href);
   }
 
+  async function signOut() {
+    await supabase?.auth.signOut();
+    location.href = "/";
+  }
+
   const upcoming = sessions.filter((session) => session.endsAt >= now && session.status === "scheduled");
   const past = sessions.filter((session) => !upcoming.includes(session));
 
   return <main className="learner-live-page">
-    <header className="learner-live-top"><Link className="system-brand" href="/">✦ NORTHSTARLABS</Link><nav><Link href="/learn">My courses</Link><Link href="/community">Community</Link><Link href="/account">Account</Link></nav></header>
+    <header className="learner-live-top"><Link className="system-brand" href="/">* NORTHSTARLABS</Link><nav><Link href="/learn">My courses</Link><Link href="/community">Community</Link><Link href="/account">Account settings</Link><button onClick={signOut}>Sign out</button></nav></header>
     <section className="learner-live-hero"><div><p className="sys-kicker">MY LIVE LEARNING</p><h1>Show up. Practise. Grow.</h1><p>Your 1:1 coaching, group workshops and live classes are gathered here with secure joining links, email reminders, and calendar alarms.</p></div><span><strong>{upcoming.length}</strong> upcoming</span></section>
     <section className="learner-live-library">
       {message && <div className="notice" role="status">{message}</div>}

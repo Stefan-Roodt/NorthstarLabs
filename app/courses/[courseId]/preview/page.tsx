@@ -30,7 +30,6 @@ type PreviewData = {
     durationMinutes: number;
     transcript: string;
     primaryAsset: PreviewAsset | null;
-    introAsset: PreviewAsset | null;
     questions: Array<{
       id: string;
       prompt: string;
@@ -40,6 +39,117 @@ type PreviewData = {
     }>;
   };
 };
+
+function narrationSource(transcript: string, fallbackContent: string) {
+  const combined = [transcript || "", fallbackContent || ""].join("\n\n");
+  return combined
+    .replace(/\r/g, "")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/#{1,6}\s+/g, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function LessonTranscriptNarrator({
+  transcript,
+  lessonContent,
+  lessonTitle,
+}: {
+  transcript: string;
+  lessonContent: string;
+  lessonTitle: string;
+}) {
+  const [playing, setPlaying] = useState(false);
+  const [isSupported] = useState(() => typeof window !== "undefined" && "speechSynthesis" in window);
+  const [voicesLoaded, setVoicesLoaded] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voiceUri, setVoiceUri] = useState("");
+  const [rate, setRate] = useState(0.98);
+  const text = narrationSource(transcript, lessonContent);
+
+  useEffect(() => {
+    if (!isSupported) {
+      return;
+    }
+    const loadVoices = () => {
+      const available = speechSynthesis.getVoices();
+      setVoices(available);
+      setVoicesLoaded(true);
+      if (!voiceUri && available.length > 0) {
+        const selected = available.find((voice) => voice.lang?.toLowerCase().startsWith("en")) || available[0];
+        setVoiceUri(selected.voiceURI);
+      }
+    };
+    loadVoices();
+    speechSynthesis.onvoiceschanged = loadVoices;
+    return () => {
+      speechSynthesis.onvoiceschanged = null;
+      speechSynthesis.cancel();
+    };
+  }, [isSupported, voiceUri]);
+
+  const canNarrate = isSupported && text.length > 0;
+
+  useEffect(() => {
+    if (!playing || !canNarrate) {
+      if (isSupported) window.speechSynthesis.cancel();
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    if (voiceUri) {
+      const selectedVoice = voices.find((candidate) => candidate.voiceURI === voiceUri);
+      if (selectedVoice) utterance.voice = selectedVoice;
+    }
+    utterance.rate = rate;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    utterance.onstart = () => setPlaying(true);
+    utterance.onend = () => setPlaying(false);
+    utterance.onerror = () => setPlaying(false);
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utterance);
+    return () => {
+      speechSynthesis.cancel();
+    };
+  }, [playing, canNarrate, isSupported, text, voiceUri, rate, voices]);
+
+  if (!text) return <p className="lesson-narration-control lesson-narration-empty">No narration text available for this lesson.</p>;
+  if (!isSupported) return <p className="lesson-narration-control lesson-narration-empty">Narration is unavailable in this browser.</p>;
+  if (!voicesLoaded) return <p className="lesson-narration-control lesson-narration-empty">Loading narration voice options...</p>;
+
+  return <section className="lesson-narration-control">
+    <div className="lesson-narration-actions">
+      <button
+        type="button"
+        className="sys-primary"
+        disabled={!canNarrate}
+        onClick={() => setPlaying((current) => !current)}
+        aria-pressed={playing}
+      >
+        {playing ? `Pause narration` : `Narrate ${lessonTitle}`}
+      </button>
+      <label>
+        <span>Voice</span>
+        <select value={voiceUri} onChange={(event) => setVoiceUri(event.target.value)}>
+          {voices.map((option) => <option key={option.voiceURI} value={option.voiceURI}>{option.name}</option>)}
+        </select>
+      </label>
+      <label>
+        <span>Speed</span>
+        <select value={String(rate)} onChange={(event) => setRate(Number(event.target.value))}>
+          <option value="0.85">0.85x</option>
+          <option value="0.98">0.98x</option>
+          <option value="1.15">1.15x</option>
+          <option value="1.3">1.30x</option>
+        </select>
+      </label>
+    </div>
+  </section>;
+}
 
 function vttTime(seconds: number) {
   const hours = Math.floor(seconds / 3600);
@@ -84,23 +194,23 @@ export default function PublicLessonPreview({ params }: { params: Promise<{ cour
   }, [courseId]);
 
   const media = useMemo(() => preview
-    ? [preview.lesson.introAsset, preview.lesson.primaryAsset].filter((asset): asset is PreviewAsset => Boolean(asset?.url))
+    ? [preview.lesson.primaryAsset].filter((asset): asset is PreviewAsset => Boolean(asset?.url))
     : [], [preview]);
   const currentMedia = media[mediaIndex] || null;
   const track = preview ? transcriptTrack(preview.lesson.transcript, preview.lesson.durationMinutes) : "";
 
   if (error) return <main className="system-loading"><div><b>Preview unavailable</b><p>{error}</p><Link className="sys-primary" href={`/courses/${courseId}`}>Return to course</Link></div></main>;
-  if (!preview) return <main className="system-loading"><p>Opening the public lesson preview…</p></main>;
+  if (!preview) return <main className="system-loading"><p>Opening the public lesson preview...</p></main>;
 
   return <main className="public-preview-page">
     <header className="public-preview-header">
-      <Link className="system-brand" href={`/schools/${preview.course.schoolSlug}`}>✦ {preview.course.schoolName}</Link>
+      <Link className="system-brand" href={`/schools/${preview.course.schoolSlug}`}>* {preview.course.schoolName}</Link>
       <div><span>PUBLIC LESSON PREVIEW</span><Link href={`/courses/${courseId}`}>Back to course</Link></div>
     </header>
 
     <section className="public-preview-hero">
       <div>
-        <p className="sys-kicker">TRY THE TEACHING · NO ACCOUNT REQUIRED</p>
+        <p className="sys-kicker">TRY THE TEACHING - NO ACCOUNT REQUIRED</p>
         <h1>{preview.lesson.title}</h1>
         <p>A complete lesson from <b>{preview.course.title}</b>. Watch, read and test yourself before deciding whether the course is right for you.</p>
       </div>
@@ -116,7 +226,7 @@ export default function PublicLessonPreview({ params }: { params: Promise<{ cour
         {!!media.length && <section className="public-preview-media">
           <header>
             <div><span>{mediaIndex + 1}/{media.length}</span><b>{currentMedia?.filename}</b></div>
-            {media.length > 1 && <small>{mediaIndex === 0 ? "Course opening" : "Lesson media"}</small>}
+            {media.length > 0 && <small>Lesson media</small>}
           </header>
           {currentMedia?.kind === "audio" && <audio key={currentMedia.url} controls src={currentMedia.url} onEnded={() => setMediaIndex((index) => Math.min(media.length - 1, index + 1))} />}
           {currentMedia?.kind === "image" && <>
@@ -124,18 +234,23 @@ export default function PublicLessonPreview({ params }: { params: Promise<{ cour
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={currentMedia.url} alt={currentMedia.altText || currentMedia.filename} />
           </>}
-          {currentMedia && !["audio", "image"].includes(currentMedia.kind) && <video key={currentMedia.url} controls playsInline preload="metadata" autoPlay={mediaIndex > 0} onEnded={() => setMediaIndex((index) => Math.min(media.length - 1, index + 1))}>
+          {currentMedia && !["audio", "image"].includes(currentMedia.kind) && <video key={currentMedia.url} controls playsInline preload="metadata" autoPlay={mediaIndex === 0} onEnded={() => setMediaIndex((index) => Math.min(media.length - 1, index + 1))}>
             <source src={currentMedia.url} type={currentMedia.contentType} />
             {track && <track default kind="captions" srcLang="en" label="English" src={track} />}
           </video>}
           {media.length > 1 && <nav aria-label="Preview media">
-            {media.map((asset, index) => <button key={`${asset.id}-${index}`} className={index === mediaIndex ? "active" : ""} onClick={() => setMediaIndex(index)}>{index === 0 ? "Opening" : "Lesson"}</button>)}
+            {media.map((asset, index) => <button key={`${asset.id}-${index}`} className={index === mediaIndex ? "active" : ""} onClick={() => setMediaIndex(index)}>{index === 0 ? "Lesson media" : `Media ${index + 1}`}</button>)}
           </nav>}
         </section>}
 
         <section className="public-preview-lesson">
           <p className="sys-kicker">THE ACTUAL LESSON</p>
-          <LessonContent content={preview.lesson.content} />
+          <LessonContent content={preview.lesson.content} lessonTitle={preview.lesson.title} slideDeckMode />
+          <LessonTranscriptNarrator
+            transcript={preview.lesson.transcript}
+            lessonContent={preview.lesson.content}
+            lessonTitle={preview.lesson.title}
+          />
         </section>
 
         {preview.lesson.questions.length > 0 && <section className="public-preview-quiz">
@@ -169,11 +284,12 @@ export default function PublicLessonPreview({ params }: { params: Promise<{ cour
         <h2>Continue with the full course.</h2>
         <p>{preview.course.description}</p>
         <ul><li>Full curriculum and assessments</li><li>Progress saved across devices</li><li>Completion evidence and certificate</li></ul>
-        <Link className="sys-primary" href={`/courses/${courseId}?enrol=1`}>{preview.course.priceCents ? "Continue to course →" : "Enrol for free →"}</Link>
+        <Link className="sys-primary" href={`/courses/${courseId}?enrol=1`}>{preview.course.priceCents ? "Continue to course" : "Enrol for free"}</Link>
         <Link href={`/courses/${courseId}`}>See the full Course Truth Card</Link>
       </aside>
     </div>
 
-    <footer className="catalog-footer"><Link className="system-brand" href="/">✦ NORTHSTARLABS</Link><span>Preview first. Join with confidence.</span></footer>
+    <footer className="catalog-footer"><Link className="system-brand" href="/">* NORTHSTARLABS</Link><span>Preview first. Join with confidence.</span></footer>
   </main>;
 }
+

@@ -191,7 +191,7 @@ export default function TutorMarketplacePage() {
 
   return <main className="marketplace-page">
     <header className="marketplace-nav">
-      <Link className="system-brand" href="/">✦ NORTHSTARLABS</Link>
+      <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
       <nav>
         <Link href="/courses">Courses</Link>
         <Link className="active" href="/tutors">Find a coach</Link>
@@ -259,7 +259,7 @@ export default function TutorMarketplacePage() {
 
       <div className="marketplace-results">
         <header>
-          <div><p className="sys-kicker">YOUR MATCHES</p><h2>{loading ? "Finding people…" : selectedTopic ? `${filtered.length} ${filtered.length === 1 ? "match" : "matches"} for “${selectedTopic}”` : `${filtered.length} ${filtered.length === 1 ? "coach or tutor" : "coaches and tutors"} to consider`}</h2></div>
+          <div><p className="sys-kicker">YOUR MATCHES</p><h2>{loading ? "Finding people…" : selectedTopic ? `${filtered.length} ${filtered.length === 1 ? "match" : "matches"} for "${selectedTopic}"` : `${filtered.length} ${filtered.length === 1 ? "coach or tutor" : "coaches and tutors"} to consider`}</h2></div>
           <label>Sort by<select value={sort} onChange={(event) => setSort(event.target.value as SortMode)}><option value="recommended">Recommended</option><option value="available">Available soonest</option><option value="experience">Most experienced</option><option value="price">Lowest hourly rate</option></select></label>
         </header>
         <p className="marketplace-placement-note">Every coach can be listed free. Northstar Verified professionals receive priority only for relevant searches; verification must be earned and is never purchased.</p>
@@ -270,12 +270,12 @@ export default function TutorMarketplacePage() {
             <div className="marketplace-card-person">
               {tutor.photoUrl ? <Image src={tutor.photoUrl} alt="" width={84} height={98} unoptimized /> : <span>{initials(tutor.displayName)}</span>}
               <div>
-                <small>{tutor.verified ? "✓ VERIFIED · " : ""}{tutor.serviceType === "both" ? "COACH & TUTOR" : tutor.serviceType === "tutoring" ? "TUTOR" : "COACH"}</small>
+                <small>{tutor.verified ? "✓ VERIFIED - " : ""}{tutor.serviceType === "both" ? "COACH & TUTOR" : tutor.serviceType === "tutoring" ? "TUTOR" : "COACH"}</small>
                 <h3>{tutor.displayName}</h3>
                 <p>{tutor.headline}</p>
               </div>
             </div>
-            <p className="marketplace-academy">From <Link href={`/schools/${tutor.schoolSlug}`}>{tutor.schoolName}</Link>{tutor.reviewCount > 0 && <span><b>{tutor.averageRating} ★</b> {tutor.reviewCount} verified {tutor.reviewCount === 1 ? "review" : "reviews"}</span>}</p>
+            <p className="marketplace-academy">From <Link href={`/schools/${tutor.schoolSlug}`}>{tutor.schoolName}</Link>{tutor.reviewCount > 0 && <span><b>{tutor.averageRating} *</b> {tutor.reviewCount} verified {tutor.reviewCount === 1 ? "review" : "reviews"}</span>}</p>
             <div className="marketplace-card-subjects">{tutor.subjects.slice(0, 4).map((item) => <span key={item}>{item}</span>)}</div>
             <dl>
               <div><dt>Experience</dt><dd>{tutor.experienceYears ? `${tutor.experienceYears} years` : "See profile"}</dd></div>
@@ -283,7 +283,7 @@ export default function TutorMarketplacePage() {
               <div><dt>Hourly rate</dt><dd>{priceLabel(tutor)}</dd></div>
             </dl>
             <div className={`marketplace-availability ${tutor.availableSlotCount ? "open" : ""}`}>
-              <span>{tutor.availableSlotCount ? "●" : "○"}</span>
+              <span>{tutor.availableSlotCount ? "o" : "o"}</span>
               <p><b>{tutor.availableSlotCount
                 ? `Next opening ${new Date(tutor.nextAvailableAt || 0).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" })}`
                 : "Ask about availability"}</b><small>{tutor.availableSlotCount ? `${tutor.availableSlotCount} requestable ${tutor.availableSlotCount === 1 ? "time" : "times"}` : tutor.availability || "Send a private enquiry"}</small></p>
@@ -321,7 +321,7 @@ export default function TutorMarketplacePage() {
         <b>Coach or tutor</b>{compared.map((tutor) => <strong key={`name-${tutor.id}`}>{tutor.displayName}<small>{tutor.schoolName}</small></strong>)}
         <b>Topics</b>{compared.map((tutor) => <span key={`subject-${tutor.id}`}>{tutor.subjects.slice(0, 3).join(", ")}</span>)}
         <b>Experience</b>{compared.map((tutor) => <span key={`experience-${tutor.id}`}>{tutor.experienceYears ? `${tutor.experienceYears} years` : "See profile"}</span>)}
-        <b>Learner proof</b>{compared.map((tutor) => <span key={`reviews-${tutor.id}`}>{tutor.reviewCount ? `${tutor.averageRating} ★ from ${tutor.reviewCount}` : "No verified reviews yet"}</span>)}
+        <b>Learner proof</b>{compared.map((tutor) => <span key={`reviews-${tutor.id}`}>{tutor.reviewCount ? `${tutor.averageRating} * from ${tutor.reviewCount}` : "No verified reviews yet"}</span>)}
         <b>Format</b>{compared.map((tutor) => <span key={`mode-${tutor.id}`}>{sessionLabel(tutor.sessionMode)}</span>)}
         <b>Price</b>{compared.map((tutor) => <span key={`price-${tutor.id}`}>{priceLabel(tutor)}</span>)}
         <b>Availability</b>{compared.map((tutor) => <span key={`availability-${tutor.id}`}>{tutor.availableSlotCount ? `${tutor.availableSlotCount} open times` : "Enquire directly"}</span>)}
