@@ -113,14 +113,14 @@ export default function LearnerHome() {
         <Link className="system-brand" href="/">* NORTHSTARLABS</Link>
       <nav>
         <Link href="/courses">Explore modules</Link>
-        <Link href="/tutoring">My coaching</Link>
+        <Link href="/tutoring"><span className="learner-nav-desktop">My coaching</span><span className="learner-nav-mobile">Coaching</span></Link>
         <Link href="/live">My live classes</Link>
         <Link href="/community">My communities</Link>
         <Link href="/mastery">Mastery</Link>
         <Link href="/portfolio">Proof portfolio</Link>
-        <Link href="/account">Account settings</Link>
+        <Link href="/account"><span className="learner-nav-desktop">Account settings</span><span className="learner-nav-mobile">Account</span></Link>
         <button className={`learner-bandwidth-toggle ${lowBandwidth ? "active" : ""}`} aria-pressed={lowBandwidth} onClick={toggleLowBandwidth}>{lowBandwidth ? "Low-data on" : "Low-data off"}</button>
-        <button onClick={signOut}>Sign out</button>
+        <button className="learner-signout" onClick={signOut}>Sign out</button>
       </nav>
     </header>
 
