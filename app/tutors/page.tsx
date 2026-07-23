@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { coachListingWeight } from "../../lib/coach-listing-plans";
+import { useSignedIn } from "../../lib/use-signed-in";
 import { LearningRequestForm } from "../learning-request-form";
 
 type MarketplaceTutor = {
@@ -64,6 +65,7 @@ function priceLabel(tutor: MarketplaceTutor) {
 }
 
 export default function TutorMarketplacePage() {
+  const signedIn = useSignedIn();
   const [tutors, setTutors] = useState<MarketplaceTutor[]>([]);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
@@ -195,8 +197,14 @@ export default function TutorMarketplacePage() {
       <nav>
         <Link href="/courses">Courses</Link>
         <Link className="active" href="/tutors">Find a coach</Link>
-        <Link href="/login?mode=login">Sign in</Link>
-        <Link className="marketplace-join" href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach">Advertise</Link>
+        {signedIn ? <>
+          <Link href="/learn">My learning</Link>
+          <Link href="/account">Account</Link>
+          <Link className="marketplace-join" href="/dashboard/tutors">Coach workspace</Link>
+        </> : <>
+          <Link href="/login?mode=login&next=%2Ftutors">Sign in</Link>
+          <Link className="marketplace-join" href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcoach">List coaching free</Link>
+        </>}
       </nav>
     </header>
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type CSSProperties, FormEvent, useEffect, useState } from "react";
 import { getSupabaseBrowser } from "../../../../../lib/supabase-client";
+import { useSignedIn } from "../../../../../lib/use-signed-in";
 
 type PublicTutor = {
   id: string;
@@ -85,6 +86,7 @@ export default function TutorDetailPage({ params }: {
   params: Promise<{ slug: string; tutorSlug: string }>;
 }) {
   const supabase = getSupabaseBrowser();
+  const signedIn = useSignedIn();
   const [path, setPath] = useState({ slug: "", tutorSlug: "" });
   const [data, setData] = useState<TutorDetail | null>(null);
   const [subject, setSubject] = useState("");
@@ -182,7 +184,14 @@ export default function TutorDetailPage({ params }: {
         </> : <span>{data.school.name.slice(0, 2).toUpperCase()}</span>}
         <b>{data.school.name}</b>
       </Link>
-      <nav><Link href={`/schools/${data.school.slug}/tutors`}>All tutors</Link><Link href={`/login?next=${encodeURIComponent(`/schools/${data.school.slug}/tutors/${tutor.slug}`)}`}>Sign in</Link></nav>
+      <nav>
+        <Link href={`/schools/${data.school.slug}/tutors`}>All tutors</Link>
+        {signedIn ? <>
+          <Link href="/learn">My learning</Link>
+          <Link href="/tutoring">Coaching requests</Link>
+          <Link href="/account">Account</Link>
+        </> : <Link href={`/login?next=${encodeURIComponent(`/schools/${data.school.slug}/tutors/${tutor.slug}`)}`}>Sign in</Link>}
+      </nav>
     </header>
 
     <section className="tutor-profile-hero">
