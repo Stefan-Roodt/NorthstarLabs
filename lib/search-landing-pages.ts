@@ -165,9 +165,9 @@ export const searchLandingPages: SearchLandingPage[] = [
     problemHeading: "A credible coaching profile needs more than a portrait and a motivational sentence.",
     problemText: "Learners need enough detail to decide whether you fit their problem. NorthstarLabs helps you publish specific topics, evidence, rates, session modes, availability, and boundaries—then keeps paid placement visibly separate from trust.",
     fitItems: [
-      { title: "Listed — R149/month", text: "A searchable public profile, topic visibility, private enquiries, and bookable availability." },
-      { title: "Featured — R349/month", text: "Priority topic placement, a clear Featured label, and an enquiry performance summary." },
-      { title: "Spotlight — R699/month", text: "Sponsored top-of-search rotation, a Spotlight label, and launch support for greater visibility." },
+      { title: "Open listing — free", text: "A searchable public profile, topic visibility, your own rate, private enquiries, and availability tools." },
+      { title: "Verified exposure — R200/month", text: "Optional priority in relevant searches after identity and credentials have passed independent review." },
+      { title: "Verification is earned", text: "Payment never buys approval, a credential badge, positive reviews, or a higher trust score." },
     ],
     route: [
       { label: "POSITION", title: "Name the problems you solve", text: "Use specific searchable topics and a practical headline instead of broad claims." },

@@ -323,7 +323,7 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
     {data.tutors.length > 0 && <>
       <section className="school-catalog-heading" id="tutors">
         <div><p className="sys-kicker">ONE-TO-ONE SUPPORT</p><h2>Find the person who can help.</h2></div>
-        <p>Compare subjects, session formats and prices, then call directly or send a protected enquiry through NorthstarLabs.</p>
+        <p>Compare subjects, session formats and published rates, then open the profile to check availability or send a protected enquiry through NorthstarLabs.</p>
       </section>
       <section className="school-tutor-grid">
         {data.tutors.slice(0, 3).map((tutor) => <article className="school-tutor-card" key={tutor.id}>
@@ -340,9 +340,9 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
           <div className="school-tutor-subjects">{tutor.subjects.slice(0, 4).map((subject) => <span key={subject}>{subject}</span>)}</div>
           <dl>
             <div><dt>Sessions</dt><dd>{tutor.sessionMode.replaceAll("_", " ")}</dd></div>
-            <div><dt>From</dt><dd>{tutor.priceCents ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}/${tutor.priceUnit}` : "Ask for price"}</dd></div>
+            <div><dt>Rate</dt><dd>{tutor.priceCents ? `R${(tutor.priceCents / 100).toLocaleString("en-ZA")}/${tutor.priceUnit}` : "On enquiry"}</dd></div>
           </dl>
-          <Link href={`/schools/${school.slug}/tutors/${tutor.slug}`}>View tutor & book →</Link>
+          <Link href={`/schools/${school.slug}/tutors/${tutor.slug}`}>View profile & availability →</Link>
         </article>)}
       </section>
       <div className="school-tutor-all"><Link href={`/schools/${school.slug}/tutors`}>See every available tutor →</Link></div>

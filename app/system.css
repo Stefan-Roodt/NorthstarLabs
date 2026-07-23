@@ -554,3 +554,19 @@
   .bandwidth-toggle{display:none}
   .mobile-curriculum-toggle{padding:9px 11px!important;font-size:9px}
 }
+
+/* Honest coach availability states */
+.marketplace-result-summary{margin:-8px 0 14px;color:var(--muted);font-size:10px}
+.marketplace-result-summary b{color:var(--market-ink)}
+.marketplace-result-summary span{padding:0 5px;color:#9e9890}
+.marketplace-result-groups{display:grid;gap:34px}
+.marketplace-result-group>header{display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:1px solid var(--rule);padding:0 2px 13px;margin-bottom:15px}
+.marketplace-result-group>header h3{font:700 22px var(--font-display);letter-spacing:-.03em;margin:0}
+.marketplace-result-group>header p{font-size:9px;line-height:1.5;color:var(--muted);margin:5px 0 0}
+.marketplace-result-group>header>span{display:grid;place-items:center;min-width:35px;height:35px;border-radius:50%;background:#e7eaff;color:var(--market-blue);font:800 11px var(--font-display)}
+.marketplace-card-badges{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:13px}
+.marketplace-card-badges .marketplace-paid-badge{margin:0}
+.marketplace-service-badge{border-radius:999px;padding:7px 9px;font-size:7px;font-weight:900;letter-spacing:.08em}
+.marketplace-service-badge.bookable{background:#e5f6e8;color:#22743a}
+.marketplace-service-badge.enquiry_only{background:#eeeae5;color:#605950}
+.marketplace-service-badge.faculty_support{background:#e7eaff;color:var(--market-blue)}

@@ -1568,7 +1568,7 @@ test("ships academy tutor discovery, direct contact, protected enquiries, and se
   assert.match(tutorDirectory, /useSignedIn/);
   assert.match(tutorDirectory, /My coaching/);
   assert.match(tutorProfile, /Choose an appointment/);
-  assert.match(tutorProfile, /Ask about a session/);
+  assert.match(tutorProfile, /Send a private enquiry/);
   assert.match(tutorProfile, /useSignedIn/);
   assert.match(tutorProfile, /My learning/);
   assert.match(tutorProfile, /Call tutor/);
@@ -1588,8 +1588,8 @@ test("ships academy tutor discovery, direct contact, protected enquiries, and se
   assert.match(tutoring, /Cancel request/);
   assert.match(marketplace, /Find the person who can get you/);
   assert.match(marketplace, /Compare what matters/);
-  assert.match(marketplace, /Choose a time/);
-  assert.match(marketplace, /View profile & contact/);
+  assert.match(marketplace, /View times & request/);
+  assert.match(marketplace, /View profile & enquire/);
   assert.match(marketplace, /Coach workspace/);
   assert.match(marketplace, /List coaching free/);
   assert.match(signedInHook, /onAuthStateChange/);
