@@ -20,6 +20,24 @@ test("keeps long courses navigable by progressively revealing modules", async ()
   assert.match(styles, /\.learner-section-lessons/);
 });
 
+test("keeps the public syllabus compact while every lesson remains inspectable", async () => {
+  const [course, styles] = await Promise.all([
+    readFile(new URL("../app/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/system.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(course, /<details/);
+  assert.match(course, /className="course-module"/);
+  assert.match(course, /expandedModuleIds/);
+  assert.match(course, /open=\{expandedModuleIds\.has\(section\.id\)\}/);
+  assert.match(course, /onToggle=/);
+  assert.match(course, /<summary>/);
+  assert.match(course, /Open a module to inspect every lesson/);
+  assert.match(styles, /\.course-module>summary/);
+  assert.match(styles, /\.course-module\[open\]>summary/);
+  assert.match(styles, /\.course-module>summary:after/);
+});
+
 test("makes the complete curriculum reachable on small screens", async () => {
   const [learner, styles] = await Promise.all([
     readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
