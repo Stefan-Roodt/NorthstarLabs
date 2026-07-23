@@ -447,6 +447,17 @@ for (const table of ["course_sections", "media_assets", "lesson_resources"]) {
     throw new Error(`The ${table} course-authoring table was not created.`);
   }
 }
+if (!tables.some((item) => item.name === "lesson_narration_drafts")) {
+  throw new Error("The governed lesson_narration_drafts table was not created.");
+}
+const narrationDraftIndexes = database.prepare(
+  "PRAGMA index_list(lesson_narration_drafts)",
+).all();
+if (!narrationDraftIndexes.some((item) =>
+  item.name === "lesson_narration_drafts_course_status_idx"
+)) {
+  throw new Error("Narration drafts are missing their course review-queue index.");
+}
 for (const table of [
   "creator_studio_projects",
   "creator_studio_sources",
@@ -649,7 +660,12 @@ console.log(JSON.stringify({
   migrations: files.length,
   tables: tables.length,
   invitationIndexes: invitationIndexes.map((item) => item.name),
-  authoringTables: ["course_sections", "media_assets", "lesson_resources"],
+  authoringTables: [
+    "course_sections",
+    "media_assets",
+    "lesson_resources",
+    "lesson_narration_drafts",
+  ],
   creatorStudioTables: [
     "creator_studio_projects",
     "creator_studio_sources",

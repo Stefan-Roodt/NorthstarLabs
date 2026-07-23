@@ -37,6 +37,7 @@ const EXPORT_DATASETS = [
   { name: "courses", sql: "SELECT * FROM courses WHERE school_id=?" },
   { name: "course_sections", sql: "SELECT cs.* FROM course_sections cs JOIN courses c ON c.id=cs.course_id WHERE c.school_id=?" },
   { name: "lessons", sql: "SELECT l.* FROM lessons l JOIN courses c ON c.id=l.course_id WHERE c.school_id=?" },
+  { name: "lesson_narration_drafts", sql: "SELECT * FROM lesson_narration_drafts WHERE school_id=?" },
   { name: "lesson_resources", sql: "SELECT lr.* FROM lesson_resources lr JOIN lessons l ON l.id=lr.lesson_id JOIN courses c ON c.id=l.course_id WHERE c.school_id=?" },
   { name: "media_assets_internal", sql: "SELECT * FROM media_assets WHERE school_id=?" },
   { name: "creator_studio_projects", sql: "SELECT * FROM creator_studio_projects WHERE school_id=?" },

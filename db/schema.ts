@@ -177,6 +177,23 @@ export const lessonResources = sqliteTable("lesson_resources", {
   index("lesson_resources_asset_idx").on(table.assetId),
 ]);
 
+export const lessonNarrationDrafts = sqliteTable("lesson_narration_drafts", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull(),
+  courseId: text("course_id").notNull(),
+  lessonId: text("lesson_id").notNull(),
+  draftText: text("draft_text").notNull(),
+  status: text("status").notNull().default("draft"),
+  source: text("source").notNull().default("lesson_content"),
+  createdBy: text("created_by").notNull(),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("lesson_narration_drafts_lesson_unique").on(table.lessonId),
+  index("lesson_narration_drafts_course_status_idx").on(table.courseId, table.status, table.updatedAt),
+  index("lesson_narration_drafts_school_status_idx").on(table.schoolId, table.status, table.updatedAt),
+]);
+
 export const creatorStudioProjects = sqliteTable("creator_studio_projects", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),

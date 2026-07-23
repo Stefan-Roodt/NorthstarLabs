@@ -498,6 +498,52 @@ test("archives the legacy shelf and publishes the AI signature programme", async
   );
 });
 
+test("keeps generated narration drafts separate until an educator approves them", async () => {
+  const db = await migratedDatabase();
+  const lesson = db.prepare(`
+    SELECT id,transcript FROM lessons
+    WHERE course_id='cognizen-crypto-mastery-foundations-production'
+      AND lesson_type<>'quiz'
+    ORDER BY id LIMIT 1
+  `).get();
+  assert.ok(lesson);
+  const originalTranscript = lesson.transcript;
+  const now = 1784840000000;
+  db.prepare(`
+    INSERT INTO lesson_narration_drafts
+      (id,school_id,course_id,lesson_id,draft_text,status,source,created_by,created_at,updated_at)
+    VALUES (?,?,?,?,?,'draft','lesson_content',?,?,?)
+  `).run(
+    "journey-narration-draft",
+    "stefan-course-school-fixture",
+    "cognizen-crypto-mastery-foundations-production",
+    lesson.id,
+    Array.from({ length: 60 }, (_, index) => `review-word-${index}`).join(" "),
+    "stefan-course-owner-fixture",
+    now,
+    now,
+  );
+
+  assert.equal(
+    db.prepare("SELECT status FROM lesson_narration_drafts WHERE id='journey-narration-draft'").get().status,
+    "draft",
+  );
+  assert.equal(
+    db.prepare("SELECT transcript FROM lessons WHERE id=?").get(lesson.id).transcript,
+    originalTranscript,
+  );
+  assert.throws(() => db.prepare(`
+    INSERT INTO lesson_narration_drafts
+      (id,school_id,course_id,lesson_id,draft_text,status,source,created_by,created_at,updated_at)
+    VALUES ('duplicate-draft','stefan-course-school-fixture',
+      'cognizen-crypto-mastery-foundations-production',?,'Duplicate','draft',
+      'lesson_content','stefan-course-owner-fixture',?,?)
+  `).run(lesson.id, now, now), /UNIQUE constraint failed/);
+  assert.throws(() => db.prepare(
+    "UPDATE lesson_narration_drafts SET status='published' WHERE id='journey-narration-draft'",
+  ).run(), /CHECK constraint failed/);
+});
+
 test("safe course deletion leaves no learner or assessment orphans", async () => {
   const db = await migratedDatabase();
   const now = Date.UTC(2026, 6, 19);

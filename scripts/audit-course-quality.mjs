@@ -2,6 +2,10 @@ import { readdir, readFile } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import { getCourseReadiness } from "../lib/course-readiness.ts";
 import { parseLessonExperience } from "../lib/lesson-experience.ts";
+import {
+  buildNarrationDraft,
+  countNarrationWords,
+} from "../lib/narration-production.ts";
 
 const courseId = process.argv[2] || "cognizen-crypto-mastery-foundations-production";
 const migrationDirectory = new URL("../drizzle/", import.meta.url);
@@ -169,6 +173,17 @@ const lessonProfiles = [...lessons.reduce((profiles, lesson) => {
 }, new Map())]
   .map(([profile, count]) => ({ profile, count }))
   .sort((left, right) => right.count - left.count);
+const narrationQueueIds = new Set(readiness.productionQueue.flatMap((section) =>
+  section.missingLessons.map((lesson) => lesson.id)
+));
+const narrationQueue = lessons.filter((lesson) => narrationQueueIds.has(lesson.id));
+const narrationScriptsReady = narrationQueue.filter((lesson) =>
+  countNarrationWords(lesson.transcript || "") >= 40
+);
+const narrationScriptsDraftable = narrationQueue.filter((lesson) =>
+  countNarrationWords(lesson.transcript || "") < 40 &&
+  countNarrationWords(buildNarrationDraft(lesson.title, lesson.content || "")) >= 40
+);
 
 console.log(JSON.stringify({
   courseId,
@@ -185,6 +200,13 @@ console.log(JSON.stringify({
   orphanedPrimaryAssets,
   repeatedPrimaryAssets: mediaUsage.filter((item) => item.count > 1),
   lessonProfiles,
+  narrationProduction: {
+    queuedLessons: narrationQueue.length,
+    scriptsReady: narrationScriptsReady.length,
+    scriptsDraftableFromLesson: narrationScriptsDraftable.length,
+    educatorAttentionRequired:
+      narrationQueue.length - narrationScriptsReady.length - narrationScriptsDraftable.length,
+  },
   issues: readiness.issues.map((issue) => ({
     id: issue.id,
     level: issue.level,
