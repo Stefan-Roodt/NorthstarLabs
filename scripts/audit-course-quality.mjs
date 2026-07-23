@@ -74,6 +74,7 @@ const lessons = database.prepare(`
   SELECT l.id,l.section_id AS sectionId,l.title,l.lesson_type AS lessonType,
     l.content,l.video_key AS videoKey,l.primary_asset_id AS primaryAssetId,
     l.duration_minutes AS durationMinutes,l.transcript,l.experience_json AS experienceJson,
+    ma.id AS primaryJoinedId,ma.filename AS primaryFilename,
     ma.kind AS primaryKind,ma.alt_text AS primaryAltText
   FROM lessons l
   LEFT JOIN media_assets ma ON ma.id=l.primary_asset_id
@@ -127,8 +128,13 @@ const readiness = getCourseReadiness({
   sections,
   lessons: lessons.map((lesson) => ({
     ...lesson,
-    primaryAsset: lesson.primaryAssetId
-      ? { kind: lesson.primaryKind || "", altText: lesson.primaryAltText || "" }
+    primaryAsset: lesson.primaryAssetId && lesson.primaryJoinedId
+      ? {
+          id: lesson.primaryJoinedId,
+          filename: lesson.primaryFilename || "",
+          kind: lesson.primaryKind || "",
+          altText: lesson.primaryAltText || "",
+        }
       : null,
     transcript: lesson.transcript || "",
     resources: resources.get(lesson.id) || [],
@@ -149,6 +155,9 @@ const mediaUsage = [...lessons.reduce((usage, lesson) => {
 }, new Map())]
   .map(([assetId, count]) => ({ assetId, count }))
   .sort((left, right) => right.count - left.count);
+const orphanedPrimaryAssets = lessons
+  .filter((lesson) => lesson.primaryAssetId && !lesson.primaryJoinedId)
+  .map((lesson) => ({ lessonId: lesson.id, assetId: lesson.primaryAssetId }));
 const lessonProfiles = [...lessons.reduce((profiles, lesson) => {
   const profile = [
     lesson.lessonType,
@@ -171,6 +180,7 @@ console.log(JSON.stringify({
   counts,
   validExperiences: lessons.filter((lesson) => parseLessonExperience(lesson.experienceJson)).length,
   uniquePrimaryAssets: mediaUsage.length,
+  orphanedPrimaryAssets,
   repeatedPrimaryAssets: mediaUsage.filter((item) => item.count > 1),
   lessonProfiles,
   issues: readiness.issues.map((issue) => ({

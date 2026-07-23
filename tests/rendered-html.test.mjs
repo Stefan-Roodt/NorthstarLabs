@@ -2037,7 +2037,7 @@ test("gives creators an honest, actionable learner-quality review", async () => 
         lessonType: "video",
         content: "Read the explanation and compare the examples.",
         primaryAssetId: "asset-1",
-        primaryAsset: { kind: "video", altText: "" },
+        primaryAsset: { id: "asset-1", filename: "lesson.mp4", kind: "video", altText: "" },
         durationMinutes: 6,
         transcript: "",
         resources: [],
@@ -2120,7 +2120,7 @@ test("makes narration and branded cinematic intros usable without an external pr
   assert.match(editor, /new MediaRecorder/);
   assert.match(editor, /canvas\.captureStream\(30\)/);
   assert.match(editor, /Record narration/);
-  assert.match(editor, /Stop & attach/);
+  assert.match(editor, /Stop &amp; attach/);
   assert.match(editor, /Create branded intro/);
   assert.match(editor, /attachProducedMedia/);
   assert.match(editor, /Nothing is published automatically/);

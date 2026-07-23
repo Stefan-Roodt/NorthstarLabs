@@ -49,6 +49,7 @@ type LessonReadinessCourseRow = {
   transcript: string | null;
   position: number;
   updatedAt: number;
+  primaryJoinedId: string | null;
   primaryFilename: string | null;
   primaryContentType: string | null;
   primarySizeBytes: number | null;
@@ -56,6 +57,7 @@ type LessonReadinessCourseRow = {
   primaryAltText: string | null;
   primaryCreatedAt: number | null;
   primaryUpdatedAt: number | null;
+  introJoinedId: string | null;
   introFilename: string | null;
   introContentType: string | null;
   introSizeBytes: number | null;
@@ -213,11 +215,11 @@ async function loadCourseLessonData(
         l.is_preview AS isPreview,l.available_after_days AS availableAfterDays,
         l.required_watch_percent AS requiredWatchPercent,l.transcript,
         l.position,l.updated_at AS updatedAt,
-        ma.filename AS primaryFilename,ma.content_type AS primaryContentType,
+        ma.id AS primaryJoinedId,ma.filename AS primaryFilename,ma.content_type AS primaryContentType,
         ma.size_bytes AS primarySizeBytes,ma.kind AS primaryKind,
         ma.alt_text AS primaryAltText,ma.created_at AS primaryCreatedAt,
         ma.updated_at AS primaryUpdatedAt,
-        ima.filename AS introFilename,ima.content_type AS introContentType,
+        ima.id AS introJoinedId,ima.filename AS introFilename,ima.content_type AS introContentType,
         ima.size_bytes AS introSizeBytes,ima.kind AS introKind,
         ima.alt_text AS introAltText,ima.created_at AS introCreatedAt,
         ima.updated_at AS introUpdatedAt
@@ -304,9 +306,9 @@ async function loadCourseLessonData(
     sections: sectionRows.results,
     lessons: lessonRows.results.map((lesson) => {
       const row = lesson as LessonReadinessCourseRow;
-      const primaryAsset = row.primaryAssetId
+      const primaryAsset = row.primaryAssetId && row.primaryJoinedId
         ? {
-            id: row.primaryAssetId,
+            id: row.primaryJoinedId,
             filename: row.primaryFilename,
             contentType: row.primaryContentType,
             sizeBytes: row.primarySizeBytes,
@@ -316,9 +318,9 @@ async function loadCourseLessonData(
             updatedAt: row.primaryUpdatedAt,
           }
         : null;
-      const introAsset = row.introAssetId
+      const introAsset = row.introAssetId && row.introJoinedId
         ? {
-            id: row.introAssetId,
+            id: row.introJoinedId,
             filename: row.introFilename,
             contentType: row.introContentType,
             sizeBytes: row.introSizeBytes,
