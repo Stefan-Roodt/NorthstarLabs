@@ -181,6 +181,34 @@ export default function TutoringPage() {
     setBusy("");
   }
 
+  async function downloadCalendar(item: TutoringRequest) {
+    const session = (await supabase?.auth.getSession())?.data.session;
+    if (!session) {
+      location.href = "/login?next=/tutoring";
+      return;
+    }
+    setBusy(`calendar-${item.id}`);
+    setMessage("");
+    const response = await fetch(
+      `/api/tutor-inquiries/${encodeURIComponent(item.id)}/calendar`,
+      { headers: { authorization: `Bearer ${session.access_token}` } },
+    );
+    if (!response.ok) {
+      setMessage("Your calendar file could not be created. Refresh and try again.");
+      setBusy("");
+      return;
+    }
+    const blob = await response.blob();
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = `northstarlabs-coaching-${item.id}.ics`;
+    link.click();
+    URL.revokeObjectURL(href);
+    setMessage("Calendar file ready. Open it to add this appointment and its reminders.");
+    setBusy("");
+  }
+
   function chooseRating(inquiryId: string, rating: number) {
     setRatings((current) => ({ ...current, [inquiryId]: rating }));
     setRatingTags((current) => ({ ...current, [inquiryId]: [] }));
@@ -216,10 +244,12 @@ export default function TutoringPage() {
       busy={cancellable && busy === item.id}
       now={currentTime}
       onCancel={cancelAppointment}
+      onCalendar={downloadCalendar}
       onReview={submitReview}
       rating={ratings[item.id] || 0}
       tags={ratingTags[item.id] || []}
       comment={reviewComments[item.id] || ""}
+      calendarBusy={busy === `calendar-${item.id}`}
       reviewBusy={busy === `review-${item.id}`}
       onRating={(rating) => chooseRating(item.id, rating)}
       onToggleTag={(tag) => toggleRatingTag(item.id, tag)}
@@ -300,10 +330,12 @@ function TutoringCard({
   busy,
   now,
   onCancel,
+  onCalendar,
   onReview,
   rating,
   tags,
   comment,
+  calendarBusy,
   reviewBusy,
   onRating,
   onToggleTag,
@@ -313,10 +345,12 @@ function TutoringCard({
   busy: boolean;
   now: number;
   onCancel: (item: TutoringRequest) => void;
+  onCalendar: (item: TutoringRequest) => void;
   onReview: (item: TutoringRequest) => void;
   rating: number;
   tags: string[];
   comment: string;
+  calendarBusy: boolean;
   reviewBusy: boolean;
   onRating: (rating: number) => void;
   onToggleTag: (tag: string) => void;
@@ -370,6 +404,12 @@ function TutoringCard({
       <Link href={`/schools/${item.schoolSlug}/tutors/${item.tutorSlug}`}>
         {item.status === "declined" ? "Choose another time" : "View tutor"}
       </Link>
+      {item.status === "booked" && item.startsAt && <button
+        className="tutoring-calendar-action"
+        disabled={calendarBusy}
+        onClick={() => onCalendar(item)}
+        type="button"
+      >{calendarBusy ? "Preparing calendar…" : "Add to calendar"}</button>}
       {canCancel && <button disabled={busy} onClick={() => onCancel(item)}>{busy ? "Cancelling…" : "Cancel request"}</button>}
     </div>
   </article>;
