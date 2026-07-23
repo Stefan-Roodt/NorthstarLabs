@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { coachListingPlans } from "../../../lib/coach-listing-plans";
+import { useSearchParams } from "next/navigation";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getSupabaseBrowser } from "../../../lib/supabase-client";
 import {
   learnerImprovementTags,
@@ -153,6 +153,31 @@ const emptyDraft: TutorDraft = {
   showDirectContact: false,
 };
 
+function tutorToDraft(tutor: Tutor): TutorDraft {
+  return {
+    displayName: tutor.displayName,
+    headline: tutor.headline,
+    bio: tutor.bio,
+    serviceType: tutor.serviceType || "coaching",
+    subjects: tutor.subjects.join(", "),
+    languages: tutor.languages.join(", "),
+    qualifications: tutor.qualifications,
+    experienceYears: String(tutor.experienceYears || 0),
+    priceRand: tutor.priceCents ? String(tutor.priceCents / 100) : "",
+    listingTier: tutor.listingTier || "listed",
+    sessionMode: tutor.sessionMode,
+    location: tutor.location,
+    timezone: tutor.timezone,
+    availability: tutor.availability,
+    photoUrl: tutor.photoUrl || "",
+    contactEmail: tutor.contactEmail,
+    phoneNumber: tutor.phoneNumber,
+    whatsappNumber: tutor.whatsappNumber,
+    bookingUrl: tutor.bookingUrl || "",
+    showDirectContact: tutor.showDirectContact,
+  };
+}
+
 const learnerRatingTagLabels: Record<string, string> = {
   prepared: "Prepared",
   engaged: "Engaged",
@@ -188,6 +213,9 @@ function appointmentLabel(slot: TutorSlot) {
 
 export default function TutorAdminPage() {
   const supabase = getSupabaseBrowser();
+  const searchParams = useSearchParams();
+  const setupMode = searchParams.get("setup") === "1";
+  const setupHandled = useRef(false);
   const [pageLoadedAt] = useState(() => Date.now());
   const [workspaceView, setWorkspaceView] = useState<"profile" | "trust" | "availability" | "inquiries">("profile");
   const [data, setData] = useState<TutorData | null>(null);
@@ -195,6 +223,7 @@ export default function TutorAdminPage() {
   const [slots, setSlots] = useState<TutorSlot[]>([]);
   const [credentials, setCredentials] = useState<TutorCredential[]>([]);
   const [inquirySlotIds, setInquirySlotIds] = useState<Record<string, string>>({});
+  const [setupDraft, setSetupDraft] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [draft, setDraft] = useState<TutorDraft>(emptyDraft);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -250,7 +279,19 @@ export default function TutorAdminPage() {
       setData(tutorData);
       setSlotTutorId((current) => current || tutorData.tutors[0]?.id || "");
       setCredentialTutorId((current) => current || tutorData.tutors[0]?.id || "");
-      setMessage("");
+      const onboardingDraft = setupMode && !setupHandled.current
+        ? tutorData.tutors.find((tutor) => tutor.status === "draft")
+        : null;
+      if (onboardingDraft) {
+        setupHandled.current = true;
+        setEditingId(onboardingDraft.id);
+        setDraft(tutorToDraft(onboardingDraft));
+        setSetupDraft(true);
+        setWorkspaceView("profile");
+        setMessage("Your private coach draft is ready. Complete the highlighted profile basics, then add appointment times or publish when you are ready.");
+      } else {
+        setMessage("");
+      }
     } else {
       setMessage("Your tutor desk could not be loaded.");
     }
@@ -267,7 +308,7 @@ export default function TutorAdminPage() {
       const result = await credentialsResponse.json() as { credentials: TutorCredential[] };
       setCredentials(result.credentials);
     }
-  }, [authed, supabase]);
+  }, [authed, setupMode, supabase]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
@@ -290,6 +331,22 @@ export default function TutorAdminPage() {
     }
     return grouped;
   }, [pageLoadedAt, slots]);
+  const activationTutor = useMemo(
+    () => data?.tutors.find((tutor) => tutor.status === "draft") || null,
+    [data],
+  );
+  const activationBasicsReady = Boolean(
+    activationTutor?.headline &&
+    activationTutor.subjects.length &&
+    activationTutor.priceCents > 0,
+  );
+  const activationHasSlots = Boolean(
+    activationTutor && slots.some((slot) =>
+      slot.tutorId === activationTutor.id &&
+      slot.status === "open" &&
+      slot.startsAt > pageLoadedAt
+    ),
+  );
 
   function updateDraft<Key extends keyof TutorDraft>(key: Key, value: TutorDraft[Key]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -298,37 +355,19 @@ export default function TutorAdminPage() {
   function resetEditor() {
     setEditingId("");
     setDraft(emptyDraft);
+    setSetupDraft(false);
   }
 
   function editTutor(tutor: Tutor) {
     setEditingId(tutor.id);
-    setDraft({
-      displayName: tutor.displayName,
-      headline: tutor.headline,
-      bio: tutor.bio,
-      serviceType: tutor.serviceType || "coaching",
-      subjects: tutor.subjects.join(", "),
-      languages: tutor.languages.join(", "),
-      qualifications: tutor.qualifications,
-      experienceYears: String(tutor.experienceYears || 0),
-      priceRand: String(tutor.priceCents / 100),
-      listingTier: tutor.listingTier || "listed",
-      sessionMode: tutor.sessionMode,
-      location: tutor.location,
-      timezone: tutor.timezone,
-      availability: tutor.availability,
-      photoUrl: tutor.photoUrl || "",
-      contactEmail: tutor.contactEmail,
-      phoneNumber: tutor.phoneNumber,
-      whatsappNumber: tutor.whatsappNumber,
-      bookingUrl: tutor.bookingUrl || "",
-      showDirectContact: tutor.showDirectContact,
-    });
+    setDraft(tutorToDraft(tutor));
+    setSetupDraft(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function saveTutor(event: FormEvent) {
     event.preventDefault();
+    const continueCoachSetup = setupDraft;
     setBusy("profile");
     setMessage("");
     const response = await authed("/api/tutors", {
@@ -365,6 +404,11 @@ export default function TutorAdminPage() {
     if (response.ok) {
       resetEditor();
       await load();
+      if (continueCoachSetup) {
+        setSlotTutorId(result.id || editingId);
+        setWorkspaceView("availability");
+        setMessage("Profile saved. Add one or more bookable times next, or return to Profile and publish without fixed times.");
+      }
     }
     setBusy("");
   }
@@ -452,12 +496,16 @@ export default function TutorAdminPage() {
     setBusy("");
   }
 
-  function openAvailabilityFor(inquiry: Inquiry) {
-    setSlotTutorId(inquiry.tutorId);
+  function openTutorAvailability(tutorId: string) {
+    setSlotTutorId(tutorId);
     setWorkspaceView("availability");
     window.setTimeout(() => {
       document.getElementById("availability")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
+  }
+
+  function openAvailabilityFor(inquiry: Inquiry) {
+    openTutorAvailability(inquiry.tutorId);
   }
 
   function chooseLearnerRating(inquiryId: string, rating: number) {
@@ -627,12 +675,38 @@ export default function TutorAdminPage() {
     </nav>
 
     <section className="tutor-admin-grid">
+      {activationTutor && <aside className="coach-activation-guide" aria-labelledby="coach-activation-title">
+        <header>
+          <div>
+            <p className="sys-kicker">PRIVATE DRAFT · NOTHING PUBLIC YET</p>
+            <h2 id="coach-activation-title">Finish your coach listing in three clear steps.</h2>
+            <p>NorthstarLabs created the draft. Add what learners need to choose confidently, decide whether to offer fixed appointment times, then publish the free listing.</p>
+          </div>
+          <strong>{activationBasicsReady ? activationHasSlots ? "2/3" : "1/3" : "0/3"} ready</strong>
+        </header>
+        <ol>
+          <li className={activationBasicsReady ? "done" : "current"}>
+            <span>1</span><div><b>Complete profile basics</b><small>Name, headline, searchable topics and your hourly rate.</small></div><em>{activationBasicsReady ? "Ready" : "Do this now"}</em>
+          </li>
+          <li className={activationHasSlots ? "done" : activationBasicsReady ? "current" : ""}>
+            <span>2</span><div><b>Add appointment times</b><small>Recommended for instant booking; learners can still enquire without them.</small></div><em>{activationHasSlots ? "Ready" : "Recommended"}</em>
+          </li>
+          <li className={activationBasicsReady && activationHasSlots ? "current" : ""}>
+            <span>3</span><div><b>Publish the free listing</b><small>Only then will learners see the profile in relevant searches.</small></div><em>Final step</em>
+          </li>
+        </ol>
+        <div className="coach-activation-actions">
+          {!activationBasicsReady && <button className="sys-primary" onClick={() => { editTutor(activationTutor); setWorkspaceView("profile"); }} type="button">Continue my profile</button>}
+          {activationBasicsReady && !activationHasSlots && <button onClick={() => openTutorAvailability(activationTutor.id)} type="button">Add appointment times</button>}
+          {activationBasicsReady && <button className="sys-primary" disabled={busy === activationTutor.id} onClick={() => setStatus(activationTutor, "published")} type="button">{busy === activationTutor.id ? "Publishing..." : activationHasSlots ? "Publish my free profile" : "Publish without fixed times"}</button>}
+        </div>
+      </aside>}
       {message && <div className="notice tutor-admin-notice" role="status">{message}</div>}
 
       <form className="panel tutor-editor" hidden={workspaceView !== "profile"} onSubmit={saveTutor}>
         <div className="product-section-heading">
-          <span>{editingId ? "EDIT" : "NEW"}</span>
-          <div><h2>{editingId ? "Update coach profile" : "Create your coach profile"}</h2><p>Use specific topics, a clear hourly rate, and honest availability so learners can choose confidently.</p></div>
+          <span>{setupDraft ? "STEP 1" : editingId ? "EDIT" : "NEW"}</span>
+          <div><h2>{setupDraft ? "Complete your private coach draft" : editingId ? "Update coach profile" : "Create your coach profile"}</h2><p>Use specific topics, a clear hourly rate, and honest availability so learners can choose confidently.</p></div>
         </div>
         <div className="product-form-grid">
           <label>Profile type<select value={draft.serviceType} onChange={(event) => updateDraft("serviceType", event.target.value)}><option value="coaching">Coaching</option><option value="tutoring">Tutoring</option><option value="both">Coaching and tutoring</option></select></label>
@@ -655,22 +729,9 @@ export default function TutorAdminPage() {
           <label>Booking calendar URL<input type="url" value={draft.bookingUrl} onChange={(event) => updateDraft("bookingUrl", event.target.value)} placeholder="https://calendly.com/…" /></label>
           <label className="academy-switch product-span-two"><input type="checkbox" checked={draft.showDirectContact} onChange={(event) => updateDraft("showDirectContact", event.target.checked)} /><span><b>Show direct contact buttons publicly</b><small>When off, learners use the protected enquiry form and private contact details remain hidden.</small></span></label>
         </div>
-        <fieldset className="coach-plan-picker">
-          <legend>Choose how you are seen</legend>
-          <p>Every coach can list free. Northstar Verified is available only after independent approval and adds relevant priority exposure.</p>
-          <div>
-            {coachListingPlans.map((plan) => <label className={draft.listingTier === plan.id ? "selected" : ""} key={plan.id}>
-              <input type="radio" name="listing-tier" value={plan.id} checked={plan.id === (draft.listingTier === "verified" ? "verified" : "listed")} disabled readOnly />
-              <span><b>{plan.name}</b><strong>{plan.monthlyCents ? `R${(plan.monthlyCents / 100).toLocaleString("en-ZA")}` : "Free"}{plan.monthlyCents ? <small>/month</small> : null}</strong></span>
-              <em>{plan.label}</em>
-              <p>{plan.description}</p>
-              <ul>{plan.features.map((feature) => <li key={feature}>✓ {feature}</li>)}</ul>
-            </label>)}
-          </div>
-          <aside><b>Verification cannot be bought.</b> Submit your evidence below. Once approved, you may activate Northstar Verified for R200/month through PayFast; your free listing remains available if you do not.</aside>
-        </fieldset>
+        <aside className="coach-free-listing-note"><b>Your public listing is free.</b><span>Saving keeps this profile private. You decide when to publish it, and verification remains a separate optional step.</span></aside>
         <div className="tutor-editor-actions">
-          <button className="sys-primary" disabled={busy === "profile"}>{busy === "profile" ? "Saving…" : editingId ? "Save coach changes" : "Create coach draft"}</button>
+          <button className="sys-primary" disabled={busy === "profile"}>{busy === "profile" ? "Saving…" : setupDraft ? "Save profile and continue" : editingId ? "Save coach changes" : "Create coach draft"}</button>
           {editingId && <button type="button" onClick={resetEditor}>Cancel editing</button>}
         </div>
       </form>

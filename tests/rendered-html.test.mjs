@@ -911,11 +911,14 @@ test("upgrades Crypto Mastery Module 1.3 into a source-disciplined Bitcoin origi
 });
 
 test("guides new members into creating or learning with a low-friction join flow", async () => {
-  const [home, login, welcome, course] = await Promise.all([
+  const [home, login, welcome, course, profile, tutorHelper, coachDesk] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/welcome/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/profile/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/tutors.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/tutors/page.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(home, /Become a coach/);
   assert.match(home, /Open an academy/);
@@ -931,6 +934,14 @@ test("guides new members into creating or learning with a low-friction join flow
   assert.match(welcome, /welcomeDestination/);
   assert.match(welcome, /location\.replace\("\/courses\?welcome=1"\)/);
   assert.match(welcome, /location\.replace\(role === "coach"/);
+  assert.match(profile, /ensureCoachDraft/);
+  assert.match(tutorHelper, /WHERE NOT EXISTS/);
+  assert.match(tutorHelper, /status<>'archived'/);
+  assert.match(coachDesk, /Your private coach draft is ready/);
+  assert.match(coachDesk, /Finish your coach listing in three clear steps/);
+  assert.match(coachDesk, /Save profile and continue/);
+  assert.match(coachDesk, /Your public listing is free/);
+  assert.doesNotMatch(coachDesk, /<legend>Choose how you are seen<\/legend>/);
   assert.match(course, /enrol=1/);
   assert.match(course, /Joining your course/);
 });
@@ -1598,7 +1609,9 @@ test("ships a free coach marketplace with optional verified exposure", async () 
   assert.match(welcome, /dashboard\/tutors\?setup=1/);
   assert.match(profile, /body\.role === "coach"/);
   assert.match(admin, /Your hourly rate in rand/);
-  assert.match(admin, /Verification cannot be bought/);
+  assert.match(admin, /Your public listing is free/);
+  assert.match(admin, /verification remains a separate optional step/);
+  assert.match(admin, /Verification cannot be purchased/);
   assert.match(admin, /Activate Verified - R200\/month/);
   assert.match(marketplace, /EXPLORE BY TOPIC/);
   assert.match(marketplace, /setSubject\(canonicalTopic\)/);
