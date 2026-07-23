@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCourseReadiness, type CourseReadinessIssue } from "../../../../lib/course-readiness";
 import { LessonContent } from "../../../../lib/lesson-content";
+import { buildNarrationDraft, countNarrationWords, estimateNarrationMinutes } from "../../../../lib/narration-production";
 import { getSupabaseBrowser } from "../../../../lib/supabase-client";
 
 type QuizQuestion = {
@@ -265,6 +266,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   const [curriculumSectionLimit, setCurriculumSectionLimit] = useState(CURRICULUM_SECTION_BATCH);
   const [openSectionIds, setOpenSectionIds] = useState<Set<string>>(new Set());
   const [showAllProductionSections, setShowAllProductionSections] = useState(false);
+  const [productionRunActive, setProductionRunActive] = useState(false);
   const revision = useRef(0);
   const contentEditor = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -290,6 +292,20 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     ) || []),
     [readiness],
   );
+  const productionLessonQueue = useMemo(
+    () => readiness?.productionQueue.flatMap((section) =>
+      section.missingLessons.map((lesson) => ({
+        ...lesson,
+        sectionId: section.sectionId,
+        sectionTitle: section.sectionTitle,
+      }))
+    ) || [],
+    [readiness],
+  );
+  const currentProductionIndex = productionLessonQueue.findIndex((lesson) => lesson.id === selectedId);
+  const currentProductionLesson = currentProductionIndex >= 0
+    ? productionLessonQueue[currentProductionIndex]
+    : null;
 
   const token = useCallback(async () => {
     return (await supabase?.auth.getSession())?.data.session?.access_token || "";
@@ -482,6 +498,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   }
 
   async function openProductionLesson(lessonId: string) {
+    setProductionRunActive(true);
     await chooseLesson(lessonId);
     setWorkspaceTab("lesson");
     window.setTimeout(() => {
@@ -490,6 +507,31 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
         block: "start",
       });
     }, 50);
+  }
+
+  async function openAdjacentProductionLesson(direction: -1 | 1) {
+    if (!productionLessonQueue.length) return;
+    const nextIndex = currentProductionIndex < 0
+      ? 0
+      : Math.max(0, Math.min(productionLessonQueue.length - 1, currentProductionIndex + direction));
+    await openProductionLesson(productionLessonQueue[nextIndex].id);
+  }
+
+  function draftNarrationScript() {
+    if (!selected || selected.transcript.trim()) return;
+    const draft = buildNarrationDraft(selected.title, selected.content);
+    if (!draft) {
+      setMessage("Add at least a short, reviewed lesson explanation before drafting narration.");
+      return;
+    }
+    editLesson({ transcript: draft });
+    setMessage("A lesson-grounded narration draft is ready. Review its wording and timing before recording.");
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(".transcript-editor")?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
   }
 
   async function chooseLesson(lessonId: string) {
@@ -1716,6 +1758,47 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
             <div><p className="sys-kicker">LESSON EDITOR</p><h1>{selected.title}</h1><p>{dirty?.id === selected.id ? "Autosave pending." : "Changes are saved automatically."}</p></div>
             <button className="danger-plain" onClick={() => deleteLesson(selected)}>Delete lesson</button>
           </div>
+          {productionRunActive && productionLessonQueue.length > 0 && <section className="production-run" aria-label="Narration production workflow">
+            <header>
+              <div>
+                <p className="sys-kicker">NARRATION PRODUCTION RUN</p>
+                <h2>{currentProductionLesson
+                  ? currentProductionLesson.sectionTitle
+                  : "This lesson now meets the automated narration standard."}</h2>
+                <p>{currentProductionLesson
+                  ? `Unfinished lesson ${currentProductionIndex + 1} of ${productionLessonQueue.length}: ${currentProductionLesson.title}`
+                  : `${productionLessonQueue.length} unfinished lessons remain. Continue without returning to the course review.`}</p>
+              </div>
+              <strong>{readiness?.productionCoverage.narratedTeaching.ready || 0}<span> / {readiness?.productionCoverage.narratedTeaching.total || 0} ready</span></strong>
+            </header>
+            <div className="production-run-meter" aria-label={`Narrated teaching ${readiness?.productionCoverage.narratedTeaching.percent || 0}% complete`}>
+              <i style={{ width: `${readiness?.productionCoverage.narratedTeaching.percent || 0}%` }} />
+            </div>
+            <div className="production-run-status">
+              {currentProductionLesson
+                ? <>
+                    <span className={selected.transcript.trim() ? "ready" : ""}>{selected.transcript.trim() ? "Script ready" : "Script needed"}</span>
+                    <span className={currentProductionLesson.hasMedia ? "ready" : ""}>{currentProductionLesson.hasMedia ? "Media attached" : "Narration media needed"}</span>
+                  </>
+                : <span className="ready">Current lesson meets the automated standard</span>}
+              <span>{countNarrationWords(selected.transcript)} words / approximately {estimateNarrationMinutes(selected.transcript)} minutes</span>
+            </div>
+            <nav aria-label="Move through unfinished narration lessons">
+              <button type="button" disabled={currentProductionIndex <= 0} onClick={() => openAdjacentProductionLesson(-1)}>&larr; Previous gap</button>
+              {!selected.transcript.trim() && <button className="production-draft-script" type="button" onClick={draftNarrationScript}>Draft script from lesson</button>}
+              <button className="production-next-gap" type="button" disabled={currentProductionIndex === productionLessonQueue.length - 1} onClick={() => openAdjacentProductionLesson(1)}>
+                {currentProductionIndex < 0 ? "Open next unfinished lesson" : "Next gap"} &rarr;
+              </button>
+              <button type="button" onClick={() => {
+                setProductionRunActive(false);
+                setWorkspaceTab("review");
+              }}>Back to production review</button>
+            </nav>
+            <footer>
+              <b>A draft is not approval.</b>
+              <span>Review accuracy, pronunciation and timing; then record, upload, or use a connected narrator. Northstar never marks a lesson narrated until playable media and a reviewed transcript are both present.</span>
+            </footer>
+          </section>}
           <form onSubmit={(event: FormEvent) => {
             event.preventDefault();
             void persistLesson(selected, dirty?.revision);
@@ -1766,16 +1849,22 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
               </> : <div className="builder-content-preview">{selected.content ? <LessonContent content={selected.content} lessonTitle={selected.title || "Lesson"} slideDeckMode /> : <p>Start writing to preview the learner experience.</p>}</div>}
             </section>
 
-            <label className="transcript-editor">Captions / transcript
+            <section className="transcript-editor" aria-labelledby="transcript-heading">
+              <span className="transcript-heading" id="transcript-heading">
+                <b>Reviewed narration script</b>
+                <em>{countNarrationWords(selected.transcript)} words / approximately {estimateNarrationMinutes(selected.transcript)} minutes spoken</em>
+              </span>
               <textarea
+                aria-label="Captions and narration transcript"
                 value={selected.transcript || ""}
                 onChange={(event) => editLesson({ transcript: event.target.value })}
                 placeholder="Paste a reviewed transcript. Video lessons use it for selectable captions and every learner can read it below the lesson."
               />
+              {!selected.transcript.trim() && <button className="transcript-draft-action" type="button" onClick={draftNarrationScript}>Draft from the reviewed lesson text</button>}
               <small>{selected.primaryAsset?.kind === "video" && selected.transcript.trim()
                 ? "Ready: Northstar turns this transcript into selectable captions in the learner video player."
                 : "Add a reviewed transcript to improve accessibility, search and revision. Video transcripts become selectable captions automatically."}</small>
-            </label>
+            </section>
 
             <section className="self-media-studio" id="media-production">
               <header>
