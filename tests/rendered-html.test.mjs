@@ -1281,6 +1281,7 @@ test("ships bundles, memberships, live learning, mobile installation, and integr
     learnerLive,
     manifest,
     serviceWorker,
+    pwaRegister,
     storefront,
   ] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
@@ -1298,6 +1299,7 @@ test("ships bundles, memberships, live learning, mobile installation, and integr
     readFile(new URL("../app/live/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/manifest.ts", import.meta.url), "utf8"),
     readFile(new URL("../public/sw.js", import.meta.url), "utf8"),
+    readFile(new URL("../app/pwa-register.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/schools/[slug]/page.tsx", import.meta.url), "utf8"),
   ]);
   for (const table of [
@@ -1344,8 +1346,12 @@ test("ships bundles, memberships, live learning, mobile installation, and integr
   );
   assert.match(learnerLive, /Reserve my place/);
   assert.match(manifest, /display: "standalone"/);
-  assert.match(serviceWorker, /northstarlabs-shell-v1/);
+  assert.match(serviceWorker, /northstarlabs-shell-v2/);
   assert.match(serviceWorker, /request\.mode === "navigate"/);
+  assert.match(serviceWorker, /isApplicationCode/);
+  assert.match(serviceWorker, /fetch\(request\).*caches\.match\(request\)/s);
+  assert.match(pwaRegister, /registration\.update\(\)/);
+  assert.match(pwaRegister, /controllerchange/);
   assert.match(storefront, /Join free/);
   assert.match(storefront, /PROGRAMMES & MEMBERSHIPS/);
 });

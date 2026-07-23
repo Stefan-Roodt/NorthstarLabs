@@ -1,4 +1,4 @@
-const CACHE = "northstarlabs-shell-v1";
+const CACHE = "northstarlabs-shell-v2";
 const SHELL = ["/offline", "/favicon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -26,10 +26,26 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (
+  const isApplicationCode =
     url.pathname.startsWith("/_next/static/") ||
+    url.pathname.startsWith("/_vinext/") ||
     url.pathname.endsWith(".css") ||
-    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".js");
+
+  if (isApplicationCode) {
+    event.respondWith(
+      fetch(request).then((response) => {
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(request, copy));
+        }
+        return response;
+      }).catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  if (
     url.pathname.endsWith(".svg") ||
     url.pathname.endsWith(".png") ||
     url.pathname.endsWith(".woff2")

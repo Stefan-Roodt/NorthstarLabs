@@ -12,8 +12,17 @@ export function PwaRegister() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    let refreshing = false;
+    const refreshForUpdate = () => {
+      if (refreshing || !navigator.serviceWorker.controller) return;
+      refreshing = true;
+      location.reload();
+    };
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+      navigator.serviceWorker.addEventListener("controllerchange", refreshForUpdate);
+      navigator.serviceWorker.register("/sw.js")
+        .then((registration) => registration.update())
+        .catch(() => undefined);
     }
     const standalone = window.matchMedia("(display-mode: standalone)").matches;
     if (standalone) return;
@@ -29,6 +38,9 @@ export function PwaRegister() {
     window.addEventListener("beforeinstallprompt", capture);
     window.addEventListener("appinstalled", installed);
     return () => {
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.removeEventListener("controllerchange", refreshForUpdate);
+      }
       window.removeEventListener("beforeinstallprompt", capture);
       window.removeEventListener("appinstalled", installed);
     };
