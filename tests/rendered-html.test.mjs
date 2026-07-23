@@ -1857,8 +1857,9 @@ test("shows prospective learners the real curriculum, faculty, assessments, and 
 });
 
 test("keeps course context through registration and welcomes new enrolments into lesson one", async () => {
-  const [login, course, enrolments, learn, styles] = await Promise.all([
+  const [login, catalogue, course, enrolments, learn, styles] = await Promise.all([
     readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/courses/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/enrollments/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/learn/[courseId]/page.tsx", import.meta.url), "utf8"),
@@ -1869,6 +1870,10 @@ test("keeps course context through registration and welcomes new enrolments into
   assert.match(login, /assessmentCount/);
   assert.match(enrolments, /newEnrollment: !existing/);
   assert.match(course, /newEnrollment \? "\?welcome=1"/);
+  assert.match(course, /Continue learning/);
+  assert.match(course, /fetch\("\/api\/enrollments"/);
+  assert.match(catalogue, /signedIn/);
+  assert.match(catalogue, /My learning/);
   assert.match(learn, /YOU ARE ENROLLED/);
   assert.match(learn, /Start my first lesson/);
   assert.match(learn, /history\.replaceState/);

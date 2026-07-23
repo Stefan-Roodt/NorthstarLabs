@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getStarterCourse, starterCourses, type CatalogCourse } from "../../lib/starter-courses";
+import { getSupabaseBrowser } from "../../lib/supabase-client";
 import { LearningRequestForm } from "../learning-request-form";
 
 export default function Catalog() {
   const [courses, setCourses] = useState<CatalogCourse[]>(starterCourses);
   const [notice, setNotice] = useState("");
   const [query, setQuery] = useState("");
+  const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
     const queryFrame = requestAnimationFrame(() => {
@@ -23,6 +25,22 @@ export default function Catalog() {
       .then(setCourses)
       .catch(() => setNotice("Showing the NorthstarLabs starter collection."));
     return () => cancelAnimationFrame(queryFrame);
+  }, []);
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowser();
+    if (!supabase) return;
+    let active = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (active) setSignedIn(Boolean(data.session));
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (active) setSignedIn(Boolean(session));
+    });
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
   }, []);
 
   const keyword = query.trim().toLowerCase();
@@ -48,8 +66,13 @@ export default function Catalog() {
         <nav>
           <Link href="/">Home</Link>
           <Link href="/tutors">Work with a coach</Link>
-          <Link href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcreator">Create modules</Link>
-          <a href="/login">Sign in</a>
+          {signedIn ? <>
+            <Link href="/learn">My learning</Link>
+            <Link href="/account">Account</Link>
+          </> : <>
+            <Link href="/login?mode=signup&next=%2Fwelcome%3Fpath%3Dcreator">Create modules</Link>
+            <Link href="/login">Sign in</Link>
+          </>}
         </nav>
       </header>
 
