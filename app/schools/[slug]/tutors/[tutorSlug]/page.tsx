@@ -277,7 +277,7 @@ export default function TutorDetailPage({ params }: {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={tutor.photoUrl} alt="" />
         </> : <span>{tutor.displayName.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</span>}
-        <div><p className="sys-kicker">{tutor.verified ? tutor.verifiedCredentialCount > 0 ? `\u2713 VERIFIED - ${tutor.verifiedCredentialCount} APPROVED ${tutor.verifiedCredentialCount === 1 ? "CREDENTIAL" : "CREDENTIALS"}` : "\u2713 VERIFIED PROFILE" : `COACH OR TUTOR AT ${data.school.name.toUpperCase()}`}</p><h1>{tutor.displayName}</h1><p>{tutor.headline}</p>{tutor.reviewCount > 0 && <div className="tutor-profile-rating"><b>{tutor.averageRating} {"\u2605"}</b><span>{tutor.reviewCount} verified-session {tutor.reviewCount === 1 ? "review" : "reviews"}</span></div>}</div>
+        <div><p className="sys-kicker">{isFacultySupport ? `FACULTY SUPPORT AT ${data.school.name.toUpperCase()}` : tutor.verified ? tutor.verifiedCredentialCount > 0 ? `\u2713 VERIFIED - ${tutor.verifiedCredentialCount} APPROVED ${tutor.verifiedCredentialCount === 1 ? "CREDENTIAL" : "CREDENTIALS"}` : "\u2713 VERIFIED PROFILE" : `COACH OR TUTOR AT ${data.school.name.toUpperCase()}`}</p><h1>{tutor.displayName}</h1><p>{tutor.headline}</p>{tutor.reviewCount > 0 && <div className="tutor-profile-rating"><b>{tutor.averageRating} {"\u2605"}</b><span>{tutor.reviewCount} verified-session {tutor.reviewCount === 1 ? "review" : "reviews"}</span></div>}</div>
       </div>
       <aside className="tutor-book-card">
         <small>{isBookable ? "PUBLISHED APPOINTMENTS" : isFacultySupport ? "COURSE FACULTY SUPPORT" : "PRIVATE COACHING ENQUIRY"}</small>

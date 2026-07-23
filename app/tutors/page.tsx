@@ -150,6 +150,15 @@ export default function TutorMarketplacePage() {
   const selectedTopic = subject !== "all" ? subject : query.trim();
   const bookable = filtered.filter((tutor) => tutorServiceMode(tutor) === "bookable");
   const enquiryOnly = filtered.filter((tutor) => tutorServiceMode(tutor) !== "bookable");
+  const resultHeading = loading
+    ? "Finding people…"
+    : selectedTopic
+      ? `${filtered.length} ${filtered.length === 1 ? "match" : "matches"} for "${selectedTopic}"`
+      : !filtered.length
+        ? "No support profiles published yet"
+        : bookable.length
+          ? `${filtered.length} coaching ${filtered.length === 1 ? "profile" : "profiles"} to consider`
+          : `${filtered.length} faculty and support ${filtered.length === 1 ? "profile" : "profiles"} to consider`;
 
   function toggleCompare(tutor: MarketplaceTutor) {
     setComparedIds((current) => {
@@ -273,7 +282,7 @@ export default function TutorMarketplacePage() {
 
       <div className="marketplace-results">
         <header>
-          <div><p className="sys-kicker">YOUR MATCHES</p><h2>{loading ? "Finding people…" : selectedTopic ? `${filtered.length} ${filtered.length === 1 ? "match" : "matches"} for "${selectedTopic}"` : `${filtered.length} ${filtered.length === 1 ? "coach or tutor" : "coaches and tutors"} to consider`}</h2></div>
+          <div><p className="sys-kicker">YOUR MATCHES</p><h2>{resultHeading}</h2></div>
           <label>Sort by<select value={sort} onChange={(event) => setSort(event.target.value as SortMode)}><option value="recommended">Recommended</option><option value="available">Available soonest</option><option value="experience">Most experienced</option><option value="price">Lowest hourly rate</option></select></label>
         </header>
         {!loading && filtered.length > 0 && <p className="marketplace-result-summary"><b>{bookable.length}</b> with published appointment {bookable.length === 1 ? "time" : "times"} <span aria-hidden="true">{"\u00B7"}</span> <b>{enquiryOnly.length}</b> available by private enquiry</p>}
@@ -304,7 +313,7 @@ export default function TutorMarketplacePage() {
             <div className="marketplace-card-person">
               {tutor.photoUrl ? <Image src={tutor.photoUrl} alt="" width={84} height={98} unoptimized /> : <span>{initials(tutor.displayName)}</span>}
               <div>
-                <small>{tutor.verified ? "✓ VERIFIED - " : ""}{tutor.serviceType === "both" ? "COACH & TUTOR" : tutor.serviceType === "tutoring" ? "TUTOR" : "COACH"}</small>
+                <small>{serviceMode === "faculty_support" ? "FACULTY" : <>{tutor.verified ? "✓ VERIFIED - " : ""}{tutor.serviceType === "both" ? "COACH & TUTOR" : tutor.serviceType === "tutoring" ? "TUTOR" : "COACH"}</>}</small>
                 <h3>{tutor.displayName}</h3>
                 <p>{tutor.headline}</p>
               </div>
