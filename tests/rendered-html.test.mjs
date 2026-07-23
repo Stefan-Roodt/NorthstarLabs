@@ -135,11 +135,13 @@ test("provides course-grounded lesson help with a human educator escalation path
 });
 
 test("isolates creator schools, memberships, courses, and communities", async () => {
-  const [schema, migration, profile, welcome, community] = await Promise.all([
+  const [schema, migration, profile, welcome, dashboard, builder, community] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0006_conscious_talisman.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/api/profile/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/welcome/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/dashboard/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/community-access.ts", import.meta.url), "utf8"),
   ]);
   assert.match(schema, /export const schools/);
@@ -151,6 +153,14 @@ test("isolates creator schools, memberships, courses, and communities", async ()
   assert.match(migration, /ALTER TABLE `communities` ADD `school_id`/);
   assert.match(profile, /createCreatorSchool/);
   assert.match(welcome, /Name your academy/);
+  assert.match(welcome, /dashboard\?welcome=creator&area=courses/);
+  assert.match(dashboard, /ACADEMY CREATED/);
+  assert.match(dashboard, /Start with a blank course/);
+  assert.match(dashboard, /Import my existing material/);
+  assert.match(dashboard, /dashboard\/courses\/\$\{course\.id\}\?created=1/);
+  assert.match(builder, /PRIVATE COURSE DRAFT/);
+  assert.match(builder, /Build this course in three moves/);
+  assert.match(builder, /Add my first lesson/);
   assert.match(welcome, /role: "creator"/);
   assert.match(community, /FROM communities WHERE school_id=\?/);
   assert.doesNotMatch(community, /northstar-circle/);
