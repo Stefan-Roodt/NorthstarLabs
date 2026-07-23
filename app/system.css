@@ -518,3 +518,38 @@
   .lesson-concept-visual>ol li{min-height:56px;border-right:0;border-bottom:1px solid #ffffff20;padding:11px 22px}
   .lesson-concept-visual>ol li:last-child{border-bottom:0}
 }
+
+/* Progressive curriculum navigation */
+.mobile-curriculum-toggle,.curriculum-close,.curriculum-mobile-links{display:none}
+.learner-curriculum-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.learner-curriculum-heading h2{margin-top:4px!important}
+.learner-section{margin:12px 0;border:1px solid var(--rule);border-radius:10px;background:rgba(255,255,255,.42);overflow:hidden}
+.learn-layout>aside .learner-section-toggle{display:grid;grid-template-columns:34px minmax(0,1fr) 24px;gap:10px;align-items:center;padding:12px;border:0;background:transparent}
+.learn-layout>aside .learner-section-toggle:hover,.learn-layout>aside .learner-section-toggle:focus-visible{background:white}
+.learn-layout>aside .learner-section-toggle>span{width:auto;height:auto;border:0;border-radius:0;display:block}
+.learn-layout>aside .learner-section-toggle .learner-section-number{font:800 9px var(--font-display);letter-spacing:.08em;color:var(--blue)}
+.learner-section-copy{min-width:0}
+.learner-section-copy strong,.learner-section-copy small{display:block}
+.learner-section-copy strong{font:700 11px/1.3 var(--font-display);color:var(--ink)}
+.learner-section-copy small{margin-top:4px;color:var(--muted);font-size:8px}
+.learn-layout>aside .learner-section-toggle .learner-section-chevron{font-size:19px;line-height:1;text-align:right;color:var(--blue)}
+.learner-section.current{border-color:color-mix(in srgb,var(--blue) 38%,var(--rule))}
+.learner-section-lessons{border-top:1px solid var(--rule);background:rgba(255,255,255,.3)}
+.learn-layout>aside .learner-section-lessons>button{padding-left:12px;padding-right:12px}
+
+@media(max-width:900px){
+  .mobile-curriculum-toggle{display:inline-flex;align-items:center;justify-content:center}
+  .learner-course-links{display:none!important}
+  .learn-page.curriculum-open .learn-layout>aside,
+  .learn-page.focus-mode.curriculum-open .learn-layout>aside{display:block;position:fixed;z-index:90;inset:76px 0 0 0;overflow-y:auto;border-right:0;padding:24px 20px 60px}
+  .curriculum-close{display:inline-flex!important;width:auto!important;border:1px solid var(--rule)!important;border-radius:7px;background:white!important;padding:8px 11px!important;font-size:9px;font-weight:800}
+  .curriculum-mobile-links{display:flex;gap:8px;margin:0 0 14px}
+  .curriculum-mobile-links a{flex:1;border:1px solid var(--rule);background:white;padding:9px;text-align:center;font-size:9px;font-weight:800}
+}
+@media(max-width:620px){
+  .learn-page>header{gap:8px}
+  .learner-school-brand b{display:none}
+  .learner-school-brand i{margin:0}
+  .bandwidth-toggle{display:none}
+  .mobile-curriculum-toggle{padding:9px 11px!important;font-size:9px}
+}
