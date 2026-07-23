@@ -188,7 +188,7 @@ export default function TutorDetailPage({ params }: {
         <Link href={`/schools/${data.school.slug}/tutors`}>All tutors</Link>
         {signedIn ? <>
           <Link href="/learn">My learning</Link>
-          <Link href="/tutoring">Coaching requests</Link>
+          <Link href="/tutoring">My coaching</Link>
           <Link href="/account">Account</Link>
         </> : <Link href={`/login?next=${encodeURIComponent(`/schools/${data.school.slug}/tutors/${tutor.slug}`)}`}>Sign in</Link>}
       </nav>
