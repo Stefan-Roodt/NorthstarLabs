@@ -1074,6 +1074,11 @@ test("ships a structured course editor, reusable media library, and safe learner
   assert.match(builder, /draggable/);
   assert.match(builder, /Learner preview/);
   assert.match(builder, /Upload files/);
+  assert.match(builder, /Search curriculum/);
+  assert.match(builder, /Collapse all/);
+  assert.match(builder, /Current lesson/);
+  assert.match(builder, /openSectionIds\.has\(section\.id\)/);
+  assert.match(builder, /isOpen && <div className="curriculum-lessons">/);
   assert.match(builder, /isBlankNewLesson/);
   assert.doesNotMatch(builder, /markDirty\(lesson\.id\);\s*setMessage\("New lesson created/);
   assert.match(lessonsApi, /Add a title or lesson material before saving/);

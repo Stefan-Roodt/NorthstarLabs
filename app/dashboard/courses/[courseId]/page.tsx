@@ -257,6 +257,8 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   const [mediaProduction, setMediaProduction] = useState<"" | "recording" | "processing" | "cinematic">("");
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [launchGuideDismissed, setLaunchGuideDismissed] = useState(false);
+  const [curriculumQuery, setCurriculumQuery] = useState("");
+  const [openSectionIds, setOpenSectionIds] = useState<Set<string>>(new Set());
   const revision = useRef(0);
   const contentEditor = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -303,6 +305,8 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       const loaded = await response.json() as Course;
       setCourse(loaded);
       setSelectedId(loaded.lessons[0]?.id || "");
+      const firstSectionId = loaded.lessons[0]?.sectionId || loaded.sections[0]?.id || "";
+      setOpenSectionIds(firstSectionId ? new Set([firstSectionId]) : new Set());
       setMessage(openedFromCreation ? "Private course created - start with the first useful lesson" : "All changes saved");
     })();
   }, [courseId, openedFromCreation, supabase, token]);
@@ -440,7 +444,11 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
   }
 
   function openQualityIssue(issue: CourseReadinessIssue) {
-    if (issue.lessonId) setSelectedId(issue.lessonId);
+    if (issue.lessonId) {
+      setSelectedId(issue.lessonId);
+      const lesson = course?.lessons.find((item) => item.id === issue.lessonId);
+      if (lesson) revealSection(lesson.sectionId);
+    }
     setWorkspaceTab(issue.tab);
     requestAnimationFrame(() => {
       document.querySelector<HTMLElement>(".lesson-editor")?.scrollIntoView({
@@ -452,6 +460,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
 
   async function chooseLesson(lessonId: string) {
     if (!course || selected?.id === lessonId) return;
+    const nextLesson = course.lessons.find((lesson) => lesson.id === lessonId);
     if (selected && dirty?.id === selected.id) {
       const saved = await persistLesson(selected, dirty.revision, true);
       if (!saved) return;
@@ -463,6 +472,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       setMessage("Empty lesson discarded");
     }
     setSelectedId(lessonId);
+    if (nextLesson) revealSection(nextLesson.sectionId);
     setWorkspaceTab("lesson");
     setContentMode("write");
   }
@@ -498,6 +508,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     };
     setCourse({ ...course, lessons: [...currentLessons, lesson] });
     setSelectedId(lesson.id);
+    revealSection(sectionId);
     setWorkspaceTab("lesson");
     setDirty(null);
     setMessage("New lesson started - add a title or material to save it");
@@ -547,7 +558,7 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       id: crypto.randomUUID(),
       title: `Section ${course.sections.length + 1}`,
       position: course.sections.length,
-      createdAt: Date.now(),
+      createdAt: 0,
     };
     const response = await fetch("/api/sections", {
       method: "POST",
@@ -562,7 +573,33 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
       return;
     }
     setCourse({ ...course, sections: [...course.sections, section] });
+    revealSection(section.id);
     setMessage("Section added");
+  }
+
+  function revealSection(sectionId: string) {
+    if (!sectionId) return;
+    setOpenSectionIds((current) => {
+      if (current.has(sectionId)) return current;
+      const next = new Set(current);
+      next.add(sectionId);
+      return next;
+    });
+  }
+
+  function toggleSection(sectionId: string) {
+    setOpenSectionIds((current) => {
+      const next = new Set(current);
+      if (next.has(sectionId)) next.delete(sectionId);
+      else next.add(sectionId);
+      return next;
+    });
+  }
+
+  function focusCurrentSection() {
+    const sectionId = selected?.sectionId || course?.sections[0]?.id || "";
+    setCurriculumQuery("");
+    setOpenSectionIds(new Set(sectionId ? [sectionId] : []));
   }
 
   function editSection(sectionId: string, title: string) {
@@ -1105,6 +1142,17 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     (firstLesson.content.trim() || firstLesson.primaryAssetId || firstLesson.videoKey?.trim())
   );
   const showLaunchGuide = !launchGuideDismissed && (openedFromCreation || course.lessons.length === 0);
+  const curriculumSearch = curriculumQuery.trim().toLowerCase();
+  const orderedSections = [...course.sections].sort((a, b) => a.position - b.position);
+  const visibleSections = curriculumSearch
+    ? orderedSections.filter((section) =>
+        section.title.toLowerCase().includes(curriculumSearch) ||
+        course.lessons.some((lesson) =>
+          lesson.sectionId === section.id &&
+          lesson.title.toLowerCase().includes(curriculumSearch)
+        )
+      )
+    : orderedSections;
 
   return <main className="builder-page builder-page-expanded">
     <header className="builder-top">
@@ -1157,37 +1205,80 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
     <div className="builder-layout">
       <aside className="curriculum curriculum-expanded">
         <div className="curriculum-heading">
-          <div><p className="sys-kicker">CURRICULUM</p><b>{course.lessons.length} lessons</b></div>
+          <div><p className="sys-kicker">CURRICULUM</p><b>{course.sections.length} sections · {course.lessons.length} lessons</b></div>
           <button onClick={addSection}>+ Section</button>
         </div>
+        <div className="curriculum-tools">
+          <label>
+            <span>Find a section or lesson</span>
+            <input
+              type="search"
+              aria-label="Search curriculum"
+              value={curriculumQuery}
+              onChange={(event) => setCurriculumQuery(event.target.value)}
+              placeholder={`Search ${course.lessons.length} lessons`}
+            />
+          </label>
+          <div>
+            <button type="button" onClick={() => setOpenSectionIds(new Set())}>Collapse all</button>
+            <button type="button" onClick={focusCurrentSection}>Current lesson</button>
+          </div>
+          {curriculumSearch && <small>{visibleSections.length
+            ? `${visibleSections.length} matching section${visibleSections.length === 1 ? "" : "s"}`
+            : "No matching sections or lessons"}</small>}
+        </div>
         <div className="curriculum-sections">
-          {[...course.sections].sort((a, b) => a.position - b.position).map((section, sectionIndex) =>
-            <section
-              className="curriculum-section"
+          {visibleSections.map((section) => {
+            const sectionIndex = orderedSections.findIndex((item) => item.id === section.id);
+            const sectionLessons = course.lessons
+              .filter((lesson) => lesson.sectionId === section.id)
+              .sort((a, b) => a.position - b.position);
+            const sectionTitleMatches = section.title.toLowerCase().includes(curriculumSearch);
+            const visibleLessons = curriculumSearch && !sectionTitleMatches
+              ? sectionLessons.filter((lesson) => lesson.title.toLowerCase().includes(curriculumSearch))
+              : sectionLessons;
+            const issueCount = sectionLessons.reduce(
+              (total, lesson) => total + (readiness?.lessonIssueCounts[lesson.id] || 0),
+              0,
+            );
+            const isOpen = Boolean(curriculumSearch) || openSectionIds.has(section.id);
+            return <section
+              className={`curriculum-section${isOpen ? " open" : ""}`}
               key={section.id}
               onDragOver={(event) => event.preventDefault()}
               onDrop={() => dropLesson(section.id)}
             >
               <header>
-                <span>{String(sectionIndex + 1).padStart(2, "0")}</span>
-                <input
-                  aria-label={`Section ${sectionIndex + 1} title`}
-                  value={section.title}
-                  onChange={(event) => editSection(section.id, event.target.value)}
-                  onBlur={() => saveSection(section)}
-                />
+                <button
+                  type="button"
+                  className="curriculum-section-toggle"
+                  aria-expanded={isOpen}
+                  aria-label={`${isOpen ? "Collapse" : "Expand"} ${section.title}`}
+                  onClick={() => toggleSection(section.id)}
+                >
+                  <span>{isOpen ? "−" : "+"}</span>
+                  <b>{String(sectionIndex + 1).padStart(2, "0")}</b>
+                </button>
+                <label className="curriculum-section-title">
+                  <span className="sr-only">Section {sectionIndex + 1} title</span>
+                  <input
+                    aria-label={`Section ${sectionIndex + 1} title`}
+                    value={section.title}
+                    onChange={(event) => editSection(section.id, event.target.value)}
+                    onBlur={() => saveSection(section)}
+                  />
+                  <small>{sectionLessons.length} lesson{sectionLessons.length === 1 ? "" : "s"} · {issueCount ? `${issueCount} quality fix${issueCount === 1 ? "" : "es"}` : "quality ready"}</small>
+                </label>
                 <div>
                   <button aria-label="Move section up" title="Move section up" disabled={sectionIndex === 0} onClick={() => moveSection(section.id, -1)}>&uarr;</button>
                   <button aria-label="Move section down" title="Move section down" disabled={sectionIndex === course.sections.length - 1} onClick={() => moveSection(section.id, 1)}>&darr;</button>
                   <button aria-label="Delete section" title="Delete section" onClick={() => deleteSection(section)}>&times;</button>
                 </div>
               </header>
-              <div className="curriculum-lessons">
-                {course.lessons
-                  .filter((lesson) => lesson.sectionId === section.id)
-                  .sort((a, b) => a.position - b.position)
-                  .map((lesson, lessonIndex, siblings) =>
-                    <article
+              {isOpen && <div className="curriculum-lessons">
+                {visibleLessons.map((lesson) => {
+                  const lessonIndex = sectionLessons.findIndex((item) => item.id === lesson.id);
+                  return <article
                       draggable
                       className={selected?.id === lesson.id ? "active" : ""}
                       key={lesson.id}
@@ -1212,18 +1303,18 @@ export default function CourseBuilder({ params }: { params: Promise<{ courseId: 
                       </button>
                       <div className="lesson-order-controls">
                         <button aria-label={`Move ${lesson.title} up`} disabled={lessonIndex === 0} onClick={() => moveLesson(lesson.id, -1)}>&uarr;</button>
-                        <button aria-label={`Move ${lesson.title} down`} disabled={lessonIndex === siblings.length - 1} onClick={() => moveLesson(lesson.id, 1)}>&darr;</button>
+                        <button aria-label={`Move ${lesson.title} down`} disabled={lessonIndex === sectionLessons.length - 1} onClick={() => moveLesson(lesson.id, 1)}>&darr;</button>
                       </div>
-                    </article>
-                  )}
-              </div>
-              <div className="lesson-add-row">
+                    </article>;
+                })}
+              </div>}
+              {isOpen && <div className="lesson-add-row">
                 <button onClick={() => addLesson(section.id, "text")}>+ Text</button>
                 <button onClick={() => addLesson(section.id, "video")}>+ Video</button>
                 <button onClick={() => addLesson(section.id, "quiz")}>+ Quiz</button>
-              </div>
-            </section>
-          )}
+              </div>}
+            </section>;
+          })}
         </div>
         <button className="media-library-button" onClick={() => setWorkspaceTab("media")}>
           <span>MEDIA</span><div><b>Academy media library</b><small>{course.media.length} reusable files</small></div>
