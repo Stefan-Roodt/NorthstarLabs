@@ -501,7 +501,7 @@ test("archives the legacy shelf and publishes the AI signature programme", async
 test("keeps generated narration drafts separate until an educator approves them", async () => {
   const db = await migratedDatabase();
   const lesson = db.prepare(`
-    SELECT id,transcript FROM lessons
+    SELECT id,transcript,updated_at AS updatedAt FROM lessons
     WHERE course_id='cognizen-crypto-mastery-foundations-production'
       AND lesson_type<>'quiz'
     ORDER BY id LIMIT 1
@@ -511,8 +511,9 @@ test("keeps generated narration drafts separate until an educator approves them"
   const now = 1784840000000;
   db.prepare(`
     INSERT INTO lesson_narration_drafts
-      (id,school_id,course_id,lesson_id,draft_text,status,source,created_by,created_at,updated_at)
-    VALUES (?,?,?,?,?,'draft','lesson_content',?,?,?)
+      (id,school_id,course_id,lesson_id,draft_text,status,source,created_by,created_at,updated_at,
+       source_lesson_updated_at)
+    VALUES (?,?,?,?,?,'draft','lesson_content',?,?,?,?)
   `).run(
     "journey-narration-draft",
     "stefan-course-school-fixture",
@@ -522,6 +523,7 @@ test("keeps generated narration drafts separate until an educator approves them"
     "stefan-course-owner-fixture",
     now,
     now,
+    lesson.updatedAt,
   );
 
   assert.equal(
@@ -532,6 +534,22 @@ test("keeps generated narration drafts separate until an educator approves them"
     db.prepare("SELECT transcript FROM lessons WHERE id=?").get(lesson.id).transcript,
     originalTranscript,
   );
+  assert.equal(
+    db.prepare(`
+      SELECT source_lesson_updated_at AS sourceLessonUpdatedAt
+      FROM lesson_narration_drafts WHERE id='journey-narration-draft'
+    `).get().sourceLessonUpdatedAt,
+    lesson.updatedAt,
+  );
+  db.prepare("UPDATE lessons SET updated_at=? WHERE id=?").run(lesson.updatedAt + 1, lesson.id);
+  const versionLock = db.prepare(`
+    SELECT l.updated_at AS lessonUpdatedAt,
+      nd.source_lesson_updated_at AS sourceLessonUpdatedAt
+    FROM lesson_narration_drafts nd
+    JOIN lessons l ON l.id=nd.lesson_id
+    WHERE nd.id='journey-narration-draft'
+  `).get();
+  assert.notEqual(versionLock.lessonUpdatedAt, versionLock.sourceLessonUpdatedAt);
   assert.throws(() => db.prepare(`
     INSERT INTO lesson_narration_drafts
       (id,school_id,course_id,lesson_id,draft_text,status,source,created_by,created_at,updated_at)

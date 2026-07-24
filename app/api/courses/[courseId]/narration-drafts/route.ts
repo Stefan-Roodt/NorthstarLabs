@@ -13,9 +13,11 @@ type NarrationLessonRow = {
   title: string;
   content: string | null;
   transcript: string | null;
+  lessonUpdatedAt: number;
   draftId: string | null;
   draftText: string | null;
   draftStatus: string | null;
+  sourceLessonUpdatedAt: number | null;
 };
 
 const MAX_GENERATION_BATCH = 25;
@@ -23,7 +25,8 @@ const MAX_GENERATION_BATCH = 25;
 async function courseLessons(courseId: string) {
   return env.DB.prepare(
     `SELECT l.id,COALESCE(cs.title,'Unsectioned lessons') AS sectionTitle,l.title,l.content,l.transcript,
-      nd.id AS draftId,nd.draft_text AS draftText,nd.status AS draftStatus
+      l.updated_at AS lessonUpdatedAt,nd.id AS draftId,nd.draft_text AS draftText,
+      nd.status AS draftStatus,nd.source_lesson_updated_at AS sourceLessonUpdatedAt
      FROM lessons l
      LEFT JOIN course_sections cs ON cs.id=l.section_id
      LEFT JOIN lesson_narration_drafts nd ON nd.lesson_id=l.id
@@ -36,6 +39,11 @@ function draftFor(row: NarrationLessonRow) {
   return buildNarrationDraft(row.title, row.content || "");
 }
 
+function draftIsStale(row: NarrationLessonRow) {
+  return row.draftStatus === "draft" &&
+    Number(row.sourceLessonUpdatedAt || 0) !== Number(row.lessonUpdatedAt || 0);
+}
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ courseId: string }> },
@@ -46,7 +54,7 @@ export async function POST(
   const course = await requireCourseStaffAccess(user.id, courseId);
   if (!course) return Response.json({ error: "Course not found." }, { status: 404 });
   const body = await request.json().catch(() => ({})) as {
-    action?: "preview" | "get" | "generate" | "approve" | "dismiss";
+    action?: "preview" | "get" | "generate" | "refresh" | "approve" | "dismiss";
     lessonIds?: string[];
     lessonId?: string;
     draftText?: string;
@@ -57,7 +65,12 @@ export async function POST(
     const ready = result.results.filter((row) => countNarrationWords(row.transcript || "") >= 40);
     const existingDrafts = result.results.filter((row) =>
       countNarrationWords(row.transcript || "") < 40 &&
-      row.draftStatus === "draft"
+      row.draftStatus === "draft" &&
+      !draftIsStale(row)
+    );
+    const staleDrafts = result.results.filter((row) =>
+      countNarrationWords(row.transcript || "") < 40 &&
+      draftIsStale(row)
     );
     const draftable = result.results.map((row) => ({
       row,
@@ -75,10 +88,12 @@ export async function POST(
       totalInstructional: result.results.length,
       reviewedScripts: ready.length,
       draftsWaiting: existingDrafts.length,
+      staleDrafts: staleDrafts.length,
       draftable: draftable.length,
       educatorAttention: educatorAttention.length,
       candidateIds: draftable.map(({ row }) => row.id),
       draftLessonIds: existingDrafts.map((row) => row.id),
+      staleDraftLessonIds: staleDrafts.map((row) => row.id),
       samples: draftable.slice(0, 3).map(({ row, draft }) => ({
         lessonId: row.id,
         sectionTitle: row.sectionTitle,
@@ -92,6 +107,11 @@ export async function POST(
         sectionTitle: row.sectionTitle,
         lessonTitle: row.title,
       })),
+      staleDraftSamples: staleDrafts.slice(0, 5).map((row) => ({
+        lessonId: row.id,
+        sectionTitle: row.sectionTitle,
+        lessonTitle: row.title,
+      })),
     });
   }
 
@@ -99,7 +119,8 @@ export async function POST(
     if (!body.lessonId) return Response.json({ error: "Lesson required." }, { status: 400 });
     const draft = await env.DB.prepare(
       `SELECT nd.id,nd.lesson_id AS lessonId,nd.draft_text AS draftText,
-        nd.created_at AS createdAt,nd.updated_at AS updatedAt
+        nd.source_lesson_updated_at AS sourceLessonUpdatedAt,
+        l.updated_at AS lessonUpdatedAt,nd.created_at AS createdAt,nd.updated_at AS updatedAt
        FROM lesson_narration_drafts nd
        JOIN lessons l ON l.id=nd.lesson_id
        WHERE nd.lesson_id=? AND nd.course_id=? AND l.course_id=? AND nd.status='draft'`,
@@ -107,10 +128,16 @@ export async function POST(
       id: string;
       lessonId: string;
       draftText: string;
+      sourceLessonUpdatedAt: number;
+      lessonUpdatedAt: number;
       createdAt: number;
       updatedAt: number;
     }>();
-    return Response.json({ draft: draft || null });
+    return Response.json({
+      draft: draft
+        ? { ...draft, stale: Number(draft.sourceLessonUpdatedAt) !== Number(draft.lessonUpdatedAt) }
+        : null,
+    });
   }
 
   if (body.action === "generate") {
@@ -124,7 +151,8 @@ export async function POST(
     const placeholders = lessonIds.map(() => "?").join(",");
     const rows = await env.DB.prepare(
       `SELECT l.id,COALESCE(cs.title,'Unsectioned lessons') AS sectionTitle,l.title,l.content,l.transcript,
-        nd.id AS draftId,nd.draft_text AS draftText,nd.status AS draftStatus
+        l.updated_at AS lessonUpdatedAt,nd.id AS draftId,nd.draft_text AS draftText,
+        nd.status AS draftStatus,nd.source_lesson_updated_at AS sourceLessonUpdatedAt
        FROM lessons l
        LEFT JOIN course_sections cs ON cs.id=l.section_id
        LEFT JOIN lesson_narration_drafts nd ON nd.lesson_id=l.id
@@ -142,13 +170,14 @@ export async function POST(
       await env.DB.batch(prepared.map(({ row, draft }) =>
         env.DB.prepare(
           `INSERT INTO lesson_narration_drafts
-            (id,school_id,course_id,lesson_id,draft_text,status,source,created_by,created_at,updated_at)
-           VALUES (?,?,?,?,?,'draft','lesson_content',?,?,?)
+            (id,school_id,course_id,lesson_id,draft_text,status,source,created_by,created_at,updated_at,source_lesson_updated_at)
+           VALUES (?,?,?,?,?,'draft','lesson_content',?,?,?,?)
            ON CONFLICT(lesson_id) DO UPDATE SET
              draft_text=excluded.draft_text,
              status='draft',
              source='lesson_content',
              created_by=excluded.created_by,
+             source_lesson_updated_at=excluded.source_lesson_updated_at,
              updated_at=excluded.updated_at`,
         ).bind(
           row.draftId || crypto.randomUUID(),
@@ -159,6 +188,7 @@ export async function POST(
           user.id,
           now,
           now,
+          row.lessonUpdatedAt,
         )
       ));
       await writeAuditLog({
@@ -176,6 +206,59 @@ export async function POST(
     });
   }
 
+  if (body.action === "refresh") {
+    if (!body.lessonId) return Response.json({ error: "Lesson required." }, { status: 400 });
+    const row = await env.DB.prepare(
+      `SELECT l.id,COALESCE(cs.title,'Unsectioned lessons') AS sectionTitle,l.title,l.content,l.transcript,
+        l.updated_at AS lessonUpdatedAt,nd.id AS draftId,nd.draft_text AS draftText,
+        nd.status AS draftStatus,nd.source_lesson_updated_at AS sourceLessonUpdatedAt
+       FROM lessons l
+       LEFT JOIN course_sections cs ON cs.id=l.section_id
+       JOIN lesson_narration_drafts nd ON nd.lesson_id=l.id
+       WHERE l.id=? AND l.course_id=? AND l.lesson_type<>'quiz' AND nd.status='draft'`,
+    ).bind(body.lessonId, courseId).first<NarrationLessonRow>();
+    if (!row) return Response.json({ error: "Narration draft not found." }, { status: 404 });
+    if (countNarrationWords(row.transcript || "") >= 40) {
+      return Response.json(
+        { error: "This lesson already has a reviewed narration script." },
+        { status: 409 },
+      );
+    }
+    const draftText = draftFor(row);
+    if (countNarrationWords(draftText) < 40) {
+      return Response.json(
+        { error: "The updated lesson does not contain enough substantive material for a grounded draft." },
+        { status: 409 },
+      );
+    }
+    const now = Date.now();
+    await env.DB.prepare(
+      `UPDATE lesson_narration_drafts
+       SET draft_text=?,source='lesson_content',source_lesson_updated_at=?,created_by=?,updated_at=?
+       WHERE id=? AND status='draft'`,
+    ).bind(draftText, row.lessonUpdatedAt, user.id, now, row.draftId).run();
+    await writeAuditLog({
+      actorId: user.id,
+      schoolId: course.schoolId,
+      action: "narration_draft.refreshed",
+      targetType: "lesson",
+      targetId: body.lessonId,
+      detail: { words: countNarrationWords(draftText), lessonUpdatedAt: row.lessonUpdatedAt },
+    });
+    return Response.json({
+      draft: {
+        id: row.draftId,
+        lessonId: row.id,
+        draftText,
+        sourceLessonUpdatedAt: row.lessonUpdatedAt,
+        lessonUpdatedAt: row.lessonUpdatedAt,
+        createdAt: now,
+        updatedAt: now,
+        stale: false,
+      },
+    });
+  }
+
   if (body.action === "approve") {
     const draftText = (body.draftText || "").trim();
     if (!body.lessonId || countNarrationWords(draftText) < 40 || draftText.length > 100_000) {
@@ -185,15 +268,27 @@ export async function POST(
       );
     }
     const draft = await env.DB.prepare(
-      `SELECT nd.id,l.transcript
+      `SELECT nd.id,l.transcript,l.updated_at AS lessonUpdatedAt,
+        nd.source_lesson_updated_at AS sourceLessonUpdatedAt
        FROM lesson_narration_drafts nd
        JOIN lessons l ON l.id=nd.lesson_id
        WHERE nd.lesson_id=? AND nd.course_id=? AND l.course_id=? AND nd.status='draft'`,
-    ).bind(body.lessonId, courseId, courseId).first<{ id: string; transcript: string | null }>();
+    ).bind(body.lessonId, courseId, courseId).first<{
+      id: string;
+      transcript: string | null;
+      lessonUpdatedAt: number;
+      sourceLessonUpdatedAt: number;
+    }>();
     if (!draft) return Response.json({ error: "Narration draft not found." }, { status: 404 });
     if (countNarrationWords(draft.transcript || "") >= 40) {
       return Response.json(
         { error: "This lesson already has a reviewed narration script." },
+        { status: 409 },
+      );
+    }
+    if (Number(draft.sourceLessonUpdatedAt) !== Number(draft.lessonUpdatedAt)) {
+      return Response.json(
+        { error: "The lesson changed after this draft was prepared. Refresh the draft before approving it." },
         { status: 409 },
       );
     }
