@@ -2233,13 +2233,14 @@ test("makes assessments teach with explanations, answer feedback, and guided ret
 });
 
 test("gives creators an honest, actionable learner-quality review", async () => {
-  const [editor, readinessSource, readinessApi, styles, narrationDraftApi, narrationDraftMigration] = await Promise.all([
+  const [editor, readinessSource, readinessApi, styles, narrationDraftApi, narrationDraftMigration, narrationSourceLockMigration] = await Promise.all([
     readFile(new URL("../app/dashboard/courses/[courseId]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/course-readiness.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/courses/readiness/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/builder.css", import.meta.url), "utf8"),
     readFile(new URL("../app/api/courses/[courseId]/narration-drafts/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../drizzle/0092_governed_narration_drafts.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0093_source_locked_narration_drafts.sql", import.meta.url), "utf8"),
   ]);
   const { getCourseReadiness } = await import("../lib/course-readiness.ts");
   const review = getCourseReadiness({
@@ -2319,13 +2320,23 @@ test("gives creators an honest, actionable learner-quality review", async () => 
   assert.match(editor, /Drafts do not count as reviewed transcripts/);
   assert.match(editor, /PREPARED DRAFT · NOT APPROVED/);
   assert.match(editor, /Approve reviewed script/);
+  assert.match(editor, /Approve & review next/);
+  assert.match(editor, /Meaning and evidence/);
+  assert.match(editor, /Language and pronunciation/);
+  assert.match(editor, /Teaching delivery/);
+  assert.match(editor, /The lesson changed after this draft was prepared/);
+  assert.match(editor, /openNarrationDraftLesson/);
   assert.match(narrationDraftApi, /requireCourseStaffAccess/);
   assert.match(narrationDraftApi, /MAX_GENERATION_BATCH = 25/);
   assert.match(narrationDraftApi, /countNarrationWords\(row\.transcript \|\| ""\) < 40/);
   assert.match(narrationDraftApi, /status='approved'/);
+  assert.match(narrationDraftApi, /source_lesson_updated_at AS sourceLessonUpdatedAt/);
+  assert.match(narrationDraftApi, /The lesson changed after this draft was prepared/);
+  assert.match(narrationDraftApi, /narration_draft\.refreshed/);
   assert.match(narrationDraftApi, /narration_drafts\.generated/);
   assert.match(narrationDraftMigration, /CHECK \(`status` IN \('draft','approved','dismissed'\)\)/);
   assert.match(narrationDraftMigration, /UNIQUE \(`lesson_id`\)/);
+  assert.match(narrationSourceLockMigration, /ADD COLUMN source_lesson_updated_at/);
   assert.match(readinessSource, /Add a learner outcome/);
   assert.match(readinessSource, /course-narrated-teaching/);
   assert.match(readinessSource, /productionQueue/);
@@ -2340,6 +2351,9 @@ test("gives creators an honest, actionable learner-quality review", async () => 
   assert.match(styles, /\.narration-batch-files/);
   assert.match(styles, /\.narration-draft-factory/);
   assert.match(styles, /\.narration-draft-review/);
+  assert.match(styles, /\.narration-review-workspace/);
+  assert.match(styles, /\.narration-quality-gate/);
+  assert.match(styles, /\.narration-stale-warning/);
   assert.match(styles, /\.lesson-quality-signal/);
   assert.match(readinessApi, /ma\.filename AS primaryFilename/);
   assert.match(readinessApi, /id: lesson\.primaryAssetId/);

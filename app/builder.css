@@ -332,7 +332,7 @@
 
 .narration-draft-factory > dl {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: .55rem;
   margin: 0;
 }
@@ -482,8 +482,15 @@
   font: 700 1rem var(--font-display);
 }
 
-.narration-draft-review > header > span {
+.narration-review-status {
+  display: flex;
   flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .35rem;
+}
+
+.narration-review-status span {
   padding: .28rem .55rem;
   border-radius: 999px;
   color: #223d9e;
@@ -492,15 +499,157 @@
   font-weight: 800;
 }
 
-.narration-draft-review textarea {
-  width: calc(100% - 2rem);
+.narration-stale-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 1rem 1rem;
+  padding: .85rem;
+  border: 1px solid rgba(170, 83, 30, .28);
+  border-radius: .8rem;
+  background: #fff3df;
+}
+
+.narration-stale-warning b {
+  color: #713a17;
+}
+
+.narration-stale-warning p {
+  margin: .18rem 0 0;
+  color: #83583b;
+  font-size: .76rem;
+}
+
+.narration-review-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: .75rem;
+  padding: 0 1rem 1rem;
+}
+
+.narration-review-workspace > section {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(53, 86, 216, .18);
+  border-radius: .8rem;
+  background: rgba(255, 255, 255, .72);
+}
+
+.narration-review-workspace > section > div {
+  min-height: 3.55rem;
+  padding: .7rem .8rem;
+  border-bottom: 1px solid rgba(53, 86, 216, .14);
+  background: rgba(53, 86, 216, .05);
+}
+
+.narration-review-workspace > section > div span,
+.narration-review-workspace > section > div b {
+  display: block;
+}
+
+.narration-review-workspace > section > div span {
+  color: #3556d8;
+  font-size: .64rem;
+  font-weight: 900;
+  letter-spacing: .05em;
+}
+
+.narration-review-workspace > section > div b {
+  margin-top: .18rem;
+  font-size: .78rem;
+}
+
+.narration-review-source {
+  height: 19rem;
+  overflow: auto;
+  padding: .9rem;
+  background: #fff;
+}
+
+.narration-review-source .lesson-rich-content {
+  font-size: .82rem;
+  line-height: 1.55;
+}
+
+.narration-review-source .lesson-rich-content h2 {
+  font-size: 1.2rem;
+}
+
+.narration-review-source .lesson-rich-content h3 {
+  font-size: 1rem;
+}
+
+.narration-review-workspace textarea {
+  display: block;
+  width: 100%;
   min-height: 15rem;
-  margin: 0 1rem;
+  height: 19rem;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
   border-color: rgba(53, 86, 216, .25);
   background: rgba(255, 255, 255, .94);
   font-size: .9rem;
   font-weight: 400;
   line-height: 1.55;
+}
+
+.narration-review-workspace textarea:disabled {
+  color: var(--muted);
+  background: #f3f1ed;
+}
+
+.narration-quality-gate {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .55rem;
+  margin: 0 1rem;
+  padding: .8rem;
+  border: 1px solid rgba(53, 86, 216, .18);
+  border-radius: .8rem;
+  background: rgba(255, 255, 255, .66);
+}
+
+.narration-quality-gate legend {
+  padding: 0 .35rem;
+  color: #3556d8;
+  font-size: .64rem;
+  font-weight: 900;
+  letter-spacing: .05em;
+}
+
+.narration-quality-gate label {
+  display: flex;
+  gap: .55rem;
+  align-items: flex-start;
+  padding: .65rem;
+  border-radius: .65rem;
+  background: #fff;
+  cursor: pointer;
+}
+
+.narration-quality-gate input {
+  flex: 0 0 auto;
+  margin-top: .15rem;
+  accent-color: #3556d8;
+}
+
+.narration-quality-gate span,
+.narration-quality-gate b,
+.narration-quality-gate small {
+  display: block;
+}
+
+.narration-quality-gate b {
+  font-size: .76rem;
+}
+
+.narration-quality-gate small {
+  margin-top: .16rem;
+  color: var(--muted);
+  font-size: .68rem;
+  line-height: 1.4;
 }
 
 .narration-draft-review > footer {
@@ -532,10 +681,25 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .narration-review-workspace,
+  .narration-quality-gate {
+    grid-template-columns: 1fr;
+  }
+
+  .narration-review-source,
+  .narration-review-workspace textarea {
+    height: 15rem;
+  }
+
+  .narration-stale-warning,
   .narration-draft-review > header,
   .narration-draft-review > footer {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .narration-review-status {
+    justify-content: flex-start;
   }
 
   .narration-draft-review > footer div {

@@ -458,6 +458,14 @@ if (!narrationDraftIndexes.some((item) =>
 )) {
   throw new Error("Narration drafts are missing their course review-queue index.");
 }
+const narrationDraftColumns = database.prepare(
+  "PRAGMA table_info(lesson_narration_drafts)",
+).all();
+if (!narrationDraftColumns.some((item) =>
+  item.name === "source_lesson_updated_at" && item.notnull === 1
+)) {
+  throw new Error("Narration drafts are not locked to the lesson version used to prepare them.");
+}
 for (const table of [
   "creator_studio_projects",
   "creator_studio_sources",

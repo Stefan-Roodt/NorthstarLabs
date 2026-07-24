@@ -185,6 +185,7 @@ export const lessonNarrationDrafts = sqliteTable("lesson_narration_drafts", {
   draftText: text("draft_text").notNull(),
   status: text("status").notNull().default("draft"),
   source: text("source").notNull().default("lesson_content"),
+  sourceLessonUpdatedAt: integer("source_lesson_updated_at").notNull().default(0),
   createdBy: text("created_by").notNull(),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
