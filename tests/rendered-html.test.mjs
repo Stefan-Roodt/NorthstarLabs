@@ -1802,6 +1802,8 @@ test("makes NorthstarLabs clear, memorable, discoverable, and responsive to unme
   assert.match(llms, /NorthstarLabs/);
   assert.match(llms, /Courses for the path/);
   assert.match(dashboard, /workspaceIdentity/);
+  assert.match(home, /decision-hero-actions/);
+  assert.match(home, /Build my learning route/);
   assert.match(dashboard, /Edit this academy/);
   assert.match(academy, /id="academy-identity"/);
   assert.match(navigator, /Choose an academy\. Then choose your module/);

@@ -99,6 +99,14 @@ export default function Home() {
             NorthstarLabs brings structured courses, practical assessments, useful communities, and optional one-to-one coaching
             together. Start learning immediately, or choose the professional path that fits your work.
           </p>
+          <div className="decision-hero-actions" aria-label="Start with NorthstarLabs">
+            <Link className="decision-primary-action" href="/courses">
+              Explore courses <span aria-hidden="true">→</span>
+            </Link>
+            <Link className="decision-secondary-action" href="/find">
+              Build my learning route <span aria-hidden="true">→</span>
+            </Link>
+          </div>
           <div className="decision-trust" aria-label="Why it is easy to start">
             <span><b>Preview</b> before enrolling</span>
             <span><b>Human</b> help when needed</span>
