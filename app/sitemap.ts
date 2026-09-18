@@ -4,23 +4,22 @@ import { searchLandingPages } from "../lib/search-landing-pages";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://northstarlabs.co.za";
-  const lastModified = new Date();
   const fixed: MetadataRoute.Sitemap = [
-    { url: baseUrl, lastModified, changeFrequency: "weekly", priority: 1 },
-    { url: `${baseUrl}/about`, lastModified, changeFrequency: "monthly", priority: 0.8 },
-    { url: `${baseUrl}/find`, lastModified, changeFrequency: "weekly", priority: 0.9 },
-    { url: `${baseUrl}/demand`, lastModified, changeFrequency: "daily", priority: 0.85 },
-    { url: `${baseUrl}/courses`, lastModified, changeFrequency: "daily", priority: 0.8 },
-    { url: `${baseUrl}/tutors`, lastModified, changeFrequency: "daily", priority: 0.8 },
-    { url: `${baseUrl}/solutions`, lastModified, changeFrequency: "weekly", priority: 0.85 },
+    { url: baseUrl, changeFrequency: "weekly", priority: 1 },
+    { url: `${baseUrl}/about`, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${baseUrl}/pricing`, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${baseUrl}/find`, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${baseUrl}/demand`, changeFrequency: "daily", priority: 0.85 },
+    { url: `${baseUrl}/courses`, changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/tutors`, changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/solutions`, changeFrequency: "weekly", priority: 0.85 },
     ...searchLandingPages.map((page) => ({
       url: `${baseUrl}/solutions/${page.slug}`,
-      lastModified,
       changeFrequency: "monthly" as const,
       priority: 0.75,
     })),
-    { url: `${baseUrl}/legal/terms`, lastModified, changeFrequency: "monthly", priority: 0.3 },
-    { url: `${baseUrl}/legal/privacy`, lastModified, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${baseUrl}/legal/terms`, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${baseUrl}/legal/privacy`, changeFrequency: "monthly", priority: 0.3 },
   ];
   try {
     const [courses, schools, tutors] = await Promise.all([

@@ -3,12 +3,17 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("defines NorthstarLabs production metadata", async () => {
-  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  const [layout, coursesLayout] = await Promise.all([
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/courses/layout.tsx", import.meta.url), "utf8"),
+  ]);
   assert.match(layout, /NorthstarLabs — Learn\. Ask\. Progress\./);
   assert.match(layout, /metadataBase/);
   assert.match(layout, /og-decision\.png/);
   assert.match(layout, /summary_large_image/);
   assert.doesNotMatch(layout, /codex-preview|Starter Project/);
+  assert.match(coursesLayout, /Practical Online Courses in South Africa/);
+  assert.match(coursesLayout, /alternates: \{ canonical: "\/courses" \}/);
 });
 
 test("self-hosts production fonts without leaking local workspace paths", async () => {
@@ -1799,9 +1804,13 @@ test("makes NorthstarLabs clear, memorable, discoverable, and responsive to unme
   assert.match(sitemap, /FROM courses/);
   assert.match(sitemap, /FROM tutors/);
   assert.match(sitemap, /\/find/);
+  assert.match(sitemap, /\/pricing/);
+  assert.doesNotMatch(sitemap, /const lastModified = new Date\(\)/);
   assert.match(llms, /NorthstarLabs/);
   assert.match(llms, /Courses for the path/);
   assert.match(dashboard, /workspaceIdentity/);
+  assert.match(home, /decision-hero-actions/);
+  assert.match(home, /Build my learning route/);
   assert.match(dashboard, /Edit this academy/);
   assert.match(academy, /id="academy-identity"/);
   assert.match(navigator, /Choose an academy\. Then choose your module/);
@@ -1827,6 +1836,8 @@ test("publishes high-intent solution guides with crawlable internal routes", asy
   ]);
   assert.match(home, /href="\/solutions"/);
   assert.match(home, /All solutions/);
+  assert.match(home, /href="\/solutions\/online-courses-south-africa"/);
+  assert.match(home, /href="\/solutions\/find-business-coach-south-africa"/);
   assert.match(hub, /CollectionPage/);
   assert.match(hub, /ItemList/);
   assert.match(guide, /FAQPage/);

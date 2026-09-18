@@ -99,6 +99,14 @@ export default function Home() {
             NorthstarLabs brings structured courses, practical assessments, useful communities, and optional one-to-one coaching
             together. Start learning immediately, or choose the professional path that fits your work.
           </p>
+          <div className="decision-hero-actions" aria-label="Start with NorthstarLabs">
+            <Link className="decision-primary-action" href="/courses">
+              Explore courses <span aria-hidden="true">→</span>
+            </Link>
+            <Link className="decision-secondary-action" href="/find">
+              Build my learning route <span aria-hidden="true">→</span>
+            </Link>
+          </div>
           <div className="decision-trust" aria-label="Why it is easy to start">
             <span><b>Preview</b> before enrolling</span>
             <span><b>Human</b> help when needed</span>
@@ -159,7 +167,15 @@ export default function Home() {
 
       <footer className="decision-footer">
         <div><b>* NORTHSTARLABS</b><span>Courses for the path. Human help for the roadblocks.</span></div>
-        <nav><Link href="/about">About</Link><Link href="/solutions">All solutions</Link><Link href="/demand">Demand board</Link><Link href="/legal/terms">Terms</Link><Link href="/legal/privacy">Privacy</Link></nav>
+        <nav>
+          <Link href="/about">About</Link>
+          <Link href="/solutions">All solutions</Link>
+          <Link href="/solutions/online-courses-south-africa">Online courses in South Africa</Link>
+          <Link href="/solutions/find-business-coach-south-africa">Business coaches in South Africa</Link>
+          <Link href="/demand">Demand board</Link>
+          <Link href="/legal/terms">Terms</Link>
+          <Link href="/legal/privacy">Privacy</Link>
+        </nav>
         <small>(c) 2026 NorthstarLabs</small>
       </footer>
     </main>
