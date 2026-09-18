@@ -28,3 +28,9 @@ test("governs public, auth, workspace, academy, and learner surfaces", async () 
   assert.match(css, /prefers-reduced-motion:reduce/);
   assert.match(css, /font-size:16px!important/);
 });
+
+test("keeps an empty academy inviting instead of advertising a zero catalogue", async () => {
+  const storefront = await readFile(new URL("../app/schools/[slug]/page.tsx", import.meta.url), "utf8");
+  assert.match(storefront, /learningOptionCount \? String\(learningOptionCount\)\.padStart\(2, "0"\) : "READY"/);
+  assert.match(storefront, /learningOptionCount \? "learning options" : "academy open"/);
+});

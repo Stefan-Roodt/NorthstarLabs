@@ -501,6 +501,10 @@ textarea{line-height:1.55}
 .school-storefront-nav{box-shadow:0 8px 30px rgba(21,24,42,.05)}
 .school-storefront-hero{border-bottom:1px solid var(--rule)}
 .school-storefront-hero h1{font-size:clamp(52px,6.4vw,92px)!important;line-height:.91!important}
+.school-storefront-hero>aside.is-empty strong{
+  font-size:clamp(42px,6vw,76px)!important;
+  letter-spacing:-.035em;
+}
 .school-trust-strip{border-radius:var(--radius-sm);overflow:hidden}
 .school-course-card,.school-product-card,.school-tutor-card{
   border-radius:var(--radius-md)!important;

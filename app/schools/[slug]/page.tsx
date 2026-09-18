@@ -121,6 +121,7 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
   const privacy = school.privacyUrl || "/legal/privacy";
   const hasLiveLearning = data.products.some((product) => product.liveSessionCount > 0);
   const hasCommunity = Boolean(school.showCommunity && data.community);
+  const learningOptionCount = data.products.length + data.courses.length;
   const primaryDestination = data.products.length
     ? "#products"
     : data.courses.length
@@ -218,9 +219,9 @@ export default function SchoolPage({ params }: { params: Promise<{ slug: string 
             <Link href={`/schools/${school.slug}/community`}>Enter the community →</Link>}
         </div>
       </div>
-      <aside>
-        <strong>{String(data.products.length + data.courses.length).padStart(2, "0")}</strong>
-        <span>learning options</span>
+      <aside className={learningOptionCount ? "" : "is-empty"}>
+        <strong>{learningOptionCount ? String(learningOptionCount).padStart(2, "0") : "READY"}</strong>
+        <span>{learningOptionCount ? "learning options" : "academy open"}</span>
       </aside>
     </section>
 
